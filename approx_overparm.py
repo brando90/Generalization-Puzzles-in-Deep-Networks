@@ -2,6 +2,8 @@ import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 
+import pdb
+
 def poly_kernel_matrix( x,D ):
     N = len(x)
     Kern = np.zeros( (N,D+1) )
@@ -32,7 +34,7 @@ def main():
     x = np.linspace(lb,ub,5)
     y = np.array([0,1,0,-1,0]).transpose()
     X_true = poly_kernel_matrix( x,Degree_true )
-    c_true = np.linalg.pinv(X_true)*y
+    c_true = np.dot(np.linalg.pinv(X_true),y)
     ##
     # N = 5000
     ##
@@ -44,18 +46,21 @@ def main():
     l2loss = tf.reduce_sum(Y - f)
     #
     M = 5
-    train_step = tf.train.GradientDescentOptimizer(0.5).minimize(l2loss)
+    train_step = tf.train.GradientDescentOptimizer(0.0001).minimize(l2loss)
     with tf.Session() as sess:
         tf.global_variables_initializer().run()
         # Train
-        for _ in range(1000):
+        for _ in range(50000):
             batch_xs, batch_ys = get_batch(X_true,y,M)
             sess.run(train_step, feed_dict={X: batch_xs, Y: batch_ys})
         #
         c_sgd = w.eval()
-        print('c_sgd: ',c_sgd)
-        print('c_true: ',c_true)
-        print(' c_sgd - c_true', np.norm(c_sgd - c_true,2))
+        print('c_sgd: ')
+        print(c_sgd)
+        print('c_true: ')
+        print(c_true.shape)
+        print(c_true)
+        print(' c_sgd - c_true', np.linalg.norm(c_sgd - c_true,2))
 
 
 if __name__ == '__main__':
