@@ -2,7 +2,7 @@
 commands run
 
 
-
+tensorboard --logdir=/tmp/mdl_logs
 tensorboard --logdir=/tmp/mdl_logs
 '''
 
