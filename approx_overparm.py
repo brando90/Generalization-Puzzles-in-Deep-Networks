@@ -87,7 +87,7 @@ def main(argv=None):
         f = tf.matmul(X,w) # [N,1] = [N,D] x [D,1]
         #loss = tf.reduce_sum(tf.square(Y - f))
         loss = tf.reduce_sum( tf.reduce_mean(tf.square(Y-f), 0))
-        #l2loss_tf = (1/N)*2*tf.nn.l2_loss(Y-f)
+        l2loss_tf = (1/N)*2*tf.nn.l2_loss(Y-f)
         tf.summary.scalar('loss', loss)
         #
         var_grad = tf.gradients(loss, [w])
@@ -100,24 +100,10 @@ def main(argv=None):
     with tf.Session(graph=graph) as sess:
         tf.global_variables_initializer().run()
         #
-        y_norm = np.linalg.norm(y)**2
-        Xw = (np.dot(X_true,w.eval()))
-        # print('Xw: ',Xw)
-        # print('Xw.shape: ',Xw.shape)
-        l2_np = (1/N)*np.linalg.norm(y - Xw )**2
-        l2_loss_val = sess.run(loss,{X:X_true,Y:y})
-        l2loss_tf_val = sess.run(l2loss_tf,{X:X_true,Y:y})
-        # print()
-        # print('y: ',y)
-        # print('y_norm: ',y_norm)
-        # print('w: ',w.eval())
-        # print('w.shape: ',w.eval().shape)
-        diff_val = sess.run(diff,{X:X_true,Y:y})
-        print('>>diff:', diff_val)
+        l2_np = (1/N)*np.linalg.norm(y -  (np.dot(X_true,w.eval())) )**2
         print('>>l2_np: ',l2_np)
-        print( '>>l2_loss_val: ', l2_loss_val )
-        print('>>l2loss_tf: ',l2loss_tf_val)
-        pdb.set_trace()
+        print('>>l2_loss_val: ', sess.run(l2loss_tf,{X:X_true,Y:y}) )
+        print('>>l2loss_tf: ',sess.run(l2loss_tf,{X:X_true,Y:y}))
         #
         if use_tb:
             delete_old_runs(tb_loc)
