@@ -3,7 +3,7 @@ commands run
 
 
 tensorboard --logdir=/tmp/mdl_logs
-tensorboard --logdir=/tmp/mdl_logs
+tensorboard --logdir=/Users/brandomiranda/home_simulation_research/overparametrized_experiments/tmp/
 '''
 
 import time
@@ -19,10 +19,16 @@ FLAGS = tf.app.flags.FLAGS
 
 tf.app.flags.DEFINE_boolean('use_tb', True, 'use tensorboard or not')
 tf.app.flags.DEFINE_string('tb_loc_train', './tmp/train', 'tensorboard location')
+tf.app.flags.DEFINE_string('tb_loc', './tmp/', 'tensorboard location')
 
 tf.app.flags.DEFINE_integer('lb', 0, 'lower bound for where to choose data points')
 tf.app.flags.DEFINE_integer('ub', 1, 'upper bound for where to choose data points')
 tf.app.flags.DEFINE_integer('N', 5, 'N is number of data points')
+
+def delete_old_runs(tb_loc):
+    if tf.gfile.Exists(tb_loc):
+      tf.gfile.DeleteRecursively(tb_loc)
+    tf.gfile.MakeDirs(tb_loc)
 
 def poly_kernel_matrix( x,D ):
     N = len(x)
@@ -43,6 +49,7 @@ def get_batch(X,Y,M):
 def main(argv=None):
     use_tb = FLAGS.use_tb
     tb_loc_train = FLAGS.tb_loc_train
+    tb_loc = FLAGS.tb_loc
     ##
     lb, ub = FLAGS.lb, FLAGS.ub
     N = FLAGS.N
@@ -51,40 +58,84 @@ def main(argv=None):
     D_sgd = Degree_true+1
     D_mdl = Degree_true
     B=1000
-    nb_iter = 1
-    report_error_freq = nb_iter/4
+    nb_iter = 40000
+    #report_error_freq = nb_iter/4
     ##
+    np.set_printoptions(suppress=True)
     x = np.linspace(FLAGS.lb,FLAGS.ub,5)
-    y = np.array([0,1,0,-1,0]).transpose()
-    X_true = poly_kernel_matrix( x,Degree_true )
-    c_true = np.dot(np.linalg.pinv(X_true),y)
+    y = np.array([0,1,0,-1,0])
+    y.shape = (N,1)
+    X_true = poly_kernel_matrix( x,Degree_true ) # [N, D] = [N, Degree+1]
+    c_true = np.dot(np.linalg.pinv(X_true),y) # [N,1]
+    print(X_true)
+    print('\ny: ',y)
+    print('\nc_true: ', c_true)
+    # c_true = np.linalg.lstsq(X_true,y)
+    # print(c_true[0])
+    #pdb.set_trace()
     ##
     graph = tf.Graph()
     with graph.as_default():
         X = tf.placeholder(tf.float32, [None, D_true])
-        Y = tf.placeholder(tf.float32, [None])
+        Y = tf.placeholder(tf.float32, [None,1])
         w = tf.Variable( tf.zeros([D_sgd,1]) )
-        f = X*w
-        loss = tf.reduce_sum(Y - f)
+        #w = tf.Variable( tf.truncated_normal([D_sgd,1],mean=0.0,stddev=30.0) )
+        #
+        w_2 = tf.norm(w)
+        tf.summary.scalar('norm(w)',w_2)
+        #
+        f = tf.matmul(X,w) # [N,1] = [N,D] x [D,1]
+        #loss = tf.reduce_sum(tf.square(Y - f))
+        loss = tf.reduce_sum( tf.reduce_mean(tf.square(Y-f), 0))
+        #l2loss_tf = (1/N)*2*tf.nn.l2_loss(Y-f)
+        tf.summary.scalar('loss', loss)
+        #
+        var_grad = tf.gradients(loss, [w])
+        g_2 = tf.norm(var_grad)
+        tf.summary.scalar('norm(g)', g_2)
         #
         M = 5
-        train_step = tf.train.GradientDescentOptimizer(0.0001).minimize(loss)
+        train_step = tf.train.GradientDescentOptimizer(0.9).minimize(loss)
     #
     with tf.Session(graph=graph) as sess:
         tf.global_variables_initializer().run()
+        #
+        y_norm = np.linalg.norm(y)**2
+        Xw = (np.dot(X_true,w.eval()))
+        # print('Xw: ',Xw)
+        # print('Xw.shape: ',Xw.shape)
+        l2_np = (1/N)*np.linalg.norm(y - Xw )**2
+        l2_loss_val = sess.run(loss,{X:X_true,Y:y})
+        l2loss_tf_val = sess.run(l2loss_tf,{X:X_true,Y:y})
+        # print()
+        # print('y: ',y)
+        # print('y_norm: ',y_norm)
+        # print('w: ',w.eval())
+        # print('w.shape: ',w.eval().shape)
+        diff_val = sess.run(diff,{X:X_true,Y:y})
+        print('>>diff:', diff_val)
+        print('>>l2_np: ',l2_np)
+        print( '>>l2_loss_val: ', l2_loss_val )
+        print('>>l2loss_tf: ',l2loss_tf_val)
+        pdb.set_trace()
+        #
         if use_tb:
-            merged = tf.summary.merge_all()
+            delete_old_runs(tb_loc)
+            #
+            merged_summary = tf.summary.merge_all()
             train_writer = tf.summary.FileWriter(tb_loc_train,graph)
-            fetches_loss = {'loss':loss, 'merged':merged}
-        else:
-            fetches_loss = {'loss':loss}
+            train_writer.add_graph(sess.graph)
         # Train
-        for i in range(50000):
+        for i in range(nb_iter):
             batch_xs, batch_ys = get_batch(X_true,y,M)
-            sess.run(train_step, feed_dict={X: batch_xs, Y: batch_ys})
-            if i % report_error_freq == 0:
+            batch_xs, batch_ys = X_true, y
+            if i % 100 == 0:
+                current_loss = sess.run(fetches=loss, feed_dict={X: X_true, Y: y})
+                #print('loss: ', current_loss)
                 if use_tb:
-                    train_writer.add_summary(fetches_loss['merged'], i)
+                    summary = sess.run(fetches=merged_summary, feed_dict={X: X_true, Y: y})
+                    train_writer.add_summary(summary,i)
+            sess.run(train_step, feed_dict={X: batch_xs, Y: batch_ys})
         #
         c_sgd = w.eval()
         print('c_sgd: ')
