@@ -53,33 +53,35 @@ def main(argv=None):
     ##
     lb, ub = FLAGS.lb, FLAGS.ub
     N = FLAGS.N
-    Degree_true= 4
-    D_true = Degree_true+1
-    D_sgd = Degree_true+1
-    D_mdl = Degree_true
+    Degree = 100
+    D_sgd = Degree+1
+    D_ = Degree+1
     B=1000
-    nb_iter = 40000
+    nb_iter = 100000
     #report_error_freq = nb_iter/4
     ##
     np.set_printoptions(suppress=True)
     x = np.linspace(FLAGS.lb,FLAGS.ub,5)
     y = np.array([0,1,0,-1,0])
     y.shape = (N,1)
-    X_true = poly_kernel_matrix( x,Degree_true ) # [N, D] = [N, Degree+1]
-    c_true = np.dot(np.linalg.pinv(X_true),y) # [N,1]
+    X_true = poly_kernel_matrix( x,Degree ) # [N, D] = [N, Degree+1]
+    c_pinv = np.dot(np.linalg.pinv(X_true),y) # [N,1]
+    if D_mdl == N:
+        D_true = D_mdl
+        c_true = c_pinv
     print(X_true)
     print('\ny: ',y)
-    print('\nc_true: ', c_true)
-    # c_true = np.linalg.lstsq(X_true,y)
-    # print(c_true[0])
+    print('\nc_pinv: ', c_pinv)
+    # c_pinv = np.linalg.lstsq(X_true,y)
+    # print(c_pinv[0])
     #pdb.set_trace()
     ##
     graph = tf.Graph()
     with graph.as_default():
-        X = tf.placeholder(tf.float32, [None, D_true])
+        X = tf.placeholder(tf.float32, [None, D_mdl])
         Y = tf.placeholder(tf.float32, [None,1])
-        w = tf.Variable( tf.zeros([D_sgd,1]) )
-        #w = tf.Variable( tf.truncated_normal([D_sgd,1],mean=0.0,stddev=30.0) )
+        #w = tf.Variable( tf.zeros([D_sgd,1]) )
+        w = tf.Variable( tf.truncated_normal([D_sgd,1],mean=0.0,stddev=1.0) )
         #
         w_2 = tf.norm(w)
         tf.summary.scalar('norm(w)',w_2)
@@ -95,7 +97,10 @@ def main(argv=None):
         tf.summary.scalar('norm(g)', g_2)
         #
         M = 5
-        train_step = tf.train.GradientDescentOptimizer(0.9).minimize(loss)
+        global_step = tf.Variable(0, trainable=False)
+        learning_rate = tf.train.exponential_decay(learning_rate=0.02, global_step=global_step,
+            decay_steps=nb_iter/2, decay_rate=1, staircase=True)
+        train_step = tf.train.GradientDescentOptimizer(learning_rate=learning_rate).minimize(loss)
     #
     with tf.Session(graph=graph) as sess:
         tf.global_variables_initializer().run()
@@ -124,13 +129,34 @@ def main(argv=None):
             sess.run(train_step, feed_dict={X: batch_xs, Y: batch_ys})
         #
         c_sgd = w.eval()
+        c_pinv.shape = (len(c_pinv),1)
+        #
+        print()
+        print('degree: ',Degree)
+        print('nb_iter: ',nb_iter)
         print('c_sgd: ')
         print(c_sgd)
-        print('c_true: ')
-        print(c_true.shape)
-        c_true.shape = (len(c_true),1)
-        print(c_true)
-        print(' c_sgd - c_true', np.linalg.norm(c_sgd - c_true,2))
+        print('c_pinv: ')
+        print(c_pinv)
+        #
+        print('norm(c_sgd): ', np.linalg.norm(c_sgd))
+        print('norm(c_pinv): ', np.linalg.norm(c_pinv))
+        #
+        print(' ||c_sgd - c_pinv|| = ', np.linalg.norm(c_sgd - c_pinv,2))
+        print(' J(c_sgd) = ', sess.run(fetches=loss, feed_dict={X: X_true, Y: y}) )
+        Xc_pinv = np.dot(X_true,c_pinv)
+        print( ' J(c_pinv) = ',(1/N)*(np.linalg.norm(y-Xc_pinv)**2) )
+        #
+        print('\a')
+        #
+        x_horizontal = np.linspace(lb,ub,1000)
+        X_plot = poly_kernel_matrix(x_horizontal,D_sgd-1)
+        p_sgd, = plt.plot(x_horizontal, np.dot(X_plot,c_sgd))
+        p_true, = plt.plot(x_horizontal, np.dot(X_plot,c_pinv))
+        p_data, = plt.plot(x,y,'ro')
+        plt.legend([p_sgd,p_true,p_data],['sgd curve ','true min norm','data points'])
+        plt.ylabel('f(x)')
+        plt.show()
 
 if __name__ == '__main__':
     start_time = time.time()
