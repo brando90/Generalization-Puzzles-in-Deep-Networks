@@ -1,6 +1,7 @@
 import time
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.integrate as integrate
 
 import torch
 from torch.autograd import Variable
@@ -8,6 +9,12 @@ from torch.autograd import Variable
 import maps
 
 import pdb
+
+def L2_norm_2(f,g,lb=0,ub=1):
+    f_g_2 = lambda x: (f(x) - g(x))**2
+    result = integrate.quad(func=f_g_2, a=lb,b=ub)
+    integral_val = result[0]
+    return integral_val
 
 def get_c_true(Degree_true,lb=0,ub=1):
     x = np.linspace(lb,ub,5)
@@ -64,24 +71,24 @@ def get_old():
     return X_true, y
 
 def main(argv=None):
+    #pdb.set_trace()
     start_time = time.time()
-    #
+    ##
     np.set_printoptions(suppress=True)
     lb, ub = 0, 1
     ## true facts of the data set
-    #B=10000
-    N = 5
+    N = 10
     Degree_true = 4
     D_true = Degree_true+1
     ## mdl degree and D
-    Degree_mdl = 100
+    Degree_mdl = 100000
     D_sgd = Degree_mdl+1
     D_pinv = Degree_mdl+1
     D_rls = D_pinv
     ## sgd
-    M = 2
-    eta = 0.02 # eta = 1e-6
-    nb_iter = int(100000)
+    M = 5
+    eta = 0.01 # eta = 1e-6
+    nb_iter = int(3.75*100)
     lambda_rls = 0.0001
     ##
     x_true = np.linspace(lb,ub,N) # the real data points
@@ -112,15 +119,8 @@ def main(argv=None):
     loss_list = []
     grad_list = []
     for i in range(nb_iter):
-        #pdb.set_trace()
-        #valid_indices = torch.arange(0,N).numpy()
-        #valid_indices = np.array( range(N) )
-        #batch_indices = np.random.choice(valid_indices,size=M,replace=False)
-        #indices = torch.LongTensor(batch_indices)
-        #batch_xs, batch_ys = torch.index_select(X_mdl, 0, indices), torch.index_select(y, 0, indices)
-        #batch_xs,batch_ys = torch.index_select(X_mdl, 0, indices), torch.index_select(y, 0, indices)
-        batch_xs, batch_ys = get_batch2(X_mdl,y,M,dtype)
         # Forward pass: compute predicted y using operations on Variables
+        batch_xs, batch_ys = get_batch2(X_mdl,y,M,dtype)
         y_pred = batch_xs.mm(W)
         # Compute and print loss using operations on Variables. Now loss is a Variable of shape (1,) and loss.data is a Tensor of shape (1,); loss.data[0] is a scalar value holding the loss.
         #loss = (1/N)*(y_pred - y).pow(2).sum()
@@ -131,10 +131,13 @@ def main(argv=None):
         # w.grad are Variables and w.grad.data are Tensors.
         W.data -= eta * W.grad.data
         #
-        #pdb.set_trace()
         if i % 500 == 0 or i == 0:
-            loss_list.append(loss.data.numpy())
-            grad_list.append( torch.norm(W.grad) )
+            current_loss = loss.data.numpy()[0]
+            loss_list.append(current_loss)
+            grad_list.append( torch.norm(W.grad).data.numpy()[0] )
+            if not np.isfinite(current_loss) or np.isinf(current_loss) or np.isnan(current_loss):
+                print('loss: ',current_loss)
+                break
         # Manually zero the gradients after updating weights
         W.grad.data.zero_()
     #
@@ -147,6 +150,13 @@ def main(argv=None):
     #
     print('\n---- statistics about learned params')
     print('||c_sgd - c_pinv|| = ', np.linalg.norm(c_sgd - c_pinv,2))
+    def f_sgd(x):
+        X = poly_kernel_matrix( [x],D_sgd-1 )
+        return np.dot(X,c_sgd)
+    def g_pinv(x):
+        X = poly_kernel_matrix( [x],D_sgd-1 )
+        return np.dot(X,c_pinv)
+    print('||f_sgd - f_pin||^2 = ', L2_norm_2(f=f_sgd,g=g_pinv,lb=0,ub=1))
     #
     print('c_sgd.shape: ', c_sgd.shape)
     print('c_pinv.shape: ', c_pinv.shape)
@@ -164,6 +174,11 @@ def main(argv=None):
     print( ' J(c_rls) = ',(1/N)*(np.linalg.norm(y-Xc_rls)**2) )
     #
     seconds = (time.time() - start_time)
+    minutes = seconds/ 60
+    hours = minutes/ 60
+    print("--- %s seconds ---" % seconds )
+    print("--- %s minutes ---" % minutes )
+    print("--- %s hours ---" % hours )
     print('\a')
     ##
     x_horizontal = np.linspace(lb,ub,1000)
@@ -179,17 +194,21 @@ def main(argv=None):
     p_list=[p_sgd,p_pinv,p_data]
     #p_list=[p_pinv,p_data]
     #plt.legend(p_list,['sgd curve Degree_mdl='+str(D_sgd-1),'min norm (pinv) Degree_mdl='+str(D_pinv-1),'rls regularization lambda={} Degree_mdl={}'.format(lambda_rls,D_rls-1),'data points'])
-    plt.legend(p_list,['sgd curve Degree_mdl='+str(D_sgd-1),'min norm (pinv) Degree_mdl='+str(D_pinv-1),'data points'])
+    plt.legend(p_list,['sgd curve Degree_mdl={}, batch-size= {}, iterations={}, eta={}'.format(str(D_sgd-1),M,nb_iter,eta),'min norm (pinv) Degree_mdl='+str(D_pinv-1),'data points'])
     #plt.legend(p_list,['min norm (pinv) Degree_mdl='+str(D_pinv-1),'data points'])
     plt.ylabel('f(x)')
-    plt.show()
     ##
-    minutes = seconds/ 60
-    hours = minutes/ 60
-    print("--- %s seconds ---" % seconds )
-    print("--- %s minutes ---" % minutes )
-    print("--- %s hours ---" % hours )
-    print('\a')
+    fig1 = plt.figure()
+    p_loss, = plt.plot(np.arange(len(loss_list)), loss_list,color='m')
+    plt.legend([p_loss],['plot loss'])
+    plt.title('Loss vs Iterations')
+    ##
+    fig2 = plt.figure()
+    p_grads, = plt.plot(np.arange(len(grad_list)), grad_list,color='g')
+    plt.legend([p_grads],['plot grads'])
+    plt.title('Gradient vs Iterations')
+    ##
+    plt.show()
 
 if __name__ == '__main__':
     #tf.app.run()
