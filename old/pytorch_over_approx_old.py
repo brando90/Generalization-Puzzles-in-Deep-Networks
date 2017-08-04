@@ -10,14 +10,6 @@ import maps
 
 import pdb
 
-def get_example_mdl():
-        model = torch.nn.Sequential(
-        torch.nn.Linear(D_in, H),
-        torch.nn.ReLU(),
-        torch.nn.Linear(H, D_out),
-    )
-    return model
-
 def L2_norm_2(f,g,lb=0,ub=1):
     f_g_2 = lambda x: (f(x) - g(x))**2
     result = integrate.quad(func=f_g_2, a=lb,b=ub)
@@ -94,12 +86,11 @@ def main(argv=None):
     D_pinv = Degree_mdl+1
     D_rls = D_pinv
     ## sgd
-    M = 5
+    M = 3
     eta = 0.0001 # eta = 1e-6
-    A = 0.25
-    nb_iter = int(1000000)
+    nb_iter = int(100000)
     # RLS
-    lambda_rls = 0.0001
+    lambda_rls = 0.0005
     ##
     x_true = np.linspace(lb,ub,N) # the real data points
     y = np.sin(2*np.pi*x_true)
@@ -110,27 +101,28 @@ def main(argv=None):
     c_pinv = np.dot(np.linalg.pinv(X_mdl),y) # [D_pinv,1]
     c_rls = get_RLS_soln(X_mdl,y,lambda_rls) # [D_pinv,1]
     ## TORCH
+    X_mdl = x_true
     dtype = torch.FloatTensor
     # dtype = torch.cuda.FloatTensor # Uncomment this to run on GPU
-    X_mdl = Variable(torch.FloatTensor(x_true).type(dtype), requires_grad=False)
+    X_mdl = Variable(torch.FloatTensor(X_mdl).type(dtype), requires_grad=False)
     X_mdl = X_mdl.view(N,1)
     y = Variable(torch.FloatTensor(y).type(dtype), requires_grad=False)
     ## SGD mdl
     #w_init = 1000*torch.randn(D_sgd,1).type(dtype)
-    #w_init = torch.zeros(D_sgd,1).type(dtype)
-    #W = Variable(w_init, requires_grad=True)
+    # w_init = torch.zeros(D_sgd,1).type(dtype)
+    # W = Variable(w_init, requires_grad=True)
     D,H_l1 = 1,2
     #w_init = torch.zeros(D,H_l1).type(dtype)
-    w_init = torch.randn(D,H_l1).type(dtype)
+    w_init = 0.2*torch.randn(D,H_l1).type(dtype)
     W_l1 = Variable(w_init, requires_grad=True)
 
     H_l2 = 2
     #w_init = torch.zeros(H_l1,H_l2).type(dtype)
-    w_init = torch.randn(H_l1,H_l2).type(dtype)
+    w_init = 0.2*torch.randn(H_l1,H_l2).type(dtype)
     W_l2 = Variable(w_init, requires_grad=True)
 
     #w_init = torch.zeros(H_l2,1).type(dtype)
-    w_init = torch.randn(H_l2,1).type(dtype)
+    w_init = 0.2*torch.randn(H_l2,1).type(dtype)
     W_out = Variable(w_init, requires_grad=True)
     ## debug print statements
     print('>>norm(y): ', ((1/N)*torch.norm(y)**2).data.numpy()[0] )
@@ -161,17 +153,16 @@ def main(argv=None):
         loss.backward() # Use autograd to compute the backward pass. Now w will have gradients
         ## SGD
         for W in Ws:
-            gdl_eps = torch.randn(W.data.size()).type(dtype)
-            W.data = W.data - eta*W.grad.data + A*gdl_eps # W - eta*g + A*gdl_eps, B
+            W.data -= eta * W.grad.data # Update weights using gradient descent; w1.data are Tensors, w.grad are Variables and w.grad.data are Tensors.
         ## TRAINING STATS
         if i % 500 == 0 or i == 0:
             current_loss, current_norm_grad_2 = loss.data.numpy()[0], torch.norm(W.grad).data.numpy()[0]
-            print('current_norm_grad_2: ', current_norm_grad_2)
+            #print('current_norm_grad_2: ', current_norm_grad_2)
             loss_list.append(current_loss)
             grad_list.append( current_norm_grad_2 )
             if not np.isfinite(current_loss) or np.isinf(current_loss) or np.isnan(current_loss):
                 print('loss: ',current_loss)
-                print('>>>>> BREAK HAPPENED')
+                print('>>>>>>>>> BREAK HAPPENED')
                 break
         ## Manually zero the gradients after updating weights
         for W in Ws:
