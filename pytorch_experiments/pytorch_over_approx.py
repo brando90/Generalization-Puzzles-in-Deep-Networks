@@ -110,9 +110,14 @@ def main(argv=None):
     X_mdl = X_mdl.view(N,1)
     y = Variable(torch.FloatTensor(y).type(dtype), requires_grad=False)
     ## SGD mdl
-
-
+    # one layered mdl
+    D_layers,act = [D_sgd,1], lambda x: x
+    # two layered mdl
+    D_layers,act = [D_sgd,1], lambda x: x**2
+    # NN model
     mdl_sgd = NN()
+    if dtype == torch.cuda.FloatTensor:
+        mdl_sgd.to_gpu()
     ## debug print statements
     print('>>norm(y): ', ((1/N)*torch.norm(y)**2).data.numpy()[0] )
     #print('>>l2_np: ', (1/N)*np.linalg.norm( y.data.numpy()-(np.dot(X_mdl.data.numpy(),W.data.numpy())) )**2 )

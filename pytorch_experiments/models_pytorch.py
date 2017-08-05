@@ -4,6 +4,7 @@ import torch.nn.functional as F
 
 class NN(torch.nn.Module):
     # http://pytorch.org/tutorials/beginner/examples_nn/two_layer_net_module.html#sphx-glr-beginner-examples-nn-two-layer-net-module-py
+    # http://pytorch.org/tutorials/beginner/pytorch_with_examples.html#pytorch-nn
     def __init__(self, D_layers,act,w_inits,b_inits):
         """
         In the constructor we instantiate two nn.Linear modules and assign them as
