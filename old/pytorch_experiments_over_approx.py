@@ -10,13 +10,7 @@ import maps
 
 import pdb
 
-def get_example_mdl():
-        model = torch.nn.Sequential(
-        torch.nn.Linear(D_in, H),
-        torch.nn.ReLU(),
-        torch.nn.Linear(H, D_out),
-    )
-    return model
+from models_pytorch import *
 
 def L2_norm_2(f,g,lb=0,ub=1):
     f_g_2 = lambda x: (f(x) - g(x))**2

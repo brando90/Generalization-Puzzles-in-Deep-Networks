@@ -1,29 +1,9 @@
 import torch
 from torch.autograd import Variable
-from torch.
-
-class TwoLayerNet(torch.nn.Module):
-    def __init__(self, D_in,H_l1,H_l2,D_out):
-        """
-        In the constructor we instantiate two nn.Linear modules and assign them as
-        member variables.
-        """
-        super(TwoLayerNet, self).__init__()
-        self.linear1 = torch.nn.Linear(D_in, H)
-        self.linear2 = torch.nn.Linear(H, D_out)
-
-    def forward(self, x):
-        """
-        In the forward function we accept a Variable of input data and we must return
-        a Variable of output data. We can use Modules defined in the constructor as
-        well as arbitrary operators on Variables.
-        """
-        h_relu = self.linear1(x).clamp(min=0)
-        y_pred = self.linear2(h_relu)
-        return y_pred
-
+import torch.nn.functional as F
 
 class NN(torch.nn.Module):
+    # http://pytorch.org/tutorials/beginner/examples_nn/two_layer_net_module.html#sphx-glr-beginner-examples-nn-two-layer-net-module-py
     def __init__(self, D_layers,act,w_inits,b_inits):
         """
         In the constructor we instantiate two nn.Linear modules and assign them as
@@ -33,7 +13,7 @@ class NN(torch.nn.Module):
         w_inits = [None,W_f1,...,W_fL]
         b_inits = [None,b_f1,...,b_fL]
         """
-        super(TwoLayerNet, self).__init__()
+        #super(TwoLayerNet, self).__init__()
         # actiaction func
         self.act = act
         #create linear layers
@@ -47,7 +27,7 @@ class NN(torch.nn.Module):
             m = self.linear_layers[d]
             weight_init(m)
             bias_init(m)
-            
+
     def forward(self, x):
         """
         In the forward function we accept a Variable of input data and we must return
@@ -61,3 +41,6 @@ class NN(torch.nn.Module):
             a = self.act(z)
         y_pred = self.linear_layers[d](a)
         return y_pred
+
+    def to_gpu(self,device_id=None):
+        torch.nn.Module.cuda(device_id=device_id)
