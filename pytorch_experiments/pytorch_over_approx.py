@@ -56,6 +56,7 @@ def index_batch(X,batch_indices,dtype):
     return batch_xs
 
 def get_batch2(X,Y,M,dtype):
+    # TODO fix and make it nicer
     X,Y = X.data.numpy(), Y.data.numpy()
     N = len(Y)
     valid_indices = np.array( range(N) )
@@ -130,14 +131,14 @@ def main(argv=None):
     c_rls = get_RLS_soln(X.data.numpy(),Y.data.numpy(),lambda_rls) # [D_pinv,1]
     ## SGD model
     mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits,b_inits=b_inits)
+    # loss funtion
+    #loss_fn = torch.nn.MSELoss(size_average=False)
     ## GPU
-    if dtype == torch.cuda.FloatTensor:
-        mdl_sgd.to_gpu()
+    mdl_sgd.to_gpu() if (dtype == torch.cuda.FloatTensor) else 1
     ## debug print statements
     #print('Y: ',Y)
     print('>>norm(Y): ', ((1/N)*torch.norm(Y)**2).data.numpy()[0] )
     print('>>l2_loss_torch: ', (1/N)*( Y - mdl_sgd.forward(X)).pow(2).sum() )
-    pdb.set_trace()
     #
     loss_list = []
     grad_list = []
@@ -147,18 +148,21 @@ def main(argv=None):
         # Forward pass: compute predicted Y using operations on Variables
         batch_xs, batch_ys = get_batch2(X,Y,M,dtype) # [M, D], [M, 1]
         ## FORWARD PASS
-        #y_pred = batch_xs.mm(W)
-        a_l1 = batch_xs.mm(W_l1)**2 # [M,H^(1)] = [M,D]x[D,H^(1)]
-        a_l2 = a_l1.mm(W_l2)**2 # [M,H^(2)] = [M,H^(1)]x[H^(1),H^(2)]
-        y_pred = a_l2.mm(W_out) # [M,1] = [M,H^(2)]x[M^(2),1]
+        y_pred = mdl_sgd.forward(X)
         ## LOSS
         loss = (1/N)*(y_pred - batch_ys).pow(2).sum()
         ## BACKARD PASS
         loss.backward() # Use autograd to compute the backward pass. Now w will have gradients
-        ## SGD
-        for W in Ws:
-            gdl_eps = torch.randn(W.data.size()).type(dtype)
-            W.data = W.data - eta*W.grad.data + A*gdl_eps # W - eta*g + A*gdl_eps, B
+        ## SGD update
+        pdb.set_trace()
+        for W in mdl_sgd.parameters():
+            if A == 0:
+                W.data = W.data - eta*W.grad.data # W - eta*g
+            else:
+                gdl_eps = torch.randn(W.data.size()).type(dtype)
+                W.data = W.data - eta*W.grad.data + A*gdl_eps # W - eta*g + A*gdl_eps % B
+        ## Manually zero the gradients after updating weights
+        mdl_sgd.zero_grad()
         ## TRAINING STATS
         if i % 500 == 0 or i == 0:
             current_loss, current_norm_grad_2 = loss.data.numpy()[0], torch.norm(W.grad).data.numpy()[0]
@@ -169,9 +173,6 @@ def main(argv=None):
                 print('loss: ',current_loss)
                 print('>>>>> BREAK HAPPENED')
                 break
-        ## Manually zero the gradients after updating weights
-        for W in Ws:
-            W.grad.data.zero_()
         ## COLLECT MOVING AVERAGES
         # for i in range(len(Ws)):
         #     W, W_avg = Ws[i], W_avgs[i]
