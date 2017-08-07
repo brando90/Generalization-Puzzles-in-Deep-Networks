@@ -5,6 +5,7 @@ import scipy.integrate as integrate
 
 import torch
 from torch.autograd import Variable
+import torch.nn.functional as F
 
 import maps
 import pdb
@@ -109,17 +110,28 @@ def main(argv=None):
     X_mdl = Variable(torch.FloatTensor(x_true).type(dtype), requires_grad=False)
     X_mdl = X_mdl.view(N,1)
     y = Variable(torch.FloatTensor(y).type(dtype), requires_grad=False)
-    ## SGD mdl
-    # one layered mdl
-    D_layers,act = [D_sgd,1], lambda x: x
-    # two layered mdl
-    D_layers,act = [D_sgd,1], lambda x: x**2
-    # NN model
-    mdl_sgd = NN()
+    #### SGD mdl
+    ## one layered mdl
+    identity_act = lambda x: x
+    D_1,D_2 = D_sgd,1 # note D^(0) is not present cuz the polyomial is explicitly constructed by me
+    D_layers,act = [D_1,D_2], identity_act
+    w_inits, b_inits = lambda x: w_init_normal(x,mu=0.0,1.0), lambda x: b_fill(x,value=0.1)
+    ## two layered mdl
+    # act = lambda x: x**2 # squared act
+    # #act = lambda x: F.relu(x) # relu act
+    # D0,D1,D2,D3 = 1,2,2,1
+    # D_layers,act = [D0,D1,D2,D3], act
+    # #w_inits, b_inits = lambda x: w_init_normal(x,mu=0.0,1.0), lambda x: b_fill(x,value=0.1)
+    # w_inits = lambda x: torch.nn.init.xavier_normal(x, gain=1)
+    # b_inits = lambda x: b_fill(x,value=0.1)
+    ## NN model
+    mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits,b_inits=b_inits)
+    ##
     if dtype == torch.cuda.FloatTensor:
         mdl_sgd.to_gpu()
     ## debug print statements
     print('>>norm(y): ', ((1/N)*torch.norm(y)**2).data.numpy()[0] )
+    pdb.set_trace()
     #print('>>l2_np: ', (1/N)*np.linalg.norm( y.data.numpy()-(np.dot(X_mdl.data.numpy(),W.data.numpy())) )**2 )
     #print('>>l2_loss_torch: ', (1/N)*(X_mdl.mm(W) - y).pow(2).sum().data.numpy()[0] )
     #print('>>(1/N)*(y_pred - y).pow(2).sum(): ', ((1/N)*(X_mdl.mm(W) - y).pow(2).sum()).data[0] )
