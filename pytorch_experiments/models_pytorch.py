@@ -5,7 +5,7 @@ import torch.nn.functional as F
 class NN(torch.nn.Module):
     # http://pytorch.org/tutorials/beginner/examples_nn/two_layer_net_module.html#sphx-glr-beginner-examples-nn-two-layer-net-module-py
     # http://pytorch.org/tutorials/beginner/pytorch_with_examples.html#pytorch-nn
-    def __init__(self, D_layers,act,w_inits,b_inits):
+    def __init__(self, D_layers,act,w_inits,b_inits,bias=True):
         """
         In the constructor we instantiate two nn.Linear modules and assign them as
         member variables.
@@ -13,21 +13,25 @@ class NN(torch.nn.Module):
         D_layers = [D^(0),D^(1),...,D^(L)]
         w_inits = [None,W_f1,...,W_fL]
         b_inits = [None,b_f1,...,b_fL]
+        bias = True
         """
         #super(TwoLayerNet, self).__init__()
+        if not bias and (b_inits != [] or b_inits != None):
+            raise ValueError('bias is {} but b_inits is not empty nor None but isntead is {}'.join(bias,b_inits))
         # actiaction func
         self.act = act
         #create linear layers
         self.linear_layers = [None]
         for d in range(1,len(D_layers)):
-            linear_layer = torch.nn.Linear(D_layers[d-1], D_layers[d])
+            linear_layer = torch.nn.Linear(D_layers[d-1], D_layers[d],bias=bias)
             self.linear_layers.append(linear_layer)
         # initialize model
         for d in range(1,len(D_layers)):
             weight_init, bias_init = w_inits[d], b_inits[d]
             m = self.linear_layers[d]
             weight_init(m)
-            bias_init(m)
+            if bias:
+                bias_init(m)
 
     def forward(self, x):
         """

@@ -115,7 +115,8 @@ def main(argv=None):
     identity_act = lambda x: x
     D_1,D_2 = D_sgd,1 # note D^(0) is not present cuz the polyomial is explicitly constructed by me
     D_layers,act = [D_1,D_2], identity_act
-    w_inits, b_inits = lambda x: w_init_normal(x,mu=0.0,1.0), lambda x: b_fill(x,value=0.1)
+    w_inits = lambda x: w_init_normal(x,mu=0.0,std=1.0)
+    b_inits = lambda x: b_fill(x,value=0.1)
     ## two layered mdl
     # act = lambda x: x**2 # squared act
     # #act = lambda x: F.relu(x) # relu act
