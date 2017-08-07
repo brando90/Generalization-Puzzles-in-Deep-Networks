@@ -2,6 +2,8 @@ import torch
 from torch.autograd import Variable
 import torch.nn.functional as F
 
+import pdb
+
 class NN(torch.nn.Module):
     # http://pytorch.org/tutorials/beginner/examples_nn/two_layer_net_module.html#sphx-glr-beginner-examples-nn-two-layer-net-module-py
     # http://pytorch.org/tutorials/beginner/pytorch_with_examples.html#pytorch-nn
@@ -16,6 +18,7 @@ class NN(torch.nn.Module):
         bias = True
         """
         #super(TwoLayerNet, self).__init__()
+        # if bias is false then we don't need any init for it (if we do have an init for it and bias=False throw an error)
         if not bias and (b_inits != [] or b_inits != None):
             raise ValueError('bias is {} but b_inits is not empty nor None but isntead is {}'.join(bias,b_inits))
         # actiaction func
@@ -44,6 +47,7 @@ class NN(torch.nn.Module):
             W_d = self.linear_layers[d]
             z = W_d(a)
             a = self.act(z)
+        d = len(self.linear_layers)-1
         y_pred = self.linear_layers[d](a)
         return y_pred
 

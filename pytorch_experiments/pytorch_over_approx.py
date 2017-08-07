@@ -21,10 +21,10 @@ def L2_norm_2(f,g,lb=0,ub=1):
 
 def get_c_true(Degree_true,lb=0,ub=1):
     x = np.linspace(lb,ub,5)
-    y = np.array([0,1,0,-1,0])
-    y.shape = (5,1)
-    X_mdl = poly_kernel_matrix( x,Degree_true ) # [N, D] = [N, Degree_mdl+1]
-    c_true = np.dot(np.linalg.pinv(X_mdl),y) # [N,1]
+    Y = np.array([0,1,0,-1,0])
+    Y.shape = (5,1)
+    X = poly_kernel_matrix( x,Degree_true ) # [N, D] = [N, Degree_mdl+1]
+    c_true = np.dot(np.linalg.pinv(X),Y) # [N,1]
     return c_true
 
 def get_data_set_points(c_true,x,Degree_truth=4):
@@ -66,12 +66,12 @@ def get_batch2(X,Y,M,dtype):
 
 def get_old():
     x = np.linspace(0,1,5)
-    y = np.array([0,1,0,-1,0])
-    y.shape = (N,1)
+    Y = np.array([0,1,0,-1,0])
+    Y.shape = (N,1)
     X_true = poly_kernel_matrix( x,Degree ) # [N, D] = [N, Degree+1]
     #c_true = get_c_true(Degree_true,lb,ub)
-    #X_true,y = get_data_set_points(c_true,x_true) # maps to the real feature space
-    return X_true, y
+    #X_true,Y = get_data_set_points(c_true,x_true) # maps to the real feature space
+    return X_true, Y
 
 def main(argv=None):
     #pdb.set_trace()
@@ -95,60 +95,57 @@ def main(argv=None):
     nb_iter = int(1000000)
     # RLS
     lambda_rls = 0.0001
-    ##
-    x_true = np.linspace(lb,ub,N) # the real data points
-    y = np.sin(2*np.pi*x_true)
-    y.shape = (N,1)
-    print('y: ',y)
-    ## get linear algebra mdls
-    X_mdl = poly_kernel_matrix(x_true,Degree_mdl) # maps to the feature space of the model
-    c_pinv = np.dot(np.linalg.pinv(X_mdl),y) # [D_pinv,1]
-    c_rls = get_RLS_soln(X_mdl,y,lambda_rls) # [D_pinv,1]
-    ## TORCH
-    dtype = torch.FloatTensor
-    # dtype = torch.cuda.FloatTensor # Uncomment this to run on GPU
-    X_mdl = Variable(torch.FloatTensor(x_true).type(dtype), requires_grad=False)
-    X_mdl = X_mdl.view(N,1)
-    y = Variable(torch.FloatTensor(y).type(dtype), requires_grad=False)
-    #### SGD mdl
     ## one layered mdl
     identity_act = lambda x: x
     D_1,D_2 = D_sgd,1 # note D^(0) is not present cuz the polyomial is explicitly constructed by me
     D_layers,act = [D_1,D_2], identity_act
-    w_inits = lambda x: w_init_normal(x,mu=0.0,std=1.0)
-    b_inits = lambda x: b_fill(x,value=0.1)
+    w_inits = [None]+[lambda x: w_init_normal(x,mu=0.0,std=1.0) for i in range(len(D_layers)) ]
+    b_inits = [None]+[lambda x: b_fill(x,value=0.1) for i in range(len(D_layers)) ]
     ## two layered mdl
     # act = lambda x: x**2 # squared act
     # #act = lambda x: F.relu(x) # relu act
     # D0,D1,D2,D3 = 1,2,2,1
     # D_layers,act = [D0,D1,D2,D3], act
     # #w_inits, b_inits = lambda x: w_init_normal(x,mu=0.0,1.0), lambda x: b_fill(x,value=0.1)
-    # w_inits = lambda x: torch.nn.init.xavier_normal(x, gain=1)
-    # b_inits = lambda x: b_fill(x,value=0.1)
-    ## NN model
+    # w_inits = [None]+[lambda x: torch.nn.init.xavier_normal(x, gain=1) for i in range(len(D_layers)) ]
+    # b_inits = [None]+[lambda x: b_fill(x,value=0.1) for i in range(len(D_layers)) ]
+    #### Get Data set
+    ## Get input variables X
+    x_true = np.linspace(lb,ub,N) # the real data points
+    ## Get target variables Y
+    Y = np.sin(2*np.pi*x_true)
+    Y.shape = (N,1)
+    ## data to TORCH
+    dtype = torch.FloatTensor
+    # dtype = torch.cuda.FloatTensor # Uncomment this to run on GPU
+    if len(D_layers) == 2:
+        X = poly_kernel_matrix(x_true,Degree_mdl) # maps to the feature space of the model
+    else:
+        X = x_true
+    X = Variable(torch.FloatTensor(X).type(dtype), requires_grad=False)
+    Y = Variable(torch.FloatTensor(Y).type(dtype), requires_grad=False)
+    #### Get models
+    ## LA mdls
+    c_pinv = np.dot(np.linalg.pinv(X.data.numpy()),Y.data.numpy()) # [D_pinv,1]
+    c_rls = get_RLS_soln(X.data.numpy(),Y.data.numpy(),lambda_rls) # [D_pinv,1]
+    ## SGD model
     mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits,b_inits=b_inits)
-    ##
+    ## GPU
     if dtype == torch.cuda.FloatTensor:
         mdl_sgd.to_gpu()
     ## debug print statements
-    print('>>norm(y): ', ((1/N)*torch.norm(y)**2).data.numpy()[0] )
+    #print('Y: ',Y)
+    print('>>norm(Y): ', ((1/N)*torch.norm(Y)**2).data.numpy()[0] )
+    print('>>l2_loss_torch: ', (1/N)*( Y - mdl_sgd.forward(X)).pow(2).sum() )
     pdb.set_trace()
-    #print('>>l2_np: ', (1/N)*np.linalg.norm( y.data.numpy()-(np.dot(X_mdl.data.numpy(),W.data.numpy())) )**2 )
-    #print('>>l2_loss_torch: ', (1/N)*(X_mdl.mm(W) - y).pow(2).sum().data.numpy()[0] )
-    #print('>>(1/N)*(y_pred - y).pow(2).sum(): ', ((1/N)*(X_mdl.mm(W) - y).pow(2).sum()).data[0] )
-    #pdb.set_trace()
+    #
     loss_list = []
     grad_list = []
-    Ws = [W_l1,W_l2,W_out]
     #Ws = [W]
     #W_avg = Variable(torch.FloatTensor(W.data).type(dtype), requires_grad=False)
-    W_avgs = [Variable(torch.FloatTensor(W_l1.data).type(dtype), requires_grad=False),Variable(torch.FloatTensor(W_l2.data).type(dtype), requires_grad=False),Variable(torch.FloatTensor(W_out.data).type(dtype), requires_grad=False)]
-    # for in range(3):
-    #     w_avg = Variable(torch.FloatTensor(W.data).type(dtype), requires_grad=False)
-    #     W_avgs.append()
     for i in range(nb_iter):
-        # Forward pass: compute predicted y using operations on Variables
-        batch_xs, batch_ys = get_batch2(X_mdl,y,M,dtype) # [M, D], [M, 1]
+        # Forward pass: compute predicted Y using operations on Variables
+        batch_xs, batch_ys = get_batch2(X,Y,M,dtype) # [M, D], [M, 1]
         ## FORWARD PASS
         #y_pred = batch_xs.mm(W)
         a_l1 = batch_xs.mm(W_l1)**2 # [M,H^(1)] = [M,D]x[D,H^(1)]
@@ -176,14 +173,14 @@ def main(argv=None):
         for W in Ws:
             W.grad.data.zero_()
         ## COLLECT MOVING AVERAGES
-        for i in range(len(Ws)):
-            W, W_avg = Ws[i], W_avgs[i]
-            W_avgs[i] = (1/nb_iter)*W + W_avg
+        # for i in range(len(Ws)):
+        #     W, W_avg = Ws[i], W_avgs[i]
+        #     W_avgs[i] = (1/nb_iter)*W + W_avg
     #
     #c_avg = W_avg.data.numpy()
     #c_sgd = W.data.numpy()
-    X_mdl = X_mdl.data.numpy()
-    y = y.data.numpy()
+    X = X.data.numpy()
+    Y = Y.data.numpy()
     #
     print('c_pinv: ', c_pinv)
     #
@@ -237,18 +234,18 @@ def main(argv=None):
     print('norm(c_rls): ', np.linalg.norm(c_rls))
 
     #
-    #Xc_sdg = np.dot(X_mdl,c_sgd)
-    #print(' J(c_sgd) = ', (1/N)*(np.linalg.norm(y-Xc_sdg)**2) )
-    a_l1 = Variable(torch.FloatTensor(X_mdl)).mm(W_l1)**2 # [M,H^(1)] = [M,D]x[D,H^(1)]
+    #Xc_sdg = np.dot(X,c_sgd)
+    #print(' J(c_sgd) = ', (1/N)*(np.linalg.norm(Y-Xc_sdg)**2) )
+    a_l1 = Variable(torch.FloatTensor(X)).mm(W_l1)**2 # [M,H^(1)] = [M,D]x[D,H^(1)]
     a_l2 = a_l1.mm(W_l2)**2 # [M,H^(2)] = [M,H^(1)]x[H^(1),H^(2)]
     y_pred = a_l2.mm(W_out) # [M,1] = [M,H^(2)]x[M^(2),1]
-    print(' J(c_sgd) = ', (1/N)*(y_pred - Variable(torch.FloatTensor(y)) ).pow(2).sum().data.numpy() )
+    print(' J(c_sgd) = ', (1/N)*(y_pred - Variable(torch.FloatTensor(Y)) ).pow(2).sum().data.numpy() )
     Xc_pinv = np.dot( poly_kernel_matrix( x_true,D_sgd-1 ),c_pinv)
-    print( ' J(c_pinv) = ',(1/N)*(np.linalg.norm(y-Xc_pinv)**2) )
-    #Xc_rls = np.dot(X_mdl,c_rls)
-    #print( ' J(c_rls) = ',(1/N)*(np.linalg.norm(y-Xc_rls)**2) )
-    #Xc_W_avg = np.dot(X_mdl,c_avg)
-    #print( ' J(c_avg) = ',(1/N)*(np.linalg.norm(y-Xc_W_avg)**2) )
+    print( ' J(c_pinv) = ',(1/N)*(np.linalg.norm(Y-Xc_pinv)**2) )
+    #Xc_rls = np.dot(X,c_rls)
+    #print( ' J(c_rls) = ',(1/N)*(np.linalg.norm(Y-Xc_rls)**2) )
+    #Xc_W_avg = np.dot(X,c_avg)
+    #print( ' J(c_avg) = ',(1/N)*(np.linalg.norm(Y-Xc_W_avg)**2) )
     #
     seconds = (time.time() - start_time)
     minutes = seconds/ 60
@@ -267,7 +264,7 @@ def main(argv=None):
     #p_rls, = plt.plot(x_horizontal, np.dot(X_plot,c_rls))
     #p_avg, = plt.plot(x_horizontal, np.dot(X_plot,c_avg))
     #p_avg, = plt.plot(x_horizontal, [ float(f_avg(x_i)[0]) for x_i in x_horizontal ])
-    p_data, = plt.plot(x_true,y,'ro')
+    p_data, = plt.plot(x_true,Y,'ro')
     #
     #p_list=[p_sgd,p_pinv,p_rls,p_data]
     #p_list=[p_data]
