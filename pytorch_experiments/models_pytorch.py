@@ -17,7 +17,7 @@ class NN(torch.nn.Module):
         b_inits = [None,b_f1,...,b_fL]
         bias = True
         """
-        #super(TwoLayerNet, self).__init__()
+        super(NN, self).__init__()
         # if bias is false then we don't need any init for it (if we do have an init for it and bias=False throw an error)
         if not bias and (b_inits != [] or b_inits != None):
             raise ValueError('bias is {} but b_inits is not empty nor None but isntead is {}'.join(bias,b_inits))

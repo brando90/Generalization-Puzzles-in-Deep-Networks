@@ -93,7 +93,7 @@ def main(argv=None):
     M = 5
     eta = 0.0001 # eta = 1e-6
     A = 0.25
-    nb_iter = int(1000000)
+    nb_iter = int(1000)
     # RLS
     lambda_rls = 0.0001
     ## one layered mdl
@@ -154,21 +154,18 @@ def main(argv=None):
         ## BACKARD PASS
         loss.backward() # Use autograd to compute the backward pass. Now w will have gradients
         ## SGD update
-        pdb.set_trace()
         for W in mdl_sgd.parameters():
-            if A == 0:
-                W.data = W.data - eta*W.grad.data # W - eta*g
-            else:
-                gdl_eps = torch.randn(W.data.size()).type(dtype)
-                W.data = W.data - eta*W.grad.data + A*gdl_eps # W - eta*g + A*gdl_eps % B
+            gdl_eps = torch.randn(W.data.size()).type(dtype)
+            W.data = W.data - eta*W.grad.data + A*gdl_eps # W - eta*g + A*gdl_eps % B
         ## Manually zero the gradients after updating weights
         mdl_sgd.zero_grad()
         ## TRAINING STATS
         if i % 500 == 0 or i == 0:
-            current_loss, current_norm_grad_2 = loss.data.numpy()[0], torch.norm(W.grad).data.numpy()[0]
-            print('current_norm_grad_2: ', current_norm_grad_2)
+            current_loss = loss.data.numpy()[0]
+            #current_norm_grad_2 = torch.norm(W.grad).data.numpy()[0]
+            #print('current_norm_grad_2: ', current_norm_grad_2)
             loss_list.append(current_loss)
-            grad_list.append( current_norm_grad_2 )
+            #grad_list.append( current_norm_grad_2 )
             if not np.isfinite(current_loss) or np.isinf(current_loss) or np.isnan(current_loss):
                 print('loss: ',current_loss)
                 print('>>>>> BREAK HAPPENED')
