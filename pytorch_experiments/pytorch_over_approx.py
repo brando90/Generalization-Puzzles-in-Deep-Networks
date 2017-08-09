@@ -13,6 +13,17 @@ import pdb
 from models_pytorch import *
 from inits import *
 
+def f_mdl_LA(x,c):
+    _,D = c.shape
+    X = poly_kernel_matrix( [x],D-1 )
+    return np.dot(X,c)
+
+def f_mdl_eval(x,mdl_eval):
+    x = Variable(torch.FloatTensor([x]).type(dtype))
+    x = x.view(1,1)
+    y_pred = mdl_sgd.forward(X)
+    return y_pred.data.numpy()
+
 def L2_norm_2(f,g,lb=0,ub=1):
     f_g_2 = lambda x: (f(x) - g(x))**2
     result = integrate.quad(func=f_g_2, a=lb,b=ub)
@@ -174,76 +185,41 @@ def main(argv=None):
         # for i in range(len(Ws)):
         #     W, W_avg = Ws[i], W_avgs[i]
         #     W_avgs[i] = (1/nb_iter)*W + W_avg
-    #
-    #c_avg = W_avg.data.numpy()
-    #c_sgd = W.data.numpy()
+    ##
     X = X.data.numpy()
     Y = Y.data.numpy()
+    if len(D_layers) == 2:
+        print('list(mdl_sgd.parameters()) = ', list(mdl_sgd.parameters()))
+        pdb.set_trace()
+        c_sgd = list(mdl_sgd.parameters())[0].data.numpy()
     #
-    print('c_pinv: ', c_pinv)
+    if debug:
+        print('c_pinv: ', c_pinv)
     #
     print('\n---- Learning params')
     print('Degree_mdl = {}, N = {}, M = {}, eta = {}, nb_iter = {}'.format(Degree_mdl,N,M,eta,nb_iter))
     #
     print('\n---- statistics about learned params')
-    #print('||c_sgd - c_pinv|| = ', np.linalg.norm(c_sgd - c_pinv,2))
-    #print('||c_sgd - c_avg|| = ', np.linalg.norm(c_sgd - c_pinv,2))
-    #print('||c_avg - c_pinv|| = ', np.linalg.norm(c_avg - c_pinv,2))
-    # def f_avg(x):
-    #     X = poly_kernel_matrix( [x],D_sgd-1 )
-    #     return np.dot(X,c_avg)
-    def f_avg(x):
-        W_l1 = W_avgs[0]
-        W_l2 = W_avgs[1]
-        W_out = W_avgs[2]
-        x = torch.FloatTensor([x])
-        x = Variable(torch.FloatTensor(x).type(dtype))
-        x = x.view(1,1)
-        a_l1 = x.mm(W_l1)**2 # [M,H^(1)] = [M,D]x[D,H^(1)]
-        a_l2 = a_l1.mm(W_l2)**2 # [M,H^(2)] = [M,H^(1)]x[H^(1),H^(2)]
-        y_pred = a_l2.mm(W_out) # [M,1] = [M,H^(2)]x[M^(2),1]
-        return y_pred.data.numpy()
-    # def f_sgd(x):
-    #     X = poly_kernel_matrix( [x],D_sgd-1 )
-    #     return np.dot(X,c_sgd)
-    def f_sgd(x):
-        W_l1 = Ws[0]
-        W_l2 = Ws[1]
-        W_out = Ws[2]
-        #pdb.set_trace()
-        x = torch.FloatTensor([x])
-        x = Variable(torch.FloatTensor(x).type(dtype))
-        x = x.view(1,1)
-        a_l1 = x.mm(W_l1)**2 # [M,H^(1)] = [M,D]x[D,H^(1)]
-        a_l2 = a_l1.mm(W_l2)**2 # [M,H^(2)] = [M,H^(1)]x[H^(1),H^(2)]
-        y_pred = a_l2.mm(W_out) # [M,1] = [M,H^(2)]x[M^(2),1]
-        return y_pred.data.numpy()
-    def g_pinv(x):
-        X = poly_kernel_matrix( [x],D_sgd-1 )
-        return np.dot(X,c_pinv)
-    print('||f_sgd - f_pinv||^2 = ', L2_norm_2(f=f_sgd,g=g_pinv,lb=0,ub=1))
-    print('||f_avg - f_pinv||^2 = ', L2_norm_2(f=f_avg,g=g_pinv,lb=0,ub=1))
-    #
-    #print('c_sgd.shape: ', c_sgd.shape)
-    print('c_pinv.shape: ', c_pinv.shape)
-    print('c_rls.shape: ', c_rls.shape)
-    #print('norm(c_sgd): ', np.linalg.norm(c_sgd))
-    print('norm(c_pinv): ', np.linalg.norm(c_pinv))
-    print('norm(c_rls): ', np.linalg.norm(c_rls))
+    print('||c_pinv||_1 = {} '.format(np.linalg.norm(c_pinv,1)) )
+    #print('||c_avg||_1 = {} '.format(np.linalg.norm(c_avg,1)) )
+    print('||c_sgd||_1 = {} '.format(np.linalg.norm(c_sgd,1)) )
 
+    print('||c_sgd||_2 = ', np.linalg.norm(c_sgd,2))
+    #print('||c_avg||_2 = {} '.format(np.linalg.norm(c_avg,2))
+    print('||c_pinv||_2 = ', np.linalg.norm(c_pinv,2))
+    if len(D_layers) == 2:
+        print('||c_sgd - c_pinv||_2 = ', np.linalg.norm(c_sgd - c_pinv,2))
+        #print('||c_sgd - c_avg||_2 = ', np.linalg.norm(c_sgd - c_pinv,2))
+        print('||c_avg - c_pinv||_2 = ', np.linalg.norm(c_avg - c_pinv,2))
+
+    f_sgd = lambda x: f_mdl_eval(x,mdl_sgd)
+    f_pin = lambda x: f_mdl_LA(x,c_pinv)
+    print('||f_sgd - f_pinv||^2_2 = ', L2_norm_2(f=f_sgd,g=g_pinv,lb=0,ub=1))
+    print('||f_avg - f_pinv||^2_2 = ', L2_norm_2(f=f_avg,g=g_pinv,lb=0,ub=1))
     #
-    #Xc_sdg = np.dot(X,c_sgd)
-    #print(' J(c_sgd) = ', (1/N)*(np.linalg.norm(Y-Xc_sdg)**2) )
-    a_l1 = Variable(torch.FloatTensor(X)).mm(W_l1)**2 # [M,H^(1)] = [M,D]x[D,H^(1)]
-    a_l2 = a_l1.mm(W_l2)**2 # [M,H^(2)] = [M,H^(1)]x[H^(1),H^(2)]
-    y_pred = a_l2.mm(W_out) # [M,1] = [M,H^(2)]x[M^(2),1]
-    print(' J(c_sgd) = ', (1/N)*(y_pred - Variable(torch.FloatTensor(Y)) ).pow(2).sum().data.numpy() )
-    Xc_pinv = np.dot( poly_kernel_matrix( x_true,D_sgd-1 ),c_pinv)
-    print( ' J(c_pinv) = ',(1/N)*(np.linalg.norm(Y-Xc_pinv)**2) )
-    #Xc_rls = np.dot(X,c_rls)
-    #print( ' J(c_rls) = ',(1/N)*(np.linalg.norm(Y-Xc_rls)**2) )
-    #Xc_W_avg = np.dot(X,c_avg)
-    #print( ' J(c_avg) = ',(1/N)*(np.linalg.norm(Y-Xc_W_avg)**2) )
+    print(' J(c_sgd) = ', (1/N)*(mdl_sgd.forward(Variable(torch.FloatTensor(X))) - Variable(torch.FloatTensor(Y)) ).pow(2).sum().data.numpy() )
+    print( ' J(c_pinv) = ',(1/N)*(np.linalg.norm(Y-np.dot( poly_kernel_matrix( x_true,D_sgd-1 ),c_pinv))**2) )
+    print( ' J(c_rls) = ',(1/N)*(np.linalg.norm(Y-(1/N)*(np.linalg.norm(Y-np.dot( poly_kernel_matrix( x_true,D_sgd-1 ),c_rls))**2) )**2) )
     #
     seconds = (time.time() - start_time)
     minutes = seconds/ 60
@@ -252,11 +228,10 @@ def main(argv=None):
     print("--- %s minutes ---" % minutes )
     print("--- %s hours ---" % hours )
     print('\a')
-    ##
+    ## plots
     x_horizontal = np.linspace(lb,ub,1000)
     X_plot = poly_kernel_matrix(x_horizontal,D_sgd-1)
-    #plots
-    #p_sgd, = plt.plot(x_horizontal, np.dot(X_plot,c_sgd))
+    #plots objs
     p_sgd, = plt.plot(x_horizontal, [ float(f_sgd(x_i)[0]) for x_i in x_horizontal ])
     p_pinv, = plt.plot(x_horizontal, np.dot(X_plot,c_pinv))
     #p_rls, = plt.plot(x_horizontal, np.dot(X_plot,c_rls))
@@ -264,11 +239,10 @@ def main(argv=None):
     #p_avg, = plt.plot(x_horizontal, [ float(f_avg(x_i)[0]) for x_i in x_horizontal ])
     p_data, = plt.plot(x_true,Y,'ro')
     #
-    #p_list=[p_sgd,p_pinv,p_rls,p_data]
-    #p_list=[p_data]
     p_list=[p_sgd,p_pinv,p_data]
     #p_list = [p_avg,p_sgd,p_pinv,p_data]
     #p_list=[p_pinv,p_data]
+    #
     #plt.legend(p_list,['sgd curve Degree_mdl='+str(D_sgd-1),'min norm (pinv) Degree_mdl='+str(D_pinv-1),'rls regularization lambda={} Degree_mdl={}'.format(lambda_rls,D_rls-1),'data points'])
     plt.legend(p_list,['sgd curve Degree_mdl={}, batch-size= {}, iterations={}, eta={}'.format(str(D_sgd-1),M,nb_iter,eta),'min norm (pinv) Degree_mdl='+str(D_pinv-1),'data points'])
     #plt.legend(p_list,['average sgd model Degree_mdl={}'.format( str(D_sgd-1) ),'sgd curve Degree_mdl={}, batch-size= {}, iterations={}, eta={}'.format(str(D_sgd-1),M,nb_iter,eta),'min norm (pinv) Degree_mdl='+str(D_pinv-1),'data points'])
