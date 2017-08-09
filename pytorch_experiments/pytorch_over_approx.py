@@ -18,10 +18,10 @@ def f_mdl_LA(x,c):
     X = poly_kernel_matrix( [x],D-1 )
     return np.dot(X,c)
 
-def f_mdl_eval(x,mdl_eval):
+def f_mdl_eval(x,mdl_eval,dtype):
     x = Variable(torch.FloatTensor([x]).type(dtype))
     x = x.view(1,1)
-    y_pred = mdl_sgd.forward(X)
+    y_pred = mdl_eval.forward(x)
     return y_pred.data.numpy()
 
 def L2_norm_2(f,g,lb=0,ub=1):
@@ -88,6 +88,7 @@ def get_old():
 def main(argv=None):
     #pdb.set_trace()
     start_time = time.time()
+    debug = False
     ##
     np.set_printoptions(suppress=True)
     lb, ub = 0, 1
@@ -190,7 +191,6 @@ def main(argv=None):
     Y = Y.data.numpy()
     if len(D_layers) == 2:
         print('list(mdl_sgd.parameters()) = ', list(mdl_sgd.parameters()))
-        pdb.set_trace()
         c_sgd = list(mdl_sgd.parameters())[0].data.numpy()
     #
     if debug:
@@ -210,12 +210,11 @@ def main(argv=None):
     if len(D_layers) == 2:
         print('||c_sgd - c_pinv||_2 = ', np.linalg.norm(c_sgd - c_pinv,2))
         #print('||c_sgd - c_avg||_2 = ', np.linalg.norm(c_sgd - c_pinv,2))
-        print('||c_avg - c_pinv||_2 = ', np.linalg.norm(c_avg - c_pinv,2))
-
-    f_sgd = lambda x: f_mdl_eval(x,mdl_sgd)
-    f_pin = lambda x: f_mdl_LA(x,c_pinv)
-    print('||f_sgd - f_pinv||^2_2 = ', L2_norm_2(f=f_sgd,g=g_pinv,lb=0,ub=1))
-    print('||f_avg - f_pinv||^2_2 = ', L2_norm_2(f=f_avg,g=g_pinv,lb=0,ub=1))
+        #print('||c_avg - c_pinv||_2 = ', np.linalg.norm(c_avg - c_pinv,2))
+    f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
+    f_pinv = lambda x: f_mdl_LA(x,c_pinv)
+    print('||f_sgd - f_pinv||^2_2 = ', L2_norm_2(f=f_sgd,g=f_pinv,lb=0,ub=1))
+    print('||f_avg - f_pinv||^2_2 = ', L2_norm_2(f=f_avg,g=f_pinv,lb=0,ub=1))
     #
     print(' J(c_sgd) = ', (1/N)*(mdl_sgd.forward(Variable(torch.FloatTensor(X))) - Variable(torch.FloatTensor(Y)) ).pow(2).sum().data.numpy() )
     print( ' J(c_pinv) = ',(1/N)*(np.linalg.norm(Y-np.dot( poly_kernel_matrix( x_true,D_sgd-1 ),c_pinv))**2) )
@@ -232,19 +231,16 @@ def main(argv=None):
     x_horizontal = np.linspace(lb,ub,1000)
     X_plot = poly_kernel_matrix(x_horizontal,D_sgd-1)
     #plots objs
-    p_sgd, = plt.plot(x_horizontal, [ float(f_sgd(x_i)[0]) for x_i in x_horizontal ])
-    p_pinv, = plt.plot(x_horizontal, np.dot(X_plot,c_pinv))
-    #p_rls, = plt.plot(x_horizontal, np.dot(X_plot,c_rls))
-    #p_avg, = plt.plot(x_horizontal, np.dot(X_plot,c_avg))
-    #p_avg, = plt.plot(x_horizontal, [ float(f_avg(x_i)[0]) for x_i in x_horizontal ])
-    p_data, = plt.plot(x_true,Y,'ro')
-    #
-    p_list=[p_sgd,p_pinv,p_data]
-    #p_list = [p_avg,p_sgd,p_pinv,p_data]
-    #p_list=[p_pinv,p_data]
-    #
-    #plt.legend(p_list,['sgd curve Degree_mdl='+str(D_sgd-1),'min norm (pinv) Degree_mdl='+str(D_pinv-1),'rls regularization lambda={} Degree_mdl={}'.format(lambda_rls,D_rls-1),'data points'])
-    plt.legend(p_list,['sgd curve Degree_mdl={}, batch-size= {}, iterations={}, eta={}'.format(str(D_sgd-1),M,nb_iter,eta),'min norm (pinv) Degree_mdl='+str(D_pinv-1),'data points'])
+    plots = {}
+    plots['p_sgd'] = plt.plot(x_horizontal, [ float(f_sgd(x_i)[0]) for x_i in x_horizontal ])
+    plots['p_pinv'] = plt.plot(x_horizontal, np.dot(X_plot,c_pinv))
+    #plots['p_rls'] = plt.plot(x_horizontal, np.dot(X_plot,c_rls)) )
+    plots['p_data'] = plt.plot(x_true,Y,'ro')
+    p_list = list(plots.keys())
+    if 'p_rls' in plots:
+        plt.legend(p_list,['sgd curve Degree_mdl='+str(D_sgd-1),'min norm (pinv) Degree_mdl='+str(D_pinv-1),'rls regularization lambda={} Degree_mdl={}'.format(lambda_rls,D_rls-1),'data points'])
+    else:
+        plt.legend(p_list,['sgd curve Degree_mdl={}, batch-size= {}, iterations={}, eta={}'.format(str(D_sgd-1),M,nb_iter,eta),'min norm (pinv) Degree_mdl='+str(D_pinv-1),'data points'])
     #plt.legend(p_list,['average sgd model Degree_mdl={}'.format( str(D_sgd-1) ),'sgd curve Degree_mdl={}, batch-size= {}, iterations={}, eta={}'.format(str(D_sgd-1),M,nb_iter,eta),'min norm (pinv) Degree_mdl='+str(D_pinv-1),'data points'])
     #plt.legend(p_list,['min norm (pinv) Degree_mdl='+str(D_pinv-1),'data points'])
     plt.ylabel('f(x)')
