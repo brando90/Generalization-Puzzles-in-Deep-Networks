@@ -19,8 +19,8 @@ class NN(torch.nn.Module):
         """
         super(type(self), self).__init__()
         # if bias is false then we don't need any init for it (if we do have an init for it and bias=False throw an error)
-        if not bias and (b_inits != [] or b_inits != None):
-            raise ValueError('bias is {} but b_inits is not empty nor None but isntead is {}'.join(bias,b_inits))
+        #if not bias and (b_inits != [] or b_inits != None):
+        #    raise ValueError('bias is {} but b_inits is not empty nor None but isntead is {}'.format(bias,b_inits))
         # actiaction func
         self.act = act
         #create linear layers
@@ -31,10 +31,11 @@ class NN(torch.nn.Module):
             self.linear_layers.append(linear_layer)
         # initialize model
         for d in range(1,len(D_layers)):
-            weight_init, bias_init = w_inits[d], b_inits[d]
+            weight_init = w_inits[d]
             m = self.linear_layers[d]
             weight_init(m)
             if bias:
+                bias_init = b_inits[d]
                 bias_init(m)
 
     def forward(self, x):
@@ -54,3 +55,9 @@ class NN(torch.nn.Module):
 
     def to_gpu(self,device_id=None):
         torch.nn.Module.cuda(device_id=device_id)
+
+    def get_parameters(self):
+        return list(self.parameters())
+
+    def get_nb_params(self):
+        return sum(p.numel() for p in model.parameters())

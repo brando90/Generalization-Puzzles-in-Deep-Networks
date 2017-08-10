@@ -20,7 +20,8 @@ def f_mdl_LA(x,c):
 
 def f_mdl_eval(x,mdl_eval,dtype):
     _,D = list(mdl_eval.parameters())[0].data.numpy().shape
-    if len(list(mdl_eval.parameters())) == 2:
+    #pdb.set_trace()
+    if len(list(mdl_eval.parameters())) == 2 or len(list(mdl_eval.parameters())) == 1:
         x = poly_kernel_matrix( [x],D-1 )
         x = Variable(torch.FloatTensor([x]).type(dtype))
     else:
@@ -51,6 +52,13 @@ def get_data_set_points(c_true,x,Degree_truth=4):
     return X,Y
 
 def poly_kernel_matrix( x,D ):
+    '''
+    x = single rela number data value
+    D = largest degree of monomial
+
+    maps x to a kernel with each row being monomials of up to degree=D.
+    [1, x^1, ..., x^D]
+    '''
     N = len(x)
     Kern = np.zeros( (N,D+1) )
     for n in range(N):
@@ -96,31 +104,32 @@ def main(argv=None):
     debug = True
     ##
     np.set_printoptions(suppress=True)
-    lb, ub = 0, 1
+    lb, ub = -1, 1
     ## true facts of the data set
-    N = 5
-    Degree_true = 4
-    D_true = Degree_true+1
+    N = 10
     ## mdl degree and D
     Degree_mdl = 10
     D_sgd = Degree_mdl+1
     D_pinv = Degree_mdl+1
     D_rls = D_pinv
     ## sgd
-    M = 5
-    eta = 0.0001 # eta = 1e-6
+    M = 10
+    eta = 0.01 # eta = 1e-6
     A = 0.0
-    nb_iter = int(2*10000)
+    nb_iter = int(10000)
     # RLS
-    lambda_rls = 0.005
-    ## one layered mdl
+    lambda_rls = 0.001
+    ## 1-layered mdl
     identity_act = lambda x: x
     D_1,D_2 = D_sgd,1 # note D^(0) is not present cuz the polyomial is explicitly constructed by me
     D_layers,act = [D_1,D_2], identity_act
     w_inits = [None]+[lambda x: w_init_zero(x) for i in range(len(D_layers)) ]
-    #w_inits = [None]+[lambda x: w_init_normal(x,mu=0.0,std=1.0) for i in range(len(D_layers)) ]
-    b_inits = [None]+[lambda x: b_fill(x,value=0.1) for i in range(len(D_layers)) ]
-    ## two layered mdl
+    w_inits = [None]+[lambda x: w_init_normal(x,mu=0.0,std=0.5) for i in range(len(D_layers)) ]
+    #b_inits = [None]+[lambda x: b_fill(x,value=0.1) for i in range(len(D_layers)) ]
+    #b_inits = [None]+[lambda x: b_fill(x,value=0.0) for i in range(len(D_layers)) ]
+    b_inits = []
+    bias = False
+    ## 2-layered mdl
     # act = lambda x: x**2 # squared act
     # #act = lambda x: F.relu(x) # relu act
     # D0,D1,D2,D3 = 1,2,2,1
@@ -139,6 +148,7 @@ def main(argv=None):
     # dtype = torch.cuda.FloatTensor # Uncomment this to run on GPU
     if len(D_layers) == 2:
         X = poly_kernel_matrix(x_true,Degree_mdl) # maps to the feature space of the model
+        #pdb.set_trace()
     else:
         X = x_true
     X = Variable(torch.FloatTensor(X).type(dtype), requires_grad=False)
@@ -148,7 +158,7 @@ def main(argv=None):
     c_pinv = np.dot(np.linalg.pinv(X.data.numpy()),Y.data.numpy()) # [D_pinv,1]
     c_rls = get_RLS_soln(X.data.numpy(),Y.data.numpy(),lambda_rls) # [D_pinv,1]
     ## SGD model
-    mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits,b_inits=b_inits)
+    mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits,b_inits=b_inits,bias=bias)
     # loss funtion
     #loss_fn = torch.nn.MSELoss(size_average=False)
     ## GPU
@@ -156,13 +166,14 @@ def main(argv=None):
     ## debug print statements
     #print('Y: ',Y)
     print('>>norm(Y): ', ((1/N)*torch.norm(Y)**2).data.numpy()[0] )
-    print('>>l2_loss_torch: ', (1/N)*( Y - mdl_sgd.forward(X)).pow(2).sum() )
+    print('>>l2_loss_torch: ', (1/N)*( Y - mdl_sgd.forward(X)).pow(2).sum().data.numpy()[0] )
     #
-    nb_params = len( list(mdl_sgd.parameters()) )
+    nb_module_params = len( list(mdl_sgd.parameters()) )
     loss_list = [ ]
-    grad_list = [ [] for i in range(nb_params) ]
+    grad_list = [ [] for i in range(nb_module_params) ]
     #Ws = [W]
     #W_avg = Variable(torch.FloatTensor(W.data).type(dtype), requires_grad=False)
+    #pdb.set_trace()
     for i in range(nb_iter):
         # Forward pass: compute predicted Y using operations on Variables
         batch_xs, batch_ys = get_batch2(X,Y,M,dtype) # [M, D], [M, 1]
@@ -174,12 +185,13 @@ def main(argv=None):
         loss.backward() # Use autograd to compute the backward pass. Now w will have gradients
         ## SGD update
         for W in mdl_sgd.parameters():
+            #print(W)
             gdl_eps = torch.randn(W.data.size()).type(dtype)
             W.data = W.data - eta*W.grad.data + A*gdl_eps # W - eta*g + A*gdl_eps % B
-        ## Manually zero the gradients after updating weights
-        mdl_sgd.zero_grad()
+            #W.data = W.data - eta*W.grad.data
+        #pdb.set_trace()
         ## TRAINING STATS
-        if i % 500 == 0 or i == 0:
+        if i % 100 == 0 or i == 0:
             current_loss = loss.data.numpy()[0]
             loss_list.append(current_loss)
             if not np.isfinite(current_loss) or np.isinf(current_loss) or np.isnan(current_loss):
@@ -189,10 +201,13 @@ def main(argv=None):
             #for W in mdl_sgd.parameters():
             for i, W in enumerate(mdl_sgd.parameters()):
                 grad_norm = W.grad.data.norm(2)
+                #print('grad_norm: ',grad_norm)
                 grad_list[i].append( W.grad.data.norm(2) )
                 if not np.isfinite(grad_norm) or np.isinf(grad_norm) or np.isnan(grad_norm):
                     print('current_loss: {}, grad_norm: {},\n >>>>> BREAK HAPPENED'.format(current_loss,grad_norm) )
                     break
+            ## Manually zero the gradients after updating weights
+            mdl_sgd.zero_grad()
         ## COLLECT MOVING AVERAGES
         # for i in range(len(Ws)):
         #     W, W_avg = Ws[i], W_avgs[i]
@@ -200,20 +215,21 @@ def main(argv=None):
     ##
     X = X.data.numpy()
     Y = Y.data.numpy()
-    if len(D_layers) == 2:
-        print('list(mdl_sgd.parameters()) = ', list(mdl_sgd.parameters()))
-        c_sgd = list(mdl_sgd.parameters())[0].data.numpy()
-        c_sgd = c_sgd.transpose()
     #
     if len(D_layers) == 2:
         c_sgd = list(mdl_sgd.parameters())[0].data.numpy()
+        c_sgd = c_sgd.transpose()
     if debug:
+        print('X = ', X)
+        print('Y = ', Y)
+        print(mdl_sgd)
         if len(D_layers) == 2:
             print('c_sgd = ', c_sgd)
         print('c_pinv: ', c_pinv)
     #
     print('\n---- Learning params')
     print('Degree_mdl = {}, N = {}, M = {}, eta = {}, nb_iter = {}'.format(Degree_mdl,N,M,eta,nb_iter))
+    print('number of layers = {}'.format(nb_module_params))
     #
     print('\n---- statistics about learned params')
     print('--L1')
@@ -231,7 +247,7 @@ def main(argv=None):
         #print('||c_avg - c_pinv||_2 = ', np.linalg.norm(c_avg - c_pinv,2))
     f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
     f_pinv = lambda x: f_mdl_LA(x,c_pinv)
-    print('-- L2 functional norm difference')
+    print('-- functional L2 norm difference')
     print('||f_sgd - f_pinv||^2_2 = ', L2_norm_2(f=f_sgd,g=f_pinv,lb=0,ub=1))
     #print('||f_avg - f_pinv||^2_2 = ', L2_norm_2(f=f_avg,g=f_pinv,lb=0,ub=1))
     #
@@ -251,17 +267,23 @@ def main(argv=None):
     X_plot = poly_kernel_matrix(x_horizontal,D_sgd-1)
     #plots objs
     plots = {}
-    plots['p_sgd'] = plt.plot(x_horizontal, [ float(f_sgd(x_i)[0]) for x_i in x_horizontal ])
-    plots['p_pinv'] = plt.plot(x_horizontal, np.dot(X_plot,c_pinv))
-    plots['p_rls'] = plt.plot(x_horizontal, np.dot(X_plot,c_rls))
-    plots['p_data'] = plt.plot(x_true,Y,'ro')
-    p_list = list(plots.keys())
+    p_sgd, = plt.plot(x_horizontal, [ float(f_sgd(x_i)[0]) for x_i in x_horizontal ])
+    p_pinv, = plt.plot(x_horizontal, np.dot(X_plot,c_pinv))
+    p_rls, = plt.plot(x_horizontal, np.dot(X_plot,c_rls))
+    p_data, = plt.plot(x_true,Y,'ro')
+    plots['p_sgd'] = p_sgd
+    plots['p_pinv'] = p_pinv
+    plots['p_rls'] = p_rls
+    plots['p_data'] = p_data
+    p_list = list(plots.values())
     if 'p_rls' in plots:
+        print('>>> in p_rls')
         plt.legend(p_list,['sgd curve Degree_mdl='+str(D_sgd-1),
         'min norm (pinv) Degree_mdl='+str(D_pinv-1),
         'rls regularization lambda={} Degree_mdl={}'.format(lambda_rls,D_rls-1),
         'data points'])
     else:
+        print('>>> in else')
         plt.legend(p_list,['sgd curve Degree_mdl={}, batch-size= {}, iterations={}, eta={}'.format(
         str(D_sgd-1),M,nb_iter,eta),
         'min norm (pinv) Degree_mdl='+str(D_pinv-1),
