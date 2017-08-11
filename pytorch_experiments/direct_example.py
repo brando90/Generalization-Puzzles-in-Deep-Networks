@@ -93,28 +93,32 @@ def main(argv=None):
     X = poly_kernel_matrix(x_true,Degree_mdl) # maps to the feature space of the model
     X = Variable(torch.FloatTensor(X).type(dtype), requires_grad=False)
     Y = Variable(torch.FloatTensor(Y).type(dtype), requires_grad=False)
+    w_init=torch.randn(D_sgd,1).type(dtype)
+    W = Variable( w_init, requires_grad=True)
+    nb_module_params = 1
     #### Get models
     ## SGD model
+    #mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits,b_inits=b_inits,bias=bias)
     #mdl_sgd = torch.nn.Sequential( torch.nn.Linear(D_sgd,1,bias=False) )
-    mdl_sgd = regression_NN(w_init=torch.randn(D_sgd,1).type(dtype))
+    #mdl_sgd = regression_NN(w_init=torch.randn(D_sgd,1).type(dtype))
     print('>>norm(Y): ', ((1/N)*torch.norm(Y)**2).data.numpy()[0] )
-    print('>>l2_loss_torch: ', (1/N)*( Y - mdl_sgd.forward(X)).pow(2).sum().data.numpy()[0] )
+    #print('>>l2_loss_torch: ', (1/N)*( Y - mdl_sgd.forward(X)).pow(2).sum().data.numpy()[0] )
     #
-    nb_module_params = len( list(mdl_sgd.parameters()) )
+    #nb_module_params = len( list(mdl_sgd.parameters()) )
     loss_list = [ ]
+    #grad_list = [ [] for i in range(nb_module_params) ]
     for i in range(nb_iter):
         # Forward pass: compute predicted Y using operations on Variables
         batch_xs, batch_ys = get_batch2(X,Y,M,dtype) # [M, D], [M, 1]
         ## FORWARD PASS
-        y_pred = mdl_sgd.forward(X)
+        #y_pred = mdl_sgd.forward(X)
+        y_pred = batch_xs.mm(W)
         ## LOSS
         loss = (1/N)*(y_pred - batch_ys).pow(2).sum()
         ## BACKARD PASS
         loss.backward() # Use autograd to compute the backward pass. Now w will have gradients
         ## SGD update
-        for W in mdl_sgd.parameters():
-            #print(W.grad.data)
-            W.data = W.data - eta*W.grad.data
+        W.data = W.data - eta*W.grad.data
         ## TRAINING STATS
         if i % 100 == 0 or i == 0:
             current_loss = loss.data.numpy()[0]
@@ -122,19 +126,31 @@ def main(argv=None):
             if not np.isfinite(current_loss) or np.isinf(current_loss) or np.isnan(current_loss):
                 print('loss: {} \n >>>>> BREAK HAPPENED'.format(current_loss) )
                 break
+            # get grads
+            # for i, W in enumerate(mdl_sgd.parameters()):
+            #     grad_norm = W.grad.data.norm(2)
+            #     #print('grad_norm: ',grad_norm)
+            #     grad_list[i].append( W.grad.data.norm(2) )
+            #     if not np.isfinite(grad_norm) or np.isinf(grad_norm) or np.isnan(grad_norm):
+            #         print('current_loss: {}, grad_norm: {},\n >>>>> BREAK HAPPENED'.format(current_loss,grad_norm) )
+            #         break
             ## Manually zero the gradients after updating weights
-        mdl_sgd.zero_grad()
+        #mdl_sgd.zero_grad()
+        W.grad.data.zero_()
     ##
     print('\a')
     #
-    X,Y = X.data.numpy(),Y.data.numpy()
+    X = X.data.numpy()
+    Y = Y.data.numpy()
     #
-    c_sgd = list(mdl_sgd.parameters())[0].data.numpy()
+    #pdb.set_trace()
+    c_sgd = W.data.numpy()
+    #c_sgd = list(mdl_sgd.parameters())[0].data.numpy()
     #c_sgd = c_sgd.transpose()
     if debug:
         print('X = ', X)
         print('Y = ', Y)
-        print(mdl_sgd)
+        #print(mdl_sgd)
         print('c_sgd = ', c_sgd)
         print('c_pinv: ', c_pinv)
     #
@@ -142,7 +158,7 @@ def main(argv=None):
     print('Degree_mdl = {}, N = {}, M = {}, eta = {}, nb_iter = {}'.format(Degree_mdl,N,M,eta,nb_iter))
     print('number of layers = {}'.format(nb_module_params))
     #
-    print(' J(c_sgd) = ', (1/N)*(mdl_sgd.forward(Variable(torch.FloatTensor(X))) - Variable(torch.FloatTensor(Y)) ).pow(2).sum().data.numpy() )
+    print(' J(c_sgd) = ', (1/N)*(np.linalg.norm(np.dot( poly_kernel_matrix( x_true,c_sgd.shape[0]-1 ),c_sgd) - Y ))**2 )
     print( ' J(c_pinv) = ',(1/N)*(np.linalg.norm(Y-np.dot( poly_kernel_matrix( x_true,D_sgd-1 ),c_pinv))**2) )
     print( ' J(c_rls) = ',(1/N)*(np.linalg.norm(Y-(1/N)*(np.linalg.norm(Y-np.dot( poly_kernel_matrix( x_true,D_sgd-1 ),c_rls))**2) )**2) )
     ## plots
@@ -167,13 +183,13 @@ def main(argv=None):
     plt.legend([p_loss],['plot loss'])
     plt.title('Loss vs Iterations')
     ##
-    fig2 = plt.figure()
-    for i in range(1):
-        current_grad_list = grad_list[i]
-        #pdb.set_trace()
-        p_grads, = plt.plot(np.arange(len(current_grad_list)), current_grad_list,color='g')
-        plt.legend([p_grads],['plot grads'])
-        plt.title('Gradient vs Iterations: # {}'.format(i))
+    # fig2 = plt.figure()
+    # for i in range(1):
+    #     current_grad_list = grad_list[i]
+    #     #pdb.set_trace()
+    #     p_grads, = plt.plot(np.arange(len(current_grad_list)), current_grad_list,color='g')
+    #     plt.legend([p_grads],['plot grads'])
+    #     plt.title('Gradient vs Iterations: # {}'.format(i))
     ##
     seconds = (time.time() - start_time)
     plt.show()
