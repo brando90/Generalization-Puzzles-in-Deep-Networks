@@ -16,40 +16,8 @@ from inits import *
 def f_mdl_LA(x,c):
     D,_ = c.shape
     X = poly_kernel_matrix( [x],D-1 )
+    # np.dot(poly_kernel_matrix( [x], c.shape[0]-1 ),c)
     return np.dot(X,c)
-
-def f_mdl_eval(x,mdl_eval,dtype):
-    _,D = list(mdl_eval.parameters())[0].data.numpy().shape
-    #pdb.set_trace()
-    if len(list(mdl_eval.parameters())) == 2 or len(list(mdl_eval.parameters())) == 1:
-        x = poly_kernel_matrix( [x],D-1 )
-        x = Variable(torch.FloatTensor([x]).type(dtype))
-    else:
-        x = Variable(torch.FloatTensor([x]).type(dtype))
-        x = x.view(1,1)
-    y_pred = mdl_eval.forward(x)
-    return y_pred.data.numpy()
-
-def L2_norm_2(f,g,lb=0,ub=1):
-    f_g_2 = lambda x: (f(x) - g(x))**2
-    result = integrate.quad(func=f_g_2, a=lb,b=ub)
-    integral_val = result[0]
-    return integral_val
-
-def get_c_true(Degree_true,lb=0,ub=1):
-    x = np.linspace(lb,ub,5)
-    Y = np.array([0,1,0,-1,0])
-    Y.shape = (5,1)
-    X = poly_kernel_matrix( x,Degree_true ) # [N, D] = [N, Degree_mdl+1]
-    c_true = np.dot(np.linalg.pinv(X),Y) # [N,1]
-    return c_true
-
-def get_data_set_points(c_true,x,Degree_truth=4):
-    N = len(x)
-    X = poly_kernel_matrix(x,Degree_truth)
-    Y = np.dot(X,c_true)
-    Y.shape = (N,1)
-    return X,Y
 
 def poly_kernel_matrix( x,D ):
     '''
@@ -89,22 +57,11 @@ def get_batch2(X,Y,M,dtype):
     batch_ys = index_batch(Y,batch_indices,dtype)
     return Variable(batch_xs, requires_grad=False), Variable(batch_ys, requires_grad=False)
 
-def get_old():
-    x = np.linspace(0,1,5)
-    Y = np.array([0,1,0,-1,0])
-    Y.shape = (N,1)
-    X_true = poly_kernel_matrix( x,Degree ) # [N, D] = [N, Degree+1]
-    #c_true = get_c_true(Degree_true,lb,ub)
-    #X_true,Y = get_data_set_points(c_true,x_true) # maps to the real feature space
-    return X_true, Y
-
 def main(argv=None):
-    #pdb.set_trace()
     start_time = time.time()
     debug = True
     ##
     np.set_printoptions(suppress=True)
-    lb, ub = 0, 1
     ## true facts of the data set
     N = 5
     ## mdl degree and D
@@ -112,36 +69,21 @@ def main(argv=None):
     D_sgd = Degree_mdl+1
     D_pinv = Degree_mdl+1
     D_rls = D_pinv
-    ## sgd
+    ## sgd params
     M = 5
-    eta = 0.02 # eta = 1e-6
+    eta = 0.002 # eta = 1e-6
     A = 0.0
     nb_iter = int(100000)
-    # RLS
+    ## RLS params
     lambda_rls = 0.001
-    ## 1-layered mdl
-    identity_act = lambda x: x
-    D_1,D_2 = D_sgd,1 # note D^(0) is not present cuz the polyomial is explicitly constructed by me
-    D_layers,act = [D_1,D_2], identity_act
-    w_inits = [None]+[lambda x: w_init_zero(x) for i in range(len(D_layers)) ]
-    w_inits = [None]+[lambda x: w_init_normal(x,mu=0.0,std=0.1) for i in range(len(D_layers)) ]
-    #b_inits = [None]+[lambda x: b_fill(x,value=0.1) for i in range(len(D_layers)) ]
-    #b_inits = [None]+[lambda x: b_fill(x,value=0.0) for i in range(len(D_layers)) ]
     b_inits = []
     bias = False
-    ## 2-layered mdl
-    # act = lambda x: x**2 # squared act
-    # #act = lambda x: F.relu(x) # relu act
-    # D0,D1,D2,D3 = 1,2,2,1
-    # D_layers,act = [D0,D1,D2,D3], act
-    # #w_inits, b_inits = lambda x: w_init_normal(x,mu=0.0,1.0), lambda x: b_fill(x,value=0.1)
-    # w_inits = [None]+[lambda x: torch.nn.init.xavier_normal(x, gain=1) for i in range(len(D_layers)) ]
-    # b_inits = [None]+[lambda x: b_fill(x,value=0.1) for i in range(len(D_layers)) ]
     #### Get Data set
     ## Get input variables X
+    lb, ub = 0, 1
     x_true = np.linspace(lb,ub,N) # the real data points
     ## Get target variables Y
-    Y = np.sin(2*np.pi*x_true)
+    #Y = np.sin(2*np.pi*x_true)
     Y = np.array([0.0,1.0,0.0,-1.0,0.0])
     Y.shape = (N,1)
     #
@@ -151,37 +93,22 @@ def main(argv=None):
     ## data to TORCH
     dtype = torch.FloatTensor
     # dtype = torch.cuda.FloatTensor # Uncomment this to run on GPU
-    if len(D_layers) == 2:
-        X = poly_kernel_matrix(x_true,Degree_mdl) # maps to the feature space of the model
-        #pdb.set_trace()
-    else:
-        X = x_true
+    X = poly_kernel_matrix(x_true,Degree_mdl) # maps to the feature space of the model
     X = Variable(torch.FloatTensor(X).type(dtype), requires_grad=False)
     Y = Variable(torch.FloatTensor(Y).type(dtype), requires_grad=False)
     #### Get models
-    ## LA mdls
-    #c_pinv = np.dot(np.linalg.pinv(X.data.numpy()),Y.data.numpy()) # [D_pinv,1]
-    #c_rls = get_RLS_soln(X.data.numpy(),Y.data.numpy(),lambda_rls) # [D_pinv,1]
     ## SGD model
-    mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits,b_inits=b_inits,bias=bias)
+    #mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits,b_inits=b_inits,bias=bias)
     mdl_sgd = torch.nn.Sequential(
-        torch.nn.Linear(D_sgd,1)
+        torch.nn.Linear(D_sgd,1,bias=False)
     )
-    # loss funtion
-    #loss_fn = torch.nn.MSELoss(size_average=False)
-    ## GPU
-    #mdl_sgd.to_gpu() if (dtype == torch.cuda.FloatTensor) else 1
-    ## debug print statements
-    #print('Y: ',Y)
+    #print(mdl_sgd.)
     print('>>norm(Y): ', ((1/N)*torch.norm(Y)**2).data.numpy()[0] )
     print('>>l2_loss_torch: ', (1/N)*( Y - mdl_sgd.forward(X)).pow(2).sum().data.numpy()[0] )
     #
     nb_module_params = len( list(mdl_sgd.parameters()) )
     loss_list = [ ]
     grad_list = [ [] for i in range(nb_module_params) ]
-    #Ws = [W]
-    #W_avg = Variable(torch.FloatTensor(W.data).type(dtype), requires_grad=False)
-    #pdb.set_trace()
     for i in range(nb_iter):
         # Forward pass: compute predicted Y using operations on Variables
         batch_xs, batch_ys = get_batch2(X,Y,M,dtype) # [M, D], [M, 1]
@@ -193,11 +120,7 @@ def main(argv=None):
         loss.backward() # Use autograd to compute the backward pass. Now w will have gradients
         ## SGD update
         for W in mdl_sgd.parameters():
-            #print(W)
-            gdl_eps = torch.randn(W.data.size()).type(dtype)
-            W.data = W.data - eta*W.grad.data + A*gdl_eps # W - eta*g + A*gdl_eps % B
-            #W.data = W.data - eta*W.grad.data
-        #pdb.set_trace()
+            W.data = W.data - eta*W.grad.data
         ## TRAINING STATS
         if i % 100 == 0 or i == 0:
             current_loss = loss.data.numpy()[0]
@@ -206,7 +129,6 @@ def main(argv=None):
                 print('loss: {} \n >>>>> BREAK HAPPENED'.format(current_loss) )
                 break
             # get grads
-            #for W in mdl_sgd.parameters():
             for i, W in enumerate(mdl_sgd.parameters()):
                 grad_norm = W.grad.data.norm(2)
                 #print('grad_norm: ',grad_norm)
@@ -216,74 +138,36 @@ def main(argv=None):
                     break
             ## Manually zero the gradients after updating weights
             mdl_sgd.zero_grad()
-        ## COLLECT MOVING AVERAGES
-        # for i in range(len(Ws)):
-        #     W, W_avg = Ws[i], W_avgs[i]
-        #     W_avgs[i] = (1/nb_iter)*W + W_avg
     ##
     X = X.data.numpy()
     Y = Y.data.numpy()
     #
-    if len(D_layers) == 2:
-        c_sgd = list(mdl_sgd.parameters())[0].data.numpy()
-        c_sgd = c_sgd.transpose()
+    c_sgd = list(mdl_sgd.parameters())[0].data.numpy()
+    c_sgd = c_sgd.transpose()
     if debug:
         print('X = ', X)
         print('Y = ', Y)
         print(mdl_sgd)
-        if len(D_layers) == 2:
-            print('c_sgd = ', c_sgd)
+        print('c_sgd = ', c_sgd)
         print('c_pinv: ', c_pinv)
     #
     print('\n---- Learning params')
     print('Degree_mdl = {}, N = {}, M = {}, eta = {}, nb_iter = {}'.format(Degree_mdl,N,M,eta,nb_iter))
     print('number of layers = {}'.format(nb_module_params))
     #
-    print('\n---- statistics about learned params')
-    print('--L1')
-    print('||c_pinv||_1 = {} '.format(np.linalg.norm(c_pinv,1)) )
-    #print('||c_avg||_1 = {} '.format(np.linalg.norm(c_avg,1)) )
-    print('||c_sgd||_1 = {} '.format(np.linalg.norm(c_sgd,1)) )
-    print('--L2')
-    print('||c_sgd||_2 = ', np.linalg.norm(c_sgd,2))
-    #print('||c_avg||_2 = {} '.format(np.linalg.norm(c_avg,2))
-    print('||c_pinv||_2 = ', np.linalg.norm(c_pinv,2))
-    print('---- parameters differences')
-    if len(D_layers) == 2:
-        print('||c_sgd - c_pinv||_2 = ', np.linalg.norm(c_sgd - c_pinv,2))
-        #print('||c_sgd - c_avg||_2 = ', np.linalg.norm(c_sgd - c_pinv,2))
-        #print('||c_avg - c_pinv||_2 = ', np.linalg.norm(c_avg - c_pinv,2))
-    f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
-    f_pinv = lambda x: f_mdl_LA(x,c_pinv)
-    print('-- functional L2 norm difference')
-    print('||f_sgd - f_pinv||^2_2 = ', L2_norm_2(f=f_sgd,g=f_pinv,lb=0,ub=1))
-    #print('||f_avg - f_pinv||^2_2 = ', L2_norm_2(f=f_avg,g=f_pinv,lb=0,ub=1))
-    #
     print(' J(c_sgd) = ', (1/N)*(mdl_sgd.forward(Variable(torch.FloatTensor(X))) - Variable(torch.FloatTensor(Y)) ).pow(2).sum().data.numpy() )
     print( ' J(c_pinv) = ',(1/N)*(np.linalg.norm(Y-np.dot( poly_kernel_matrix( x_true,D_sgd-1 ),c_pinv))**2) )
     print( ' J(c_rls) = ',(1/N)*(np.linalg.norm(Y-(1/N)*(np.linalg.norm(Y-np.dot( poly_kernel_matrix( x_true,D_sgd-1 ),c_rls))**2) )**2) )
-    #
-    seconds = (time.time() - start_time)
-    minutes = seconds/ 60
-    hours = minutes/ 60
-    print("--- %s seconds ---" % seconds )
-    print("--- %s minutes ---" % minutes )
-    print("--- %s hours ---" % hours )
-    print('\a')
     ## plots
     x_horizontal = np.linspace(lb,ub,1000)
     X_plot = poly_kernel_matrix(x_horizontal,D_sgd-1)
     #plots objs
-    plots = {}
+    #f_sgd = lambda x: f_mdl_LA(x,c_sgd)
+    f_sgd = lambda x: np.dot(poly_kernel_matrix( [x], c.shape[0]-1 ),c)
     p_sgd, = plt.plot(x_horizontal, [ float(f_sgd(x_i)[0]) for x_i in x_horizontal ])
-    p_pinv, = plt.plot(x_horizontal, np.dot(X_plot,c_pinv))
     p_rls, = plt.plot(x_horizontal, np.dot(X_plot,c_rls))
     p_data, = plt.plot(x_true,Y,'ro')
-    plots['p_sgd'] = p_sgd
-    plots['p_pinv'] = p_pinv
-    plots['p_rls'] = p_rls
-    plots['p_data'] = p_data
-    p_list = list(plots.values())
+    p_list = [p_sgd,p_pinv,p_data]
     if 'p_rls' in plots:
         print('>>> in p_rls')
         plt.legend(p_list,['sgd curve Degree_mdl='+str(D_sgd-1),
@@ -296,8 +180,6 @@ def main(argv=None):
         str(D_sgd-1),M,nb_iter,eta),
         'min norm (pinv) Degree_mdl='+str(D_pinv-1),
         'data points'])
-    #plt.legend(p_list,['average sgd model Degree_mdl={}'.format( str(D_sgd-1) ),'sgd curve Degree_mdl={}, batch-size= {}, iterations={}, eta={}'.format(str(D_sgd-1),M,nb_iter,eta),'min norm (pinv) Degree_mdl='+str(D_pinv-1),'data points'])
-    #plt.legend(p_list,['min norm (pinv) Degree_mdl='+str(D_pinv-1),'data points'])
     plt.ylabel('f(x)')
     ##
     fig1 = plt.figure()
@@ -313,19 +195,16 @@ def main(argv=None):
         plt.legend([p_grads],['plot grads'])
         plt.title('Gradient vs Iterations: # {}'.format(i))
     ##
+    seconds = (time.time() - start_time)
     plt.show()
-
-def plot_pts():
-    fig2 = plt.figure()
-    p_grads, = plt.plot([200,375,500], [0.45283,0.1125,0.02702],color='g')
-    plt.legend([p_grads],['L2 norm'])
-    plt.title('How SGD approaches pseudoinverse')
-    plt.xlabel('iterations (thousands)')
-    plt.ylabel('L2 norm between SGD solution and pinv')
-    plt.show()
+    #
+    minutes = seconds/ 60
+    hours = minutes/ 60
+    print("--- %s seconds ---" % seconds )
+    print("--- %s minutes ---" % minutes )
+    print("--- %s hours ---" % hours )
+    print('\a')
 
 if __name__ == '__main__':
-    #tf.app.run()
-    #plot_pts()
     main()
     print('\a')
