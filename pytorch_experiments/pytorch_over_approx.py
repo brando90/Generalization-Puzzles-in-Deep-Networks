@@ -7,7 +7,7 @@ import torch
 from torch.autograd import Variable
 import torch.nn.functional as F
 
-import maps
+from maps import NamedDict as Maps
 import pdb
 
 from models_pytorch import *
@@ -85,12 +85,12 @@ def main(argv=None):
     ## true facts of the data set
     N = 5
     ## mdl degree and D
-    Degree_mdl = 5
+    Degree_mdl = 200
     D_sgd = Degree_mdl+1
     D_pinv = Degree_mdl+1
     D_rls = D_pinv
     ## sgd
-    M = 5
+    M = 3
     eta = 0.02 # eta = 1e-6
     A = 0.0
     nb_iter = int(100000)
@@ -100,8 +100,11 @@ def main(argv=None):
     identity_act = lambda x: x
     D_1,D_2 = D_sgd,1 # note D^(0) is not present cuz the polyomial is explicitly constructed by me
     D_layers,act = [D_1,D_2], identity_act
-    w_inits = [None]+[lambda x: w_init_zero(x) for i in range(len(D_layers)) ]
-    w_inits = [None]+[lambda x: w_init_normal(x,mu=0.0,std=0.1) for i in range(len(D_layers)) ]
+    init_config = Maps( {'name':'w_init_normal','mu':0.0,'std':1.0} )
+    if init_config.name == 'w_init_normal':
+        w_inits = [None]+[lambda x: w_init_normal(x,mu=init_config.mu,std=init_config.std) for i in range(len(D_layers)) ]
+    elif init_config.name == 'w_init_zero':
+        w_inits = [None]+[lambda x: w_init_zero(x) for i in range(len(D_layers)) ]
     #b_inits = [None]+[lambda x: b_fill(x,value=0.1) for i in range(len(D_layers)) ]
     #b_inits = [None]+[lambda x: b_fill(x,value=0.0) for i in range(len(D_layers)) ]
     b_inits = []
@@ -141,9 +144,9 @@ def main(argv=None):
     #c_rls = get_RLS_soln(X.data.numpy(),Y.data.numpy(),lambda_rls) # [D_pinv,1]
     ## SGD model
     mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits,b_inits=b_inits,bias=bias)
-    mdl_sgd = torch.nn.Sequential(
-        torch.nn.Linear(D_sgd,1)
-    )
+    # mdl_sgd = torch.nn.Sequential(
+    #     torch.nn.Linear(D_sgd,1)
+    # )
     # loss funtion
     #loss_fn = torch.nn.MSELoss(size_average=False)
     ## GPU
@@ -214,6 +217,7 @@ def main(argv=None):
     #
     print('\n---- Learning params')
     print('Degree_mdl = {}, N = {}, M = {}, eta = {}, nb_iter = {}'.format(Degree_mdl,N,M,eta,nb_iter))
+    print('init_config: ', init_config)
     print('number of layers = {}'.format(nb_module_params))
     #
     print('\n---- statistics about learned params')
@@ -222,9 +226,9 @@ def main(argv=None):
     #print('||c_avg||_1 = {} '.format(np.linalg.norm(c_avg,1)) )
     print('||c_sgd||_1 = {} '.format(np.linalg.norm(c_sgd,1)) )
     print('--L2')
-    print('||c_sgd||_2 = ', np.linalg.norm(c_sgd,2))
-    #print('||c_avg||_2 = {} '.format(np.linalg.norm(c_avg,2))
     print('||c_pinv||_2 = ', np.linalg.norm(c_pinv,2))
+    #print('||c_avg||_2 = {} '.format(np.linalg.norm(c_avg,2))
+    print('||c_sgd||_2 = ', np.linalg.norm(c_sgd,2))
     print('---- parameters differences')
     if len(D_layers) == 2:
         print('||c_sgd - c_pinv||_2 = ', np.linalg.norm(c_sgd - c_pinv,2))
@@ -234,8 +238,12 @@ def main(argv=None):
     f_sgd = lambda x: np.dot(poly_kernel_matrix( [x], c_sgd.shape[0]-1 ),c_sgd)
     f_pinv = lambda x: f_mdl_LA(x,c_pinv)
     print('-- functional L2 norm difference')
-    print('||f_sgd - f_pinv||^2_2 = ', L2_norm_2(f=f_sgd,g=f_pinv,lb=0,ub=1))
+    print('||f_sgd - f_pinv||^2_2 = ', L2_norm_2(f=f_sgd,g=f_pinv,lb=lb,ub=ub))
     #print('||f_avg - f_pinv||^2_2 = ', L2_norm_2(f=f_avg,g=f_pinv,lb=0,ub=1))
+    print('Generalization (error vs true curve) functional l2 norm')
+    f_true = lambda x: np.sin(2*np.pi*x)
+    print('||f_sgd - f_true||^2_2 = ', L2_norm_2(f=f_sgd,g=f_true,lb=lb,ub=ub))
+    print('||f_pinv - f_true||^2_2 = ', L2_norm_2(f=f_pinv,g=f_true,lb=lb,ub=ub))
     #
     print(' J(c_sgd) = ', (1/N)*(mdl_sgd.forward(Variable(torch.FloatTensor(X))) - Variable(torch.FloatTensor(Y)) ).pow(2).sum().data.numpy() )
     print( ' J(c_pinv) = ',(1/N)*(np.linalg.norm(Y-np.dot( poly_kernel_matrix( x_true,D_sgd-1 ),c_pinv))**2) )
@@ -256,14 +264,15 @@ def main(argv=None):
     p_pinv, = plt.plot(x_horizontal, np.dot(X_plot,c_pinv))
     p_data, = plt.plot(x_true,Y,'ro')
     p_list = [p_sgd,p_pinv,p_data]
+    plt.title('SGD vs minimum norm solution curves')
     if len(p_list) == 3:
-        plt.legend(p_list,['sgd curve Degree_mdl={}, batch-size= {}, iterations={}, eta={}'.format(
+        plt.legend(p_list,['SGD solution, Degree model={}, batch-size= {}, iterations={}, step size={}'.format(
         str(D_sgd-1),M,nb_iter,eta),
-        'min norm (pinv) Degree_mdl='+str(D_pinv-1),
+        'minimum norm solution Degree model='+str(D_pinv-1),
         'data points'])
         plt.ylabel('f(x)')
     else:
-        plt.legend(p_list,['sgd curve Degree_mdl={}, batch-size= {}, iterations={}, eta={}'.format(
+        plt.legend(p_list,['sgd curve Degree_mdl={}, batch-size= {}, iterations={}, step size={}'.format(
         str(D_sgd-1),M,nb_iter,eta),'min norm (pinv) Degree_mdl='+str(D_pinv-1), 'data points'])
     #plt.legend(p_list,['average sgd model Degree_mdl={}'.format( str(D_sgd-1) ),'sgd curve Degree_mdl={}, batch-size= {}, iterations={}, eta={}'.format(str(D_sgd-1),M,nb_iter,eta),'min norm (pinv) Degree_mdl='+str(D_pinv-1),'data points'])
     #plt.legend(p_list,['min norm (pinv) Degree_mdl='+str(D_pinv-1),'data points'])
@@ -293,8 +302,28 @@ def plot_pts():
     plt.ylabel('L2 norm between SGD solution and pinv')
     plt.show()
 
+def plot_lnorm(p):
+    fig2 = plt.figure()
+    x_axis = [5,10,50,100,200]
+    if p == 1:
+        y_axis_l_pinv = [66.51,59.66,70.00,72.91,74.70]
+        y_axis_l_sgd = [28.68,19.33,50.03,108.89,183.7]
+    else:
+        y_axis_l_sgd = [14.28,8.571,10.71,14.43,17.41]
+        y_axis_l_pinv = [34.29,23.46,19.57,19.43,19.38]
+    p_l_sgd, = plt.plot(x_axis, y_axis_l_sgd,color='g')
+    p_l_pinv, = plt.plot(x_axis, y_axis_l_pinv,color='r')
+    p_data, = plt.plot(x_axis,y_axis_l_sgd,'go')
+    p_data, = plt.plot(x_axis,y_axis_l_pinv,'ro')
+    plt.legend([p_l_sgd,p_l_pinv],['L{} norm SGD'.format(p),'L{} norm minimum norm'.format(p)])
+    plt.title('SGD vs minimum norm solution L{} norm comparison'.format(p))
+    plt.xlabel('Polynomial Degree of model')
+    plt.ylabel('L{} norm of parameters'.format(p))
+    plt.show()
+
 if __name__ == '__main__':
     #tf.app.run()
     #plot_pts()
-    main()
+    #main()
+    plot_lnorm(p=2)
     print('\a')

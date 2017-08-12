@@ -62,3 +62,9 @@ class TwoLayerNet(torch.nn.Module):
         h_relu = self.linear1(x).clamp(min=0)
         y_pred = self.linear2(h_relu)
         return y_pred
+
+if A == 0:
+    W.data = W.data - eta*W.grad.data # W - eta*g
+else:
+    gdl_eps = torch.randn(W.data.size()).type(dtype)
+    W.data = W.data - eta*W.grad.data + A*gdl_eps # W - eta*g + A*gdl_eps % B
