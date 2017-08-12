@@ -16,6 +16,7 @@ from inits import *
 def f_mdl_LA(x,c):
     D,_ = c.shape
     X = poly_kernel_matrix( [x],D-1 )
+    # np.dot(poly_kernel_matrix( [x], c.shape[0]-1 ),c)
     return np.dot(X,c)
 
 def f_mdl_eval(x,mdl_eval,dtype):
@@ -35,21 +36,6 @@ def L2_norm_2(f,g,lb=0,ub=1):
     result = integrate.quad(func=f_g_2, a=lb,b=ub)
     integral_val = result[0]
     return integral_val
-
-def get_c_true(Degree_true,lb=0,ub=1):
-    x = np.linspace(lb,ub,5)
-    Y = np.array([0,1,0,-1,0])
-    Y.shape = (5,1)
-    X = poly_kernel_matrix( x,Degree_true ) # [N, D] = [N, Degree_mdl+1]
-    c_true = np.dot(np.linalg.pinv(X),Y) # [N,1]
-    return c_true
-
-def get_data_set_points(c_true,x,Degree_truth=4):
-    N = len(x)
-    X = poly_kernel_matrix(x,Degree_truth)
-    Y = np.dot(X,c_true)
-    Y.shape = (N,1)
-    return X,Y
 
 def poly_kernel_matrix( x,D ):
     '''
@@ -88,15 +74,6 @@ def get_batch2(X,Y,M,dtype):
     batch_xs = index_batch(X,batch_indices,dtype)
     batch_ys = index_batch(Y,batch_indices,dtype)
     return Variable(batch_xs, requires_grad=False), Variable(batch_ys, requires_grad=False)
-
-def get_old():
-    x = np.linspace(0,1,5)
-    Y = np.array([0,1,0,-1,0])
-    Y.shape = (N,1)
-    X_true = poly_kernel_matrix( x,Degree ) # [N, D] = [N, Degree+1]
-    #c_true = get_c_true(Degree_true,lb,ub)
-    #X_true,Y = get_data_set_points(c_true,x_true) # maps to the real feature space
-    return X_true, Y
 
 def main(argv=None):
     #pdb.set_trace()
@@ -186,17 +163,17 @@ def main(argv=None):
         # Forward pass: compute predicted Y using operations on Variables
         batch_xs, batch_ys = get_batch2(X,Y,M,dtype) # [M, D], [M, 1]
         ## FORWARD PASS
-        y_pred = mdl_sgd.forward(X)
+        y_pred = mdl_sgd.forward(batch_xs)
         ## LOSS
         loss = (1/N)*(y_pred - batch_ys).pow(2).sum()
         ## BACKARD PASS
         loss.backward() # Use autograd to compute the backward pass. Now w will have gradients
         ## SGD update
         for W in mdl_sgd.parameters():
-            #print(W)
             gdl_eps = torch.randn(W.data.size()).type(dtype)
-            W.data = W.data - eta*W.grad.data + A*gdl_eps # W - eta*g + A*gdl_eps % B
-            #W.data = W.data - eta*W.grad.data
+            #W.data = W.data - eta*W.grad.data + A*gdl_eps
+            #W.data.copy_(W.data - eta*W.grad.data)
+            W.data.copy_(W.data - eta*W.grad.data + A*gdl_eps) # W - eta*g + A*gdl_eps
         #pdb.set_trace()
         ## TRAINING STATS
         if i % 100 == 0 or i == 0:
@@ -205,7 +182,6 @@ def main(argv=None):
             if not np.isfinite(current_loss) or np.isinf(current_loss) or np.isnan(current_loss):
                 print('loss: {} \n >>>>> BREAK HAPPENED'.format(current_loss) )
                 break
-            # get grads
             #for W in mdl_sgd.parameters():
             for i, W in enumerate(mdl_sgd.parameters()):
                 grad_norm = W.grad.data.norm(2)
@@ -214,15 +190,16 @@ def main(argv=None):
                 if not np.isfinite(grad_norm) or np.isinf(grad_norm) or np.isnan(grad_norm):
                     print('current_loss: {}, grad_norm: {},\n >>>>> BREAK HAPPENED'.format(current_loss,grad_norm) )
                     break
-            ## Manually zero the gradients after updating weights
-            mdl_sgd.zero_grad()
+        ## Manually zero the gradients after updating weights
+        mdl_sgd.zero_grad()
         ## COLLECT MOVING AVERAGES
         # for i in range(len(Ws)):
         #     W, W_avg = Ws[i], W_avgs[i]
         #     W_avgs[i] = (1/nb_iter)*W + W_avg
     ##
-    X = X.data.numpy()
-    Y = Y.data.numpy()
+    print('\a')
+    ##
+    X, Y = X.data.numpy(), Y.data.numpy()
     #
     if len(D_layers) == 2:
         c_sgd = list(mdl_sgd.parameters())[0].data.numpy()
@@ -253,7 +230,8 @@ def main(argv=None):
         print('||c_sgd - c_pinv||_2 = ', np.linalg.norm(c_sgd - c_pinv,2))
         #print('||c_sgd - c_avg||_2 = ', np.linalg.norm(c_sgd - c_pinv,2))
         #print('||c_avg - c_pinv||_2 = ', np.linalg.norm(c_avg - c_pinv,2))
-    f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
+    #f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
+    f_sgd = lambda x: np.dot(poly_kernel_matrix( [x], c_sgd.shape[0]-1 ),c_sgd)
     f_pinv = lambda x: f_mdl_LA(x,c_pinv)
     print('-- functional L2 norm difference')
     print('||f_sgd - f_pinv||^2_2 = ', L2_norm_2(f=f_sgd,g=f_pinv,lb=0,ub=1))
@@ -274,28 +252,19 @@ def main(argv=None):
     x_horizontal = np.linspace(lb,ub,1000)
     X_plot = poly_kernel_matrix(x_horizontal,D_sgd-1)
     #plots objs
-    plots = {}
     p_sgd, = plt.plot(x_horizontal, [ float(f_sgd(x_i)[0]) for x_i in x_horizontal ])
     p_pinv, = plt.plot(x_horizontal, np.dot(X_plot,c_pinv))
-    p_rls, = plt.plot(x_horizontal, np.dot(X_plot,c_rls))
     p_data, = plt.plot(x_true,Y,'ro')
-    plots['p_sgd'] = p_sgd
-    plots['p_pinv'] = p_pinv
-    plots['p_rls'] = p_rls
-    plots['p_data'] = p_data
-    p_list = list(plots.values())
-    if 'p_rls' in plots:
-        print('>>> in p_rls')
-        plt.legend(p_list,['sgd curve Degree_mdl='+str(D_sgd-1),
-        'min norm (pinv) Degree_mdl='+str(D_pinv-1),
-        'rls regularization lambda={} Degree_mdl={}'.format(lambda_rls,D_rls-1),
-        'data points'])
-    else:
-        print('>>> in else')
+    p_list = [p_sgd,p_pinv,p_data]
+    if len(p_list) == 3:
         plt.legend(p_list,['sgd curve Degree_mdl={}, batch-size= {}, iterations={}, eta={}'.format(
         str(D_sgd-1),M,nb_iter,eta),
         'min norm (pinv) Degree_mdl='+str(D_pinv-1),
         'data points'])
+        plt.ylabel('f(x)')
+    else:
+        plt.legend(p_list,['sgd curve Degree_mdl={}, batch-size= {}, iterations={}, eta={}'.format(
+        str(D_sgd-1),M,nb_iter,eta),'min norm (pinv) Degree_mdl='+str(D_pinv-1), 'data points'])
     #plt.legend(p_list,['average sgd model Degree_mdl={}'.format( str(D_sgd-1) ),'sgd curve Degree_mdl={}, batch-size= {}, iterations={}, eta={}'.format(str(D_sgd-1),M,nb_iter,eta),'min norm (pinv) Degree_mdl='+str(D_pinv-1),'data points'])
     #plt.legend(p_list,['min norm (pinv) Degree_mdl='+str(D_pinv-1),'data points'])
     plt.ylabel('f(x)')

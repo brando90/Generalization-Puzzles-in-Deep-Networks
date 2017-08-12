@@ -82,5 +82,5 @@ class regression_NN(torch.nn.Module):
         y_pred = x.mm(self.W)
         return y_pred
 
-    def parameters(self):
-        return self.W
+    # def parameters(self):
+    #     return self.W
