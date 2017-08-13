@@ -321,9 +321,27 @@ def plot_lnorm(p):
     plt.ylabel('L{} norm of parameters'.format(p))
     plt.show()
 
+def plot_generalization():
+    fig2 = plt.figure()
+    x_axis = [5,10,50,100,200]
+    #
+    y_axis_l_sgd = [0.03707,0.08483,0.04515,0.09546,1.880]
+    y_axis_l_pinv = [0.007742,0.008322,2.604,5.113,7.563]
+    #
+    p_l_sgd, = plt.plot(x_axis, y_axis_l_sgd,color='g')
+    p_l_pinv, = plt.plot(x_axis, y_axis_l_pinv,color='r')
+    p_data, = plt.plot(x_axis,y_axis_l_sgd,'go')
+    p_data, = plt.plot(x_axis,y_axis_l_pinv,'ro')
+    plt.legend([p_l_sgd,p_l_pinv],['Generalization error curve of SGD solution','Generalization error curve of Minimum norm solution'])
+    plt.title('SGD vs minimum norm solution generalization error comparison')
+    plt.xlabel('Polynomial Degree of model')
+    plt.ylabel('Generalization error (with L2 loss)')
+    plt.show()
+
 if __name__ == '__main__':
     #tf.app.run()
     #plot_pts()
     #main()
-    plot_lnorm(p=2)
+    #plot_lnorm(p=1)
+    plot_generalization()
     print('\a')
