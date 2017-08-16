@@ -61,7 +61,7 @@ class sNN:
         W_d = self.weights[d] # [D_out,D_in]
         b_d = self.biases[d] # [D_out,1]
         y_pred = W_d*a + b_d # [D_out,N] = [D_out,D_in] x [D_in,N] .+ [D_out,1]
-        return y_pred
+        return y_pred[0]
 
     def Act(self,z):
         D_out, D_in = z.shape
@@ -69,8 +69,6 @@ class sNN:
             for col in range(D_in):
                 z[row,col] = self.act(z[row,col])
         return z
-
-
 
 def simplifies_poly_for_me(expr):
     '''
