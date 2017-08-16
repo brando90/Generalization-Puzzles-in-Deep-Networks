@@ -12,6 +12,7 @@ import pdb
 
 from models_pytorch import *
 from inits import *
+from sympy_poly import *
 
 def f_mdl_LA(x,c):
     D,_ = c.shape
@@ -33,7 +34,12 @@ def f_mdl_eval(x,mdl_eval,dtype):
 
 def L2_norm_2(f,g,lb=0,ub=1):
     f_g_2 = lambda x: (f(x) - g(x))**2
+    import scipy
+    import scipy.integrate as integrate
+    #import scipy.integrate.quad as quad
+    #pdb.set_trace()
     result = integrate.quad(func=f_g_2, a=lb,b=ub)
+    #result = quad(func=f_g_2, a=lb,b=ub)
     integral_val = result[0]
     return integral_val
 
@@ -93,40 +99,40 @@ def main(argv=None):
     M = 3
     eta = 0.02 # eta = 1e-6
     A = 0.0
-    nb_iter = int(1000*1000)
+    nb_iter = int(1*1000)
     # RLS
     lambda_rls = 0.001
     #### 1-layered mdl
-    identity_act = lambda x: x
-    D_1,D_2 = D_sgd,1 # note D^(0) is not present cuz the polyomial is explicitly constructed by me
-    D_layers,act = [D_1,D_2], identity_act
-    init_config = Maps( {'name':'w_init_normal','mu':0.0,'std':1.0} )
-    if init_config.name == 'w_init_normal':
-        w_inits = [None]+[lambda x: w_init_normal(x,mu=init_config.mu,std=init_config.std) for i in range(len(D_layers)) ]
-    elif init_config.name == 'w_init_zero':
-        w_inits = [None]+[lambda x: w_init_zero(x) for i in range(len(D_layers)) ]
-    ##b_inits = [None]+[lambda x: b_fill(x,value=0.1) for i in range(len(D_layers)) ]
-    ##b_inits = [None]+[lambda x: b_fill(x,value=0.0) for i in range(len(D_layers)) ]
-    b_inits = []
-    bias = False
-    #### 2-layered mdl
-    # act = lambda x: x**2 # squared act
-    # #act = lambda x: F.relu(x) # relu act
-    # H1,H2 = 1,1
-    # D0,D1,D2,D3 = 1,H1,H2,1
-    # D_layers,act = [D0,D1,D2,D3], act
+    # identity_act = lambda x: x
+    # D_1,D_2 = D_sgd,1 # note D^(0) is not present cuz the polyomial is explicitly constructed by me
+    # D_layers,act = [D_1,D_2], identity_act
     # init_config = Maps( {'name':'w_init_normal','mu':0.0,'std':1.0} )
-    # #init_config = Maps( {'name':'xavier_normal','gain':1} )
     # if init_config.name == 'w_init_normal':
     #     w_inits = [None]+[lambda x: w_init_normal(x,mu=init_config.mu,std=init_config.std) for i in range(len(D_layers)) ]
     # elif init_config.name == 'w_init_zero':
     #     w_inits = [None]+[lambda x: w_init_zero(x) for i in range(len(D_layers)) ]
-    # elif init_config.name == 'xavier_normal':
-    #     w_inits = [None]+[lambda x: torch.nn.init.xavier_normal(x, gain=init_config.gain) for i in range(len(D_layers)) ]
-    # b_inits = [None]+[lambda x: b_fill(x,value=0.1) for i in range(len(D_layers)) ]
-    # # b_inits = [None]+[lambda x: b_fill(x,value=0.0) for i in range(len(D_layers)) ]
-    # #b_inits = []
-    # bias = True
+    # ##b_inits = [None]+[lambda x: b_fill(x,value=0.1) for i in range(len(D_layers)) ]
+    # ##b_inits = [None]+[lambda x: b_fill(x,value=0.0) for i in range(len(D_layers)) ]
+    # b_inits = []
+    # bias = False
+    #### 2-layered mdl
+    act = lambda x: x**2 # squared act
+    #act = lambda x: F.relu(x) # relu act
+    H1,H2 = 1,1
+    D0,D1,D2,D3 = 1,H1,H2,1
+    D_layers,act = [D0,D1,D2,D3], act
+    init_config = Maps( {'name':'w_init_normal','mu':0.0,'std':1.0} )
+    #init_config = Maps( {'name':'xavier_normal','gain':1} )
+    if init_config.name == 'w_init_normal':
+        w_inits = [None]+[lambda x: w_init_normal(x,mu=init_config.mu,std=init_config.std) for i in range(len(D_layers)) ]
+    elif init_config.name == 'w_init_zero':
+        w_inits = [None]+[lambda x: w_init_zero(x) for i in range(len(D_layers)) ]
+    elif init_config.name == 'xavier_normal':
+        w_inits = [None]+[lambda x: torch.nn.init.xavier_normal(x, gain=init_config.gain) for i in range(len(D_layers)) ]
+    b_inits = [None]+[lambda x: b_fill(x,value=0.1) for i in range(len(D_layers)) ]
+    # b_inits = [None]+[lambda x: b_fill(x,value=0.0) for i in range(len(D_layers)) ]
+    #b_inits = []
+    bias = True
     #### Get Data set
     ## Get input variables X
     x_true = np.linspace(lb,ub,N) # the real data points
@@ -219,6 +225,24 @@ def main(argv=None):
     if len(D_layers) == 2:
         c_sgd = list(mdl_sgd.parameters())[0].data.numpy()
         c_sgd = c_sgd.transpose()
+    else:
+        ## tmdl
+        tmdl = mdl_sgd
+        ## sNN
+        act = sQuad
+        smdl = sNN(tmdl,act)
+        ## get simplification
+        x = symbols('x')
+        expr = smdl.forward(x)
+        s_expr = poly(expr)
+        #c_sgd = s_expr.coeffs()
+        #c_sgd.reverse()
+        #c_sgd = np.array( c_sgd ) # first coeff is lowest degree
+        c_sgd = np.array( s_expr.coeffs()[::-1] )
+        c_sgd = [ np.float64(num) for num in c_sgd]
+        #c_sgd = [ float(num) for num in c_sgd]
+        #pdb.set_trace()
+
     if debug:
         print('X = ', X)
         print('Y = ', Y)
@@ -233,7 +257,7 @@ def main(argv=None):
     print('D_layers,act: ', D_layers,act)
     print('number of layers = {}'.format(nb_module_params))
     #
-    if len(D_layers) == 2:
+    if len(D_layers) >= 2:
         print('\n---- statistics about learned params')
         print('--L1')
         print('||c_pinv||_1 = {} '.format(np.linalg.norm(c_pinv,1)) )
@@ -244,7 +268,7 @@ def main(argv=None):
         #print('||c_avg||_2 = {} '.format(np.linalg.norm(c_avg,2))
         print('||c_sgd||_2 = ', np.linalg.norm(c_sgd,2))
     print('---- parameters differences')
-    if len(D_layers) == 2:
+    if len(D_layers) >= 2:
         print('||c_sgd - c_pinv||_2 = ', np.linalg.norm(c_sgd - c_pinv,2))
         #print('||c_sgd - c_avg||_2 = ', np.linalg.norm(c_sgd - c_pinv,2))
         #print('||c_avg - c_pinv||_2 = ', np.linalg.norm(c_avg - c_pinv,2))
@@ -252,6 +276,7 @@ def main(argv=None):
     #f_sgd = lambda x: np.dot(poly_kernel_matrix( [x], c_sgd.shape[0]-1 ),c_sgd)
     f_pinv = lambda x: f_mdl_LA(x,c_pinv)
     print('-- functional L2 norm difference')
+    #pdb.set_trace()
     print('||f_sgd - f_pinv||^2_2 = ', L2_norm_2(f=f_sgd,g=f_pinv,lb=lb,ub=ub))
     #print('||f_avg - f_pinv||^2_2 = ', L2_norm_2(f=f_avg,g=f_pinv,lb=0,ub=1))
     print('Generalization (error vs true curve) functional l2 norm')
