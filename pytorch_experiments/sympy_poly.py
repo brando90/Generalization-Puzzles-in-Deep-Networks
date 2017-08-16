@@ -15,11 +15,21 @@ import pdb
 https://discuss.pytorch.org/t/why-does-the-linear-module-seems-to-do-unnecessary-transposing/6277
 '''
 
+def sReLU(x,threshold=0):
+    return Max(threshold,x)
+
+def sQuad(x):
+    return sPow(x,2)
+
+def sPow(x,p):
+    return Pow(x,p)
+
 class sNN:
 
-    def __init__(self,mdl):
+    def __init__(self,mdl,act):
         '''
         '''
+        self.mdl = mdl
         # params
         self.weights = [None]
         self.biases = [None]
@@ -31,7 +41,7 @@ class sNN:
 
     def forward(self,x):
         '''
-        lets start with x being [1, D^(0)]
+        lets start with x being [D^(0),N]
 
         for 2 hidden layered Net
         implements: Y(x) = W3*[W2*[W1*x
@@ -40,14 +50,27 @@ class sNN:
         {old thinking: Y(x) = x*W1]*W2]*W3] }
         where the ] or [ denote when in the the computation act func is applied
         '''
-        a = x
-        for d in range(1,len(self.linear_layers)-1):
-            W_d = self.linear_layers[d]
-            z = W_d(a)
-            a = self.act(z)
-        d = len(self.linear_layers)-1
-        y_pred = self.linear_layers[d](a)
+        a = x # [D^(0),N]
+        for d in range(1,len(self.weights)-1):
+            W_d = self.weights[d] # [D_out,D_in]
+            b_d = self.biases[d] # [D_out,1]
+            z = W_d*a + b_d # [D_out,N] = [D_out,D_in] x [D_in,N] .+ [D_out,1]
+            a = self.Act(z)
+        # last layer
+        d = len(self.weights)-1
+        W_d = self.weights[d] # [D_out,D_in]
+        b_d = self.biases[d] # [D_out,1]
+        y_pred = W_d*a + b_d # [D_out,N] = [D_out,D_in] x [D_in,N] .+ [D_out,1]
         return y_pred
+
+    def Act(self,z):
+        D_out, D_in = z.shape
+        for row in range(D_out):
+            for col in range(D_in):
+                z[row,col] = self.act(z[row,col])
+        return z
+
+
 
 def simplifies_poly_for_me(expr):
     '''
