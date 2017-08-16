@@ -37,15 +37,22 @@ class sNN:
         '''
         '''
         self.mdl = mdl
+        # act
+        self.act = act
         # params
         self.weights = [None]
         self.biases = [None]
         # init weights
         for i in range(1,len(mdl.linear_layers)):
+            print('i ', i)
             l = mdl.linear_layers[i]
-            self.weights.append( Matrix(l.weight) ) # [D_out, D_in]
+            self.weights.append( Matrix( l.weight.data.numpy() ) ) # [D_out, D_in]
+            print('l.bias ', l.bias)
             if l.bias:
-                self.biases.append( Matrix(l.bias) ) # [D_out, D_in]
+                print('i ', i)
+                self.biases.append( Matrix( l.bias.data.numpy() ) ) # [D_out, D_in]
+            else:
+                self.biases.append( None )
 
     def forward(self,x):
         '''
@@ -60,16 +67,26 @@ class sNN:
         '''
         a = x # [D^(0),N]
         for d in range(1,len(self.weights)-1):
+            print('d ', d)
+            print('self.weights ', len(self.weights) )
+            print('self.biases ', len(self.biases) )
             W_d = self.weights[d] # [D_out,D_in]
             b_d = self.biases[d] # [D_out,1]
-            z = W_d*a + b_d # [D_out,N] = [D_out,D_in] x [D_in,N] .+ [D_out,1]
+            if b_d != None:
+                z = W_d*a + b_d # [D_out,N] = [D_out,D_in] x [D_in,N] .+ [D_out,1]
+            else:
+                z = W_d*a # [D_out,N] = [D_out,D_in] x [D_in,N]
             a = self.Act(z)
         # last layer
         d = len(self.weights)-1
         W_d = self.weights[d] # [D_out,D_in]
         b_d = self.biases[d] # [D_out,1]
-        y_pred = W_d*a + b_d # [D_out,N] = [D_out,D_in] x [D_in,N] .+ [D_out,1]
-        return y_pred[0]
+        if b_d != None:
+            z = W_d*a + b_d # [D_out,N] = [D_out,D_in] x [D_in,N] .+ [D_out,1]
+        else:
+            z = W_d*a # [D_out,N] = [D_out,D_in] x [D_in,N]
+        y_pred = z
+        return y_pred
 
     def Act(self,z):
         D_out, D_in = z.shape
@@ -111,40 +128,39 @@ def main():
     #c = np.random.rand(3,2)
     print('--main')
     ## tNN
-    # H1,H2 = 1,1
-    # D0,D1,D2,D3 = 1,H1,H2,1
-    # D_layers = [D0,D1,D2,D3]
-    # act = lambda x: x**2 # squared act
-    # #act = lambda x: F.relu(x) # relu act
-    # H1,H2 = 1,1
-    # D0,D1,D2,D3 = 1,H1,H2,1
-    # D_layers,act = [D0,D1,D2,D3], act
-    # init_config = Maps( {'name':'w_init_normal','mu':0.0,'std':1.0} )
-    # #init_config = Maps( {'name':'xavier_normal','gain':1} )
-    # if init_config.name == 'w_init_normal':
-    #     w_inits = [None]+[lambda x: w_init_normal(x,mu=init_config.mu,std=init_config.std) for i in range(len(D_layers)) ]
-    # b_inits = [None]+[lambda x: b_fill(x,value=0.1) for i in range(len(D_layers)) ]
-    # #b_inits = []
-    # bias = True
-    identity_act = lambda x: x
-    D_1,D_2 = 3,1 # note D^(0) is not present cuz the polyomial is explicitly constructed by me
-    D_layers,act = [D_1,D_2], identity_act
+    act = lambda x: x**2 # squared act
+    #act = lambda x: F.relu(x) # relu act
+    H1,H2 = 2,2
+    D0,D1,D2,D3 = 1,H1,H2,1
+    D_layers,act = [D0,D1,D2,D3], act
     init_config = Maps( {'name':'w_init_normal','mu':0.0,'std':1.0} )
+    #init_config = Maps( {'name':'xavier_normal','gain':1} )
     if init_config.name == 'w_init_normal':
         w_inits = [None]+[lambda x: w_init_normal(x,mu=init_config.mu,std=init_config.std) for i in range(len(D_layers)) ]
-    elif init_config.name == 'w_init_zero':
-        w_inits = [None]+[lambda x: w_init_zero(x) for i in range(len(D_layers)) ]
-    ##b_inits = [None]+[lambda x: b_fill(x,value=0.1) for i in range(len(D_layers)) ]
-    ##b_inits = [None]+[lambda x: b_fill(x,value=0.0) for i in range(len(D_layers)) ]
-    b_inits = []
-    bias = False
+    b_inits = [None]+[lambda x: b_fill(x,value=0.1) for i in range(len(D_layers)) ]
+    #b_inits = []
+    bias = True
+    # identity_act = lambda x: x
+    # D_1,D_2 = 5,1 # note D^(0) is not present cuz the polyomial is explicitly constructed by me
+    # D_layers,act = [D_1,D_2], identity_act
+    # init_config = Maps( {'name':'w_init_normal','mu':0.0,'std':1.0} )
+    # if init_config.name == 'w_init_normal':
+    #     w_inits = [None]+[lambda x: w_init_normal(x,mu=init_config.mu,std=init_config.std) for i in range(len(D_layers)) ]
+    # elif init_config.name == 'w_init_zero':
+    #     w_inits = [None]+[lambda x: w_init_zero(x) for i in range(len(D_layers)) ]
+    # b_inits = [None]+[lambda x: b_fill(x,value=0.1) for i in range(len(D_layers)) ]
+    # b_inits = [None]+[lambda x: b_fill(x,value=0.0) for i in range(len(D_layers)) ]
+    # b_inits = []
+    # bias = False
     ##
     tmdl = NN(D_layers=D_layers,act=act,w_inits=w_inits,b_inits=b_inits,bias=bias)
     ## sNN
     act = sQuad
     smdl = sNN(tmdl,act)
     print(smdl)
-
+    #
+    x = symbols('x')
+    print(smdl.forward(x))
 
 
 if __name__ == '__main__':
