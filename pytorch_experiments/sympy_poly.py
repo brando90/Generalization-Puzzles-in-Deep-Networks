@@ -1,8 +1,15 @@
+import torch
+from torch.autograd import Variable
+import torch.nn.functional as F
+
+from models_pytorch import *
+from inits import *
+
 from sympy import *
 #from sympy import Matrix
 import numpy as np
 
-#from maps import NamedDict as Maps
+from maps import NamedDict as Maps
 
 import pdb
 
@@ -34,7 +41,8 @@ class sNN:
         self.weights = [None]
         self.biases = [None]
         # init weights
-        for l in mdl.linear_layers:
+        for i in range(1,len(mdl.linear_layers)):
+            l = mdl.linear_layers[i]
             self.weights.append( Matrix(l.weight) ) # [D_out, D_in]
             if l.bias:
                 self.biases.append( Matrix(l.bias) ) # [D_out, D_in]
@@ -102,7 +110,28 @@ def check_matrix_multiply_with_polynomial_terms():
 def main():
     #c = np.random.rand(3,2)
     print('--main')
-    check_matrix_multiply_with_polynomial_terms()
+    ## tNN
+    H1,H2 = 1,1
+    D0,D1,D2,D3 = 1,H1,H2,1
+    D_layers = [D0,D1,D2,D3]
+    act = lambda x: x**2 # squared act
+    #act = lambda x: F.relu(x) # relu act
+    H1,H2 = 1,1
+    D0,D1,D2,D3 = 1,H1,H2,1
+    D_layers,act = [D0,D1,D2,D3], act
+    init_config = Maps( {'name':'w_init_normal','mu':0.0,'std':1.0} )
+    #init_config = Maps( {'name':'xavier_normal','gain':1} )
+    if init_config.name == 'w_init_normal':
+        w_inits = [None]+[lambda x: w_init_normal(x,mu=init_config.mu,std=init_config.std) for i in range(len(D_layers)) ]
+    b_inits = [None]+[lambda x: b_fill(x,value=0.1) for i in range(len(D_layers)) ]
+    #b_inits = []
+    bias = True
+    tmdl = NN(D_layers=D_layers,act=act,w_inits=w_inits,b_inits=b_inits,bias=bias)
+
+    ## sNN
+    act = sQuad
+    smdl = sNN(tmdl,act)
+    print(smdl)
 
 
 
