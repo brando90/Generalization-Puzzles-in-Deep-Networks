@@ -111,23 +111,35 @@ def main():
     #c = np.random.rand(3,2)
     print('--main')
     ## tNN
-    H1,H2 = 1,1
-    D0,D1,D2,D3 = 1,H1,H2,1
-    D_layers = [D0,D1,D2,D3]
-    act = lambda x: x**2 # squared act
-    #act = lambda x: F.relu(x) # relu act
-    H1,H2 = 1,1
-    D0,D1,D2,D3 = 1,H1,H2,1
-    D_layers,act = [D0,D1,D2,D3], act
+    # H1,H2 = 1,1
+    # D0,D1,D2,D3 = 1,H1,H2,1
+    # D_layers = [D0,D1,D2,D3]
+    # act = lambda x: x**2 # squared act
+    # #act = lambda x: F.relu(x) # relu act
+    # H1,H2 = 1,1
+    # D0,D1,D2,D3 = 1,H1,H2,1
+    # D_layers,act = [D0,D1,D2,D3], act
+    # init_config = Maps( {'name':'w_init_normal','mu':0.0,'std':1.0} )
+    # #init_config = Maps( {'name':'xavier_normal','gain':1} )
+    # if init_config.name == 'w_init_normal':
+    #     w_inits = [None]+[lambda x: w_init_normal(x,mu=init_config.mu,std=init_config.std) for i in range(len(D_layers)) ]
+    # b_inits = [None]+[lambda x: b_fill(x,value=0.1) for i in range(len(D_layers)) ]
+    # #b_inits = []
+    # bias = True
+    identity_act = lambda x: x
+    D_1,D_2 = 3,1 # note D^(0) is not present cuz the polyomial is explicitly constructed by me
+    D_layers,act = [D_1,D_2], identity_act
     init_config = Maps( {'name':'w_init_normal','mu':0.0,'std':1.0} )
-    #init_config = Maps( {'name':'xavier_normal','gain':1} )
     if init_config.name == 'w_init_normal':
         w_inits = [None]+[lambda x: w_init_normal(x,mu=init_config.mu,std=init_config.std) for i in range(len(D_layers)) ]
-    b_inits = [None]+[lambda x: b_fill(x,value=0.1) for i in range(len(D_layers)) ]
-    #b_inits = []
-    bias = True
+    elif init_config.name == 'w_init_zero':
+        w_inits = [None]+[lambda x: w_init_zero(x) for i in range(len(D_layers)) ]
+    ##b_inits = [None]+[lambda x: b_fill(x,value=0.1) for i in range(len(D_layers)) ]
+    ##b_inits = [None]+[lambda x: b_fill(x,value=0.0) for i in range(len(D_layers)) ]
+    b_inits = []
+    bias = False
+    ##
     tmdl = NN(D_layers=D_layers,act=act,w_inits=w_inits,b_inits=b_inits,bias=bias)
-
     ## sNN
     act = sQuad
     smdl = sNN(tmdl,act)

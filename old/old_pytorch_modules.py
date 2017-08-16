@@ -15,10 +15,22 @@ def get_example_mdl():
     )
     return mdl
 
+D_in = 5
+H = 4
+D_out = 3
 mdl = torch.nn.Sequential(
     torch.nn.Linear(D_in, H),
     torch.nn.ReLU(),
     torch.nn.Linear(H, D_out)
+)
+
+D_in = 5
+H = 4
+D_out = 3
+mdl = torch.nn.Sequential(
+    torch.nn.Linear(D_in, H, bias=False),
+    torch.nn.ReLU(),
+    torch.nn.Linear(H, D_out, bias=False)
 )
 
 def w_init_randn(data,mu=0.0,stddev=1.0):
