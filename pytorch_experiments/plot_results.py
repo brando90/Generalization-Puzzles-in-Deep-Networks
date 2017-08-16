@@ -42,3 +42,11 @@ def plot_generalization():
     plt.xlabel('Polynomial Degree of model')
     plt.ylabel('Generalization error (with L2 loss)')
     plt.show()
+
+if __name__ == '__main__':
+    #tf.app.run()
+    #plot_pts()
+    #main()
+    #plot_lnorm(p=1)
+    plot_generalization()
+    print('\a')
