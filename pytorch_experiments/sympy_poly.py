@@ -31,29 +31,50 @@ def sQuad(x):
 def sPow(x,p):
     return Pow(x,p)
 
+
+
 class sNN:
 
-    def __init__(self,mdl,act):
+    def __init__(self,act,mdl=None,D_layers=None,bias=True):
         '''
+        Note: bias arg is ignored if mdl is an arg.
+
+        D_layers = [D^(0),D^(1),D^(2),D^(3)]
+
+        note: I reversed the dimension from D_in,D_out to D_out,D_in in the internal
+        representation of this class to (reluctantly) match pytorch's way of storing matrices
+        in its torch.nn.linear class.
         '''
-        self.mdl = mdl
-        self.bias = self.mdl.bias
         # act
         self.act = act
         # params
         self.weights = [None]
         self.biases = [None]
-        # init weights
-        for i in range(1,len(mdl.linear_layers)):
-            print('--i ', i)
-            l = mdl.linear_layers[i]
-            self.weights.append( Matrix( l.weight.data.numpy() ) ) # [D_out, D_in]
-            print('l.bias ', l.bias)
-            if mdl.bias:
-                print('i ', i)
-                self.biases.append( Matrix( l.bias.data.numpy() ) ) # [D_out, D_in]
-            else:
-                self.biases.append( None )
+        if mdl != None:
+            self.mdl = mdl
+            self.bias = self.mdl.bias
+            # init weights
+            for i in range(1,len(mdl.linear_layers)):
+                #print('--i ', i)
+                l = mdl.linear_layers[i]
+                self.weights.append( Matrix( l.weight.data.numpy() ) ) # [D_out, D_in]
+                #print('l.bias ', l.bias)
+                if self.bias:
+                    #print('i ', i)
+                    self.biases.append( Matrix( l.bias.data.numpy() ) ) # [D_out, D_in]
+                else:
+                    self.biases.append( None )
+        elif D_layers != None:
+            self.bias = bias
+            for i in range(1,len(D_layers)):
+                D_in,D_out = D_layers[i-1],D_layers[i]
+                self.weights.append( symarray('W', (D_out,D_in)) ) # [D_out, D_in]
+                if self.bias:
+                    #print('i ', i)
+                    self.biases.append( Matrix( symarray('b', (D_out,1)) ) ) # [D_out, D_in]
+                else:
+                    self.biases.append( None )
+
 
     def forward(self,x):
         '''
@@ -68,9 +89,9 @@ class sNN:
         '''
         a = x # [D^(0),N]
         for d in range(1,len(self.weights)-1):
-            print('d ', d)
-            print('self.weights ', len(self.weights) )
-            print('self.biases ', len(self.biases) )
+            #print('d ', d)
+            #print('self.weights ', len(self.weights) )
+            #print('self.biases ', len(self.biases) )
             W_d = self.weights[d] # [D_out,D_in]
             b_d = self.biases[d] # [D_out,1]
             if b_d != None:
@@ -125,9 +146,8 @@ def check_matrix_multiply_with_polynomial_terms():
     print(expr)
     pdb.set_trace()
 
-def main():
-    #c = np.random.rand(3,2)
-    print('--main')
+def test_tNN_2_sNN():
+    print('---- test_tNN_2_sNN')
     ## tNN
     act = lambda x: x**2 # squared act
     #act = lambda x: F.relu(x) # relu act
@@ -166,6 +186,25 @@ def main():
     print( '{} \n {} \n'.format(expr,s_expr) )
     print( 'coefs: {}'.format( s_expr.coeffs() ) )
     print( 'type(coefs): {}'.format( type(s_expr.coeffs()) ) )
+
+def test_purely_symbolic_sNN():
+    H1,H2 = 1,1
+    D0,D1,D2,D3 = 1,H1,H2,1
+    D_layers,act = [D0,D1,D2,D3], sQuad
+    smdl = sNN(act=act,D_layers=D_layers,bias=True)
+    print(smdl)
+    #
+    x = symbols('x')
+    expr = smdl.forward(x)
+    s_expr = poly(expr)
+    print( '{} \n {} \n'.format(expr,s_expr) )
+    print( 'coefs: {}'.format( s_expr.coeffs() ) )
+    print( 'type(coefs): {}'.format( type(s_expr.coeffs()) ) )
+
+def main():
+    print('--main')
+    #test_tNN_2_sNN()
+    test_purely_symbolic_sNN()
 
 
 if __name__ == '__main__':

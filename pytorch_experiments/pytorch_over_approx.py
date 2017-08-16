@@ -1,7 +1,5 @@
 import time
 import numpy as np
-import matplotlib.pyplot as plt
-import scipy.integrate as integrate
 
 import torch
 from torch.autograd import Variable
@@ -13,6 +11,9 @@ import pdb
 from models_pytorch import *
 from inits import *
 from sympy_poly import *
+
+import matplotlib.pyplot as plt
+import scipy.integrate as integrate
 
 def f_mdl_LA(x,c):
     D,_ = c.shape
@@ -34,8 +35,8 @@ def f_mdl_eval(x,mdl_eval,dtype):
 
 def L2_norm_2(f,g,lb=0,ub=1):
     f_g_2 = lambda x: (f(x) - g(x))**2
-    import scipy
-    import scipy.integrate as integrate
+    #import scipy
+    #import scipy.integrate as integrate
     #import scipy.integrate.quad as quad
     #pdb.set_trace()
     result = integrate.quad(func=f_g_2, a=lb,b=ub)
@@ -91,15 +92,15 @@ def main(argv=None):
     ## true facts of the data set
     N = 5
     ## mdl degree and D
-    Degree_mdl = 10
+    Degree_mdl = 5
     D_sgd = Degree_mdl+1
     D_pinv = Degree_mdl+1
     D_rls = D_pinv
     ## sgd
     M = 3
-    eta = 0.02 # eta = 1e-6
+    eta = 0.0002 # eta = 1e-6
     A = 0.0
-    nb_iter = int(1*1000)
+    nb_iter = int(100*1000)
     # RLS
     lambda_rls = 0.001
     #### 1-layered mdl
@@ -115,10 +116,11 @@ def main(argv=None):
     # ##b_inits = [None]+[lambda x: b_fill(x,value=0.0) for i in range(len(D_layers)) ]
     # b_inits = []
     # bias = False
+
     #### 2-layered mdl
-    act = lambda x: x**2 # squared act
+       act = lambda x: x**2 # squared act
     #act = lambda x: F.relu(x) # relu act
-    H1,H2 = 1,1
+    H1,H2 = 2,2
     D0,D1,D2,D3 = 1,H1,H2,1
     D_layers,act = [D0,D1,D2,D3], act
     init_config = Maps( {'name':'w_init_normal','mu':0.0,'std':1.0} )
@@ -230,7 +232,7 @@ def main(argv=None):
         tmdl = mdl_sgd
         ## sNN
         act = sQuad
-        smdl = sNN(tmdl,act)
+        smdl = sNN(act,mdl=tmdl)
         ## get simplification
         x = symbols('x')
         expr = smdl.forward(x)
@@ -247,8 +249,7 @@ def main(argv=None):
         print('X = ', X)
         print('Y = ', Y)
         print(mdl_sgd)
-        if len(D_layers) == 2:
-            print('c_sgd = ', c_sgd)
+        print('c_sgd = ', c_sgd)
         print('c_pinv: ', c_pinv)
     #
     print('\n---- Learning params')
@@ -279,11 +280,12 @@ def main(argv=None):
     #pdb.set_trace()
     print('||f_sgd - f_pinv||^2_2 = ', L2_norm_2(f=f_sgd,g=f_pinv,lb=lb,ub=ub))
     #print('||f_avg - f_pinv||^2_2 = ', L2_norm_2(f=f_avg,g=f_pinv,lb=0,ub=1))
-    print('Generalization (error vs true curve) functional l2 norm')
+    print('-- Generalization (error vs true curve) functional l2 norm')
     f_true = lambda x: np.sin(2*np.pi*x)
     print('||f_sgd - f_true||^2_2 = ', L2_norm_2(f=f_sgd,g=f_true,lb=lb,ub=ub))
     print('||f_pinv - f_true||^2_2 = ', L2_norm_2(f=f_pinv,g=f_true,lb=lb,ub=ub))
     #
+    print('-- Train Error')
     print(' J(c_sgd) = ', (1/N)*(mdl_sgd.forward(Variable(torch.FloatTensor(X))) - Variable(torch.FloatTensor(Y)) ).pow(2).sum().data.numpy() )
     print( ' J(c_pinv) = ',(1/N)*(np.linalg.norm(Y-np.dot( poly_kernel_matrix( x_true,D_sgd-1 ),c_pinv))**2) )
     print( ' J(c_rls) = ',(1/N)*(np.linalg.norm(Y-(1/N)*(np.linalg.norm(Y-np.dot( poly_kernel_matrix( x_true,D_sgd-1 ),c_rls))**2) )**2) )
