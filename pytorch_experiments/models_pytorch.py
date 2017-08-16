@@ -21,6 +21,7 @@ class NN(torch.nn.Module):
         # if bias is false then we don't need any init for it (if we do have an init for it and bias=False throw an error)
         #if not bias and (b_inits != [] or b_inits != None):
         #    raise ValueError('bias is {} but b_inits is not empty nor None but isntead is {}'.format(bias,b_inits))
+        self.bias = bias
         # actiaction func
         self.act = act
         #create linear layers

@@ -37,6 +37,7 @@ class sNN:
         '''
         '''
         self.mdl = mdl
+        self.bias = self.mdl.bias
         # act
         self.act = act
         # params
@@ -44,11 +45,11 @@ class sNN:
         self.biases = [None]
         # init weights
         for i in range(1,len(mdl.linear_layers)):
-            print('i ', i)
+            print('--i ', i)
             l = mdl.linear_layers[i]
             self.weights.append( Matrix( l.weight.data.numpy() ) ) # [D_out, D_in]
             print('l.bias ', l.bias)
-            if l.bias:
+            if mdl.bias:
                 print('i ', i)
                 self.biases.append( Matrix( l.bias.data.numpy() ) ) # [D_out, D_in]
             else:
@@ -86,7 +87,7 @@ class sNN:
         else:
             z = W_d*a # [D_out,N] = [D_out,D_in] x [D_in,N]
         y_pred = z
-        return y_pred
+        return y_pred[0]
 
     def Act(self,z):
         D_out, D_in = z.shape
@@ -160,7 +161,11 @@ def main():
     print(smdl)
     #
     x = symbols('x')
-    print(smdl.forward(x))
+    expr = smdl.forward(x)
+    s_expr = poly(expr)
+    print( '{} \n {} \n'.format(expr,s_expr) )
+    print( 'coefs: {}'.format( s_expr.coeffs() ) )
+    print( 'type(coefs): {}'.format( type(s_expr.coeffs()) ) )
 
 
 if __name__ == '__main__':
