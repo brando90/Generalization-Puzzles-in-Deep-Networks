@@ -23,11 +23,9 @@ def get_Y_from_new_net(data_generator, X,dtype):
     NN. Its fine if the two models come from the same function class but its NOT
     meaningful to see if the model can learn exactly itself.
     '''
-    X.shape = X.shape[0],1
     X = Variable(torch.FloatTensor(X).type(dtype), requires_grad=False)
-    Y = data_generator.forward(X)
-    #pdb.set_trace()
-    return Y.data.numpy()
+    Y = data_generator.numpy_forward(X,dtype)
+    return Y
 
 def compare_first_layer(mdl_gen,mdl_sgd):
     W1_g = mdl_gen.linear_layers[1].weight
@@ -35,3 +33,55 @@ def compare_first_layer(mdl_gen,mdl_sgd):
     print(W1)
     print(W1_g)
     pdb.set_trace()
+
+
+####
+
+def save_data_set(path, D_layers,act, bias=True,mu=0.0,std=5.0, lb=-1,ub=1,N_train=10,N_test=1000):
+    dtype = torch.FloatTensor
+    #
+    data_generator = get_mdl(D_layers,act=act,bias=bias,mu=mu,std=std)
+    np_filename = 'data_numpy_nb_layers{}_bias{}_mu{}_std{}'.format(str(len(D_layers)),str(bias),str(mu),str(std))
+    #
+    X_train = np.linspace(lb,ub,N_train)
+    X_train.shape = X_train.shape[0],1
+    Y_train = get_Y_from_new_net(data_generator=data_generator, X=X_train,dtype=dtype)
+    #
+    X_test = np.linspace(lb,ub,N_test)
+    X_test.shape = X_test.shape[0],1
+    Y_test = get_Y_from_new_net(data_generator=data_generator, X=X_test,dtype=dtype)
+    #
+    np.savez(path.format(np_filename), X_train=X_train,Y_train=Y_train, X_test=X_test,Y_test=Y_test)
+    filename = 'data_gen_nb_layers{}_bias{}_mu{}_std{}'.format(str(len(D_layers)),str(bias),str(mu),str(std))
+    torch.save( data_generator.state_dict(), path.format(filename) )
+
+def get_mdl(D_layers,act,bias=True,mu=0.0,std=5.0):
+    init_config_data = Maps( {'w_init':'w_init_normal','mu':mu,'std':std, 'bias_init':'b_fill','bias_value':0.1,'bias':bias ,'nb_layers':len(D_layers)} )
+    w_inits_data, b_inits_data = get_initialization(init_config_data)
+    data_generator = NN(D_layers=D_layers,act=act,w_inits=w_inits_data,b_inits=b_inits_data,bias=bias)
+    return data_generator
+
+def save_data_gen(path,D_layers,act,bias=True,mu=0.0,std=5.0):
+    data_generator = get_mdl(D_layers,act=act,bias=bias,mu=mu,std=std)
+    filename = 'data_gen_nb_layers{}_bias{}_mu{}_std{}'.format(str(len(D_layers)),str(bias),str(mu),str(std))
+    torch.save(data_generator.state_dict(),path.format(filename))
+
+def load(path):
+    bias = True
+    mu, std = 0, 0
+    D_layers,act = [], lambda x: x**2
+    data_generator = get_mdl(D_layers,act=act,bias=bias,mu=mu,std=std)
+    data_generator.load_state_dict(torch.load(path))
+    return data_generator
+
+if __name__ == '__main__':
+    act = lambda x: x**2
+    #
+    H1 = 2
+    D0,D1,D2 = 1,H1,1
+    D_layers,act = [D0,D1,D2], act
+    #
+    save_data_set(path='./data/{}',D_layers=D_layers,act=act,bias=True,mu=0.0,std=2.0)
+    #save_data_gen(path='./data/{}',D_layers=D_layers,act=act,bias=True,mu=0.0,std=5.0)
+    #data_generator = load(path='./data/data_gen_nb_layers3_biasTrue_mu0.0_std5.0')
+    print('End! \a')

@@ -101,8 +101,8 @@ def main(argv=None):
     D_pinv = Degree_mdl+1
     D_rls = D_pinv
     ## sgd
-    M = 3
-    eta = 0.0 # eta = 1e-6
+    M = 10
+    eta = 0.00001 # eta = 1e-6
     A = 0.0
     nb_iter = int(1*1000)
     # RLS
@@ -139,31 +139,41 @@ def main(argv=None):
 
     bias = True
     init_config = Maps( {'w_init':'w_init_normal','mu':0.0,'std':1.0, 'bias_init':'b_fill','bias_value':0.01,'bias':bias ,'nb_layers':len(D_layers)} )
-    w_inits, b_inits = get_initialization(init_config)
+    w_inits_sgd, b_inits_sgd = get_initialization(init_config)
     #### Get Data set
     ## Get input variables X
     #data_set_name = 'sine'
     data_set_name = 'similar_nn'
+    data_set_name = 'from_file'
     init_config_data = Maps({})
+    f_true = None
     if data_set_name == 'sine':
         x_true = np.linspace(lb,ub,N) # the real data points
         Y = np.sin(2*np.pi*x_true)
+        f_true = lambda x: np.sin(2*np.pi*x)
     elif data_set_name == 'similar_nn':
         ## Get data values from some net itself
         x_true = np.linspace(lb,ub,N)
-
-        init_config_data = Maps( {'w_init':'w_init_normal','mu':0.0,'std':5.0, 'bias_init':'b_fill','bias_value':0.1,'bias':bias ,'nb_layers':len(D_layers)} )
+        x_true.shape = x_true.shape[0],1
+        #
+        init_config_data = Maps( {'w_init':'w_init_normal','mu':0.0,'std':2.0, 'bias_init':'b_fill','bias_value':0.1,'bias':bias ,'nb_layers':len(D_layers)} )
         w_inits_data, b_inits_data = get_initialization(init_config_data)
-        data_generator = NN(D_layers=D_layers,act=act,w_inits=w_inits,b_inits=b_inits,bias=bias)
+        data_generator = NN(D_layers=D_layers,act=act,w_inits=w_inits_data,b_inits=b_inits_data,bias=bias)
         Y = get_Y_from_new_net(data_generator=data_generator, X=x_true,dtype=dtype)
+        f_true = lambda x: f_mdl_eval(x,data_generator,dtype)
+    elif data_set_name == 'from_file':
+        data = np.load( './data/{}'.format('data_numpy_nb_layers3_biasTrue_mu0.0_std2.0.npz') )
+        x_true, Y = data['X_train'], data['Y_train']
+        X_test, Y_test = data['X_test'], data['Y_test']
     ## reshape
     Y.shape = (N,1) # TODO why do I need this?
-    #
+    ## LA models
     Kern = poly_kernel_matrix(x_true,Degree_mdl)
     c_pinv = np.dot(np.linalg.pinv( Kern ),Y) # [D_pinv,1]
     c_rls = get_RLS_soln(Kern,Y,lambda_rls) # [D_pinv,1]
     ## data to TORCH
     print('len(D_layers) ', len(D_layers))
+    #pdb.set_trace()
     if len(D_layers) == 2:
         X = poly_kernel_matrix(x_true,Degree_mdl) # maps to the feature space of the model
         #pdb.set_trace()
@@ -173,12 +183,8 @@ def main(argv=None):
     print('X ', X)
     X = Variable(torch.FloatTensor(X).type(dtype), requires_grad=False)
     Y = Variable(torch.FloatTensor(Y).type(dtype), requires_grad=False)
-    #### Get models
-    ## LA mdls
-    #c_pinv = np.dot(np.linalg.pinv(X.data.numpy()),Y.data.numpy()) # [D_pinv,1]
-    #c_rls = get_RLS_soln(X.data.numpy(),Y.data.numpy(),lambda_rls) # [D_pinv,1]
     ## SGD model
-    mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits,b_inits=b_inits,bias=bias)
+    mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,bias=bias)
     # mdl_sgd = torch.nn.Sequential(
     #     torch.nn.Linear(D_sgd,1)
     # )
@@ -303,9 +309,12 @@ def main(argv=None):
     print('||f_sgd - f_pinv||^2_2 = ', L2_norm_2(f=f_sgd,g=f_pinv,lb=lb,ub=ub))
     #print('||f_avg - f_pinv||^2_2 = ', L2_norm_2(f=f_avg,g=f_pinv,lb=0,ub=1))
     print('-- Generalization (error vs true curve) functional l2 norm')
-    f_true = lambda x: np.sin(2*np.pi*x)
-    print('||f_sgd - f_true||^2_2 = ', L2_norm_2(f=f_sgd,g=f_true,lb=lb,ub=ub))
-    print('||f_pinv - f_true||^2_2 = ', L2_norm_2(f=f_pinv,g=f_true,lb=lb,ub=ub))
+    if f_true ==  None:
+        print('J_gen(f_sgd) = ', (1/N)*(mdl_sgd.forward(Variable(torch.FloatTensor(X_test))) - Variable(torch.FloatTensor(Y_test)) ).pow(2).sum().data.numpy() )
+        print('J_gen(f_pinv) = ', (1/N)*(np.linalg.norm(Y_test-np.dot( poly_kernel_matrix( X_test,D_sgd-1 ),c_pinv))**2) )
+    else:
+        print('||f_sgd - f_true||^2_2 = ', L2_norm_2(f=f_sgd,g=f_true,lb=lb,ub=ub))
+        print('||f_pinv - f_true||^2_2 = ', L2_norm_2(f=f_pinv,g=f_true,lb=lb,ub=ub))
     #
     print('-- Train Error')
     print(' J(c_sgd) = ', (1/N)*(mdl_sgd.forward(Variable(torch.FloatTensor(X))) - Variable(torch.FloatTensor(Y)) ).pow(2).sum().data.numpy() )

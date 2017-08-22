@@ -2,6 +2,8 @@ import torch
 from torch.autograd import Variable
 import torch.nn.functional as F
 
+import numpy as np
+
 import pdb
 
 class NN(torch.nn.Module):
@@ -53,6 +55,12 @@ class NN(torch.nn.Module):
         d = len(self.linear_layers)-1
         y_pred = self.linear_layers[d](a)
         return y_pred
+
+    def numpy_forward(self,x,dtype):
+        if type(x) == np.ndarray:
+            X = Variable(torch.FloatTensor(X).type(dtype), requires_grad=False)
+        y_pred = self.forward(x)
+        return y_pred.data.numpy()
 
     def to_gpu(self,device_id=None):
         torch.nn.Module.cuda(device_id=device_id)
