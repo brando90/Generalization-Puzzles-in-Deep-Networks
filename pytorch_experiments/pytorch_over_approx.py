@@ -11,6 +11,8 @@ import pdb
 from models_pytorch import *
 from inits import *
 from sympy_poly import *
+from poly_checks_on_deep_net_coeffs import *
+from data_file import *
 
 import matplotlib.pyplot as plt
 import scipy.integrate as integrate
@@ -83,24 +85,26 @@ def get_batch2(X,Y,M,dtype):
     return Variable(batch_xs, requires_grad=False), Variable(batch_ys, requires_grad=False)
 
 def main(argv=None):
+    dtype = torch.FloatTensor
+    # dtype = torch.cuda.FloatTensor # Uncomment this to run on GPU
     #pdb.set_trace()
     start_time = time.time()
     debug = True
     ##
     np.set_printoptions(suppress=True)
-    lb, ub = 0, 1
+    lb, ub = -1, 1
     ## true facts of the data set
-    N = 5
+    N = 10
     ## mdl degree and D
-    Degree_mdl = 5
+    Degree_mdl = 8
     D_sgd = Degree_mdl+1
     D_pinv = Degree_mdl+1
     D_rls = D_pinv
     ## sgd
     M = 3
-    eta = 0.0002 # eta = 1e-6
+    eta = 0.0 # eta = 1e-6
     A = 0.0
-    nb_iter = int(100*1000)
+    nb_iter = int(1*1000)
     # RLS
     lambda_rls = 0.001
     #### 1-layered mdl
@@ -118,37 +122,47 @@ def main(argv=None):
     # bias = False
 
     #### 2-layered mdl
-       act = lambda x: x**2 # squared act
+    act = lambda x: x**2 # squared act
     #act = lambda x: F.relu(x) # relu act
-    H1,H2 = 2,2
-    D0,D1,D2,D3 = 1,H1,H2,1
-    D_layers,act = [D0,D1,D2,D3], act
-    init_config = Maps( {'name':'w_init_normal','mu':0.0,'std':1.0} )
-    #init_config = Maps( {'name':'xavier_normal','gain':1} )
-    if init_config.name == 'w_init_normal':
-        w_inits = [None]+[lambda x: w_init_normal(x,mu=init_config.mu,std=init_config.std) for i in range(len(D_layers)) ]
-    elif init_config.name == 'w_init_zero':
-        w_inits = [None]+[lambda x: w_init_zero(x) for i in range(len(D_layers)) ]
-    elif init_config.name == 'xavier_normal':
-        w_inits = [None]+[lambda x: torch.nn.init.xavier_normal(x, gain=init_config.gain) for i in range(len(D_layers)) ]
-    b_inits = [None]+[lambda x: b_fill(x,value=0.1) for i in range(len(D_layers)) ]
-    # b_inits = [None]+[lambda x: b_fill(x,value=0.0) for i in range(len(D_layers)) ]
-    #b_inits = []
+
+    H1 = 2
+    D0,D1,D2 = 1,H1,1
+    D_layers,act = [D0,D1,D2], act
+
+    #H1,H2 = 2,2
+    #D0,D1,D2,D3 = 1,H1,H2,1
+    #D_layers,act = [D0,D1,D2,D3], act
+
+    #H1,H2,H3 = 3,3,3
+    #D0,D1,D2,D3,D4 = 1,H1,H2,H3,1
+    #D_layers,act = [D0,D1,D2,D3,D4], act
+
     bias = True
+    init_config = Maps( {'w_init':'w_init_normal','mu':0.0,'std':1.0, 'bias_init':'b_fill','bias_value':0.01,'bias':bias ,'nb_layers':len(D_layers)} )
+    w_inits, b_inits = get_initialization(init_config)
     #### Get Data set
     ## Get input variables X
-    x_true = np.linspace(lb,ub,N) # the real data points
-    ## Get target variables Y
-    Y = np.sin(2*np.pi*x_true)
-    #Y = np.array([0.0,1.0,0.0,-1.0,0.0])
-    Y.shape = (N,1)
+    #data_set_name = 'sine'
+    data_set_name = 'similar_nn'
+    init_config_data = Maps({})
+    if data_set_name == 'sine':
+        x_true = np.linspace(lb,ub,N) # the real data points
+        Y = np.sin(2*np.pi*x_true)
+    elif data_set_name == 'similar_nn':
+        ## Get data values from some net itself
+        x_true = np.linspace(lb,ub,N)
+
+        init_config_data = Maps( {'w_init':'w_init_normal','mu':0.0,'std':5.0, 'bias_init':'b_fill','bias_value':0.1,'bias':bias ,'nb_layers':len(D_layers)} )
+        w_inits_data, b_inits_data = get_initialization(init_config_data)
+        data_generator = NN(D_layers=D_layers,act=act,w_inits=w_inits,b_inits=b_inits,bias=bias)
+        Y = get_Y_from_new_net(data_generator=data_generator, X=x_true,dtype=dtype)
+    ## reshape
+    Y.shape = (N,1) # TODO why do I need this?
     #
-    X = poly_kernel_matrix(x_true,Degree_mdl)
-    c_pinv = np.dot(np.linalg.pinv( X ),Y) # [D_pinv,1]
-    c_rls = get_RLS_soln(X,Y,lambda_rls) # [D_pinv,1]
+    Kern = poly_kernel_matrix(x_true,Degree_mdl)
+    c_pinv = np.dot(np.linalg.pinv( Kern ),Y) # [D_pinv,1]
+    c_rls = get_RLS_soln(Kern,Y,lambda_rls) # [D_pinv,1]
     ## data to TORCH
-    dtype = torch.FloatTensor
-    # dtype = torch.cuda.FloatTensor # Uncomment this to run on GPU
     print('len(D_layers) ', len(D_layers))
     if len(D_layers) == 2:
         X = poly_kernel_matrix(x_true,Degree_mdl) # maps to the feature space of the model
@@ -172,7 +186,11 @@ def main(argv=None):
     #loss_fn = torch.nn.MSELoss(size_average=False)
     ## GPU
     #mdl_sgd.to_gpu() if (dtype == torch.cuda.FloatTensor) else 1
-    ## debug print statements
+
+    ## check if deep net can equal
+    #compare_first_layer(data_generator,mdl_sgd)
+    #check_coeffs_poly(tmdl=mdl_sgd,act=sQuad,c_pinv=c_pinv,debug=True)
+
     #
     nb_module_params = len( list(mdl_sgd.parameters()) )
     loss_list = [ ]
@@ -182,6 +200,7 @@ def main(argv=None):
     #pdb.set_trace()
     print('>>norm(Y): ', ((1/N)*torch.norm(Y)**2).data.numpy()[0] )
     print('>>l2_loss_torch: ', (1/N)*( Y - mdl_sgd.forward(X)).pow(2).sum().data.numpy()[0] )
+    ########################################################################################################################################################
     for i in range(nb_iter):
         # Forward pass: compute predicted Y using operations on Variables
         batch_xs, batch_ys = get_batch2(X,Y,M,dtype) # [M, D], [M, 1]
@@ -194,6 +213,7 @@ def main(argv=None):
         ## SGD update
         for W in mdl_sgd.parameters():
             gdl_eps = torch.randn(W.data.size()).type(dtype)
+            #W = W - eta*W.grad
             #W.data = W.data - eta*W.grad.data + A*gdl_eps
             #W.data.copy_(W.data - eta*W.grad.data)
             W.data.copy_(W.data - eta*W.grad.data + A*gdl_eps) # W - eta*g + A*gdl_eps
@@ -219,12 +239,12 @@ def main(argv=None):
         # for i in range(len(Ws)):
         #     W, W_avg = Ws[i], W_avgs[i]
         #     W_avgs[i] = (1/nb_iter)*W + W_avg
-    ##
+    ########################################################################################################################################################
     print('\a')
     ##
     X, Y = X.data.numpy(), Y.data.numpy()
     #
-    if len(D_layers) == 2:
+    if len(D_layers) <= 2:
         c_sgd = list(mdl_sgd.parameters())[0].data.numpy()
         c_sgd = c_sgd.transpose()
     else:
@@ -236,7 +256,7 @@ def main(argv=None):
         ## get simplification
         x = symbols('x')
         expr = smdl.forward(x)
-        s_expr = poly(expr)
+        s_expr = poly(expr,x)
         #c_sgd = s_expr.coeffs()
         #c_sgd.reverse()
         #c_sgd = np.array( c_sgd ) # first coeff is lowest degree
@@ -244,15 +264,17 @@ def main(argv=None):
         c_sgd = [ np.float64(num) for num in c_sgd]
         #c_sgd = [ float(num) for num in c_sgd]
         #pdb.set_trace()
-
     if debug:
         print('X = ', X)
         print('Y = ', Y)
         print(mdl_sgd)
+        if len(D_layers) > 2:
+            print('structured poly: ', s_expr)
         print('c_sgd = ', c_sgd)
         print('c_pinv: ', c_pinv)
     #
-    print('\n---- Learning params')
+    print('\n--> data set stats: data_set_name={}, init_config_data={}'.format(data_set_name,init_config_data) )
+    print('---- Learning params')
     print('Degree_mdl = {}, N = {}, M = {}, eta = {}, nb_iter = {}'.format(Degree_mdl,N,M,eta,nb_iter))
     print('init_config: ', init_config)
     print('D_layers,act: ', D_layers,act)
@@ -307,8 +329,14 @@ def main(argv=None):
     p_list = [p_sgd,p_pinv,p_data]
     plt.title('SGD vs minimum norm solution curves')
     if len(p_list) == 3:
-        plt.legend(p_list,['SGD solution, Degree model={}, batch-size= {}, iterations={}, step size={}'.format(
-        str(D_sgd-1),M,nb_iter,eta),
+        if len(D_layers) <= 2:
+            sgd_legend_str = 'Degree model={} non linear-layers={}'.format(str(D_sgd-1),1)
+        else:
+            nb_non_linear_layers = len(D_layers)-2
+            degree_sgd = 2**(len(D_layers)-2)
+            sgd_legend_str = 'Degree model={} non linear-layers={}'.format(degree_sgd,nb_non_linear_layers)
+        plt.legend(p_list,['SGD solution {}, batch-size={}, iterations={}, step size={}'.format(
+        sgd_legend_str,M,nb_iter,eta),
         'minimum norm solution Degree model='+str(D_pinv-1),
         'data points'])
         plt.ylabel('f(x)')
