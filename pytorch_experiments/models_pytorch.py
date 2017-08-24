@@ -6,6 +6,45 @@ import numpy as np
 
 import pdb
 
+## Activations
+
+def quadratic(x):
+    return x**2
+
+def quad_ax2_bx_c(x,a,b,c):
+    return a*x**2+b*x+c
+
+def get_relu_poly_act(degree=2,lb=-1,ub=1,N=100):
+    X = np.linspace(lb,ub,N)
+    Kern = poly_kernel_matrix(X,degree) #[1, x^1, ..., x^D]
+    Y = np.maximum(0,X)
+    c_pinv = np.dot(np.linalg.pinv( Kern ),Y)
+    if degree==2:
+        a,b,c = [ float(x) for x in c_pinv ]
+        f = lambda x: quad_ax2_bx_c(x,a,b,x)
+        f.__name__ = 'quad_ax2_bx_c'
+        return f
+    return lambda x: x.mm(c_pinv)
+
+## Kernel methods
+
+def poly_kernel_matrix( x,D ):
+    '''
+    x = single rela number data value
+    D = largest degree of monomial
+
+    maps x to a kernel with each row being monomials of up to degree=D.
+    [1, x^1, ..., x^D]
+    '''
+    N = len(x)
+    Kern = np.zeros( (N,D+1) )
+    for n in range(N):
+        for d in range(D+1):
+            Kern[n,d] = x[n]**d;
+    return Kern
+
+##
+
 class NN(torch.nn.Module):
     # http://pytorch.org/tutorials/beginner/examples_nn/two_layer_net_module.html#sphx-glr-beginner-examples-nn-two-layer-net-module-py
     # http://pytorch.org/tutorials/beginner/pytorch_with_examples.html#pytorch-nn
@@ -71,25 +110,18 @@ class NN(torch.nn.Module):
     def get_nb_params(self):
         return sum(p.numel() for p in model.parameters())
 
+#
+
+def get_all_params(var, all_params):
+    if isinstance(var, Parameter):
+        all_params[id(var)] = var.nelement()
+    elif hasattr(var, "creator") and var.creator is not None:
+        if var.creator.previous_functions is not None:
+            for j in var.creator.previous_functions:
+                get_all_params(j[0], all_params)
+    elif hasattr(var, "previous_functions"):
+        for j in var.previous_functions:
+            get_all_params(j[0], all_params)
+
+
 ##
-
-class regression_NN(torch.nn.Module):
-
-    def __init__(self,w_init):
-        """
-        """
-        super(type(self), self).__init__()
-        # mdl
-        #self.W = Variable(w_init, requires_grad=True)
-        #self.W = torch.nn.Parameter( Variable(w_init, requires_grad=True) )
-        self.W = torch.nn.Parameter( w_init )
-        #self.mod_list = torch.nn.ModuleList([self.W])
-
-    def forward(self, x):
-        """
-        """
-        y_pred = x.mm(self.W)
-        return y_pred
-
-    # def parameters(self):
-    #     return self.W

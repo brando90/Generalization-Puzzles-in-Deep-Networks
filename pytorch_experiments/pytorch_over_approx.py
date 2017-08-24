@@ -1,5 +1,6 @@
 import time
 import numpy as np
+import sys
 
 import torch
 from torch.autograd import Variable
@@ -16,6 +17,12 @@ from data_file import *
 
 import matplotlib.pyplot as plt
 import scipy.integrate as integrate
+
+def make_features(x):
+    """Builds features i.e. a matrix with columns [x, x^2, x^3, x^4]."""
+    #https://github.com/jucor/pytorch-examples/blob/master/regression/main.py
+    x = x.unsqueeze(1)
+    return torch.cat([x ** i for i in range(1, POLY_DEGREE+1)], 1)
 
 def f_mdl_LA(x,c):
     D,_ = c.shape
@@ -46,21 +53,6 @@ def L2_norm_2(f,g,lb=0,ub=1):
     integral_val = result[0]
     return integral_val
 
-def poly_kernel_matrix( x,D ):
-    '''
-    x = single rela number data value
-    D = largest degree of monomial
-
-    maps x to a kernel with each row being monomials of up to degree=D.
-    [1, x^1, ..., x^D]
-    '''
-    N = len(x)
-    Kern = np.zeros( (N,D+1) )
-    for n in range(N):
-        for d in range(D+1):
-            Kern[n,d] = x[n]**d;
-    return Kern
-
 def get_RLS_soln( X,Y,lambda_rls):
     N,D = X.shape
     XX_lI = np.dot(X.transpose(),X) + lambda_rls*N*np.identity(D)
@@ -84,25 +76,44 @@ def get_batch2(X,Y,M,dtype):
     batch_ys = index_batch(Y,batch_indices,dtype)
     return Variable(batch_xs, requires_grad=False), Variable(batch_ys, requires_grad=False)
 
+def is_NaN(value):
+    '''
+    Checks is value is problematic by checking if the value:
+    is not finite, is infinite or is already NaN
+    '''
+    return not np.isfinite(value) or np.isinf(value) or np.isnan(value)
+
+def count_params(mdl):
+    tot = 0
+    #params = []
+    for m in mdl.parameters():
+        #print('m: ',m)
+        #params.append(m)
+        tot += m.nelement() # returns Number of elements = nelement
+    #print('\nparams: ',params)
+    #pdb.set_trace()
+    return tot # sum([m.nelement() for m in mdl.parameters()])
+
 def main(argv=None):
     dtype = torch.FloatTensor
     # dtype = torch.cuda.FloatTensor # Uncomment this to run on GPU
     #pdb.set_trace()
     start_time = time.time()
     debug = True
+    debug_sgd = False
     ##
     np.set_printoptions(suppress=True)
     lb, ub = -1, 1
     ## true facts of the data set
     N = 10
     ## mdl degree and D
-    Degree_mdl = 8
+    Degree_mdl = 4
     D_sgd = Degree_mdl+1
     D_pinv = Degree_mdl+1
     D_rls = D_pinv
     ## sgd
     M = 10
-    eta = 0.00001 # eta = 1e-6
+    eta = 1e-4 # eta = 1e-6
     A = 0.0
     nb_iter = int(1*1000)
     # RLS
@@ -122,36 +133,42 @@ def main(argv=None):
     # bias = False
 
     #### 2-layered mdl
-    act = lambda x: x**2 # squared act
+    act = get_relu_poly_act(degree=2,lb=-1,ub=1,N=100) # ax**2+bx+c
+    #act = quadratic # x**2
     #act = lambda x: F.relu(x) # relu act
 
-    H1 = 2
-    D0,D1,D2 = 1,H1,1
-    D_layers,act = [D0,D1,D2], act
+    # H1 = 10
+    # D0,D1,D2 = 1,H1,1
+    # D_layers,act = [D0,D1,D2], act
 
-    #H1,H2 = 2,2
-    #D0,D1,D2,D3 = 1,H1,H2,1
-    #D_layers,act = [D0,D1,D2,D3], act
+    # H1,H2 = 5,5
+    # D0,D1,D2,D3 = 1,H1,H2,1
+    # D_layers,act = [D0,D1,D2,D3], act
 
-    #H1,H2,H3 = 3,3,3
-    #D0,D1,D2,D3,D4 = 1,H1,H2,H3,1
-    #D_layers,act = [D0,D1,D2,D3,D4], act
+    H1,H2,H3 = 10,10,10
+    D0,D1,D2,D3,D4 = 1,H1,H2,H3,1
+    D_layers,act = [D0,D1,D2,D3,D4], act
+
+    # H1,H2,H3,H4 = 3,3,3,3
+    # D0,D1,D2,D3,D4,D5 = 1,H1,H2,H3,H4,1
+    # D_layers,act = [D0,D1,D2,D3,D4,D5], act
 
     bias = True
     init_config = Maps( {'w_init':'w_init_normal','mu':0.0,'std':1.0, 'bias_init':'b_fill','bias_value':0.01,'bias':bias ,'nb_layers':len(D_layers)} )
     w_inits_sgd, b_inits_sgd = get_initialization(init_config)
     #### Get Data set
     ## Get input variables X
-    #data_set_name = 'sine'
-    data_set_name = 'similar_nn'
-    data_set_name = 'from_file'
+    #run_type = 'sine'
+    #run_type = 'similar_nn'
+    run_type = 'from_file'
+    data_filename = None
     init_config_data = Maps({})
     f_true = None
-    if data_set_name == 'sine':
+    if run_type == 'sine':
         x_true = np.linspace(lb,ub,N) # the real data points
         Y = np.sin(2*np.pi*x_true)
         f_true = lambda x: np.sin(2*np.pi*x)
-    elif data_set_name == 'similar_nn':
+    elif run_type == 'similar_nn':
         ## Get data values from some net itself
         x_true = np.linspace(lb,ub,N)
         x_true.shape = x_true.shape[0],1
@@ -161,8 +178,19 @@ def main(argv=None):
         data_generator = NN(D_layers=D_layers,act=act,w_inits=w_inits_data,b_inits=b_inits_data,bias=bias)
         Y = get_Y_from_new_net(data_generator=data_generator, X=x_true,dtype=dtype)
         f_true = lambda x: f_mdl_eval(x,data_generator,dtype)
-    elif data_set_name == 'from_file':
-        data = np.load( './data/{}'.format('data_numpy_nb_layers3_biasTrue_mu0.0_std2.0.npz') )
+    elif run_type == 'from_file':
+        ##5
+        #data_filename = 'data_numpy_D_layers_[1, 2, 1]_nb_layers3_biasTrue_mu0.0_std2.0_N_train_5_N_test_1000.npz'
+        #data_filename = 'data_numpy_D_layers_[1, 2, 2, 1]_nb_layers4_biasTrue_mu0.0_std2.0_N_train_5_N_test_1000.npz'
+        #data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_5_N_test_1000.npz'
+        #data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 2, 1]_nb_layers6_biasTrue_mu0.0_std2.0_N_train_5_N_test_1000.npz'
+        ##10
+        #data_filename = 'data_numpy_D_layers_[1, 2, 1]_nb_layers3_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1.npz'
+        #data_filename = 'data_numpy_D_layers_[1, 2, 2, 1]_nb_layers4_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1.npz'
+        data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1.npz'
+        #data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1_act_quad_ax2_bx_c_msg_.npz'
+        ##
+        data = np.load( './data/{}'.format(data_filename) )
         x_true, Y = data['X_train'], data['Y_train']
         X_test, Y_test = data['X_test'], data['Y_test']
     ## reshape
@@ -185,9 +213,6 @@ def main(argv=None):
     Y = Variable(torch.FloatTensor(Y).type(dtype), requires_grad=False)
     ## SGD model
     mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,bias=bias)
-    # mdl_sgd = torch.nn.Sequential(
-    #     torch.nn.Linear(D_sgd,1)
-    # )
     # loss funtion
     #loss_fn = torch.nn.MSELoss(size_average=False)
     ## GPU
@@ -197,13 +222,16 @@ def main(argv=None):
     #compare_first_layer(data_generator,mdl_sgd)
     #check_coeffs_poly(tmdl=mdl_sgd,act=sQuad,c_pinv=c_pinv,debug=True)
 
+    ##
+    #optimizer = optim.SGD(model.parameters(), lr = 0.01, momentum=0.9)
+    #optimizer = optim.Adam(mdl_sgd.parameters(), lr=0.0001)
+
     #
     nb_module_params = len( list(mdl_sgd.parameters()) )
     loss_list = [ ]
     grad_list = [ [] for i in range(nb_module_params) ]
     #Ws = [W]
     #W_avg = Variable(torch.FloatTensor(W.data).type(dtype), requires_grad=False)
-    #pdb.set_trace()
     print('>>norm(Y): ', ((1/N)*torch.norm(Y)**2).data.numpy()[0] )
     print('>>l2_loss_torch: ', (1/N)*( Y - mdl_sgd.forward(X)).pow(2).sum().data.numpy()[0] )
     ########################################################################################################################################################
@@ -219,26 +247,34 @@ def main(argv=None):
         ## SGD update
         for W in mdl_sgd.parameters():
             gdl_eps = torch.randn(W.data.size()).type(dtype)
-            #W = W - eta*W.grad
-            #W.data = W.data - eta*W.grad.data + A*gdl_eps
-            #W.data.copy_(W.data - eta*W.grad.data)
+            #clip=0.001
+            #torch.nn.utils.clip_grad_norm(mdl_sgd.parameters(),clip)
+            #delta = torch.clamp(eta*W.grad.data,min=-clip,max=clip)
+            #print(delta)
+            #W.data.copy_(W.data - delta + A*gdl_eps)
             W.data.copy_(W.data - eta*W.grad.data + A*gdl_eps) # W - eta*g + A*gdl_eps
         #pdb.set_trace()
         ## TRAINING STATS
-        if i % 100 == 0 or i == 0:
+        if i % 1 == 0 or i == 0:
             current_loss = loss.data.numpy()[0]
             loss_list.append(current_loss)
-            if not np.isfinite(current_loss) or np.isinf(current_loss) or np.isnan(current_loss):
-                print('loss: {} \n >>>>> BREAK HAPPENED'.format(current_loss) )
-                break
-            #for W in mdl_sgd.parameters():
-            for i, W in enumerate(mdl_sgd.parameters()):
+            if debug_sgd:
+                print('\ni =',i)
+                print('current_loss = ',current_loss)
+            for index, W in enumerate(mdl_sgd.parameters()):
                 grad_norm = W.grad.data.norm(2)
-                #print('grad_norm: ',grad_norm)
-                grad_list[i].append( W.grad.data.norm(2) )
-                if not np.isfinite(grad_norm) or np.isinf(grad_norm) or np.isnan(grad_norm):
+                if debug_sgd:
+                    print('-> grad_norm: ',grad_norm)
+                    print('----> eta*grad_norm: ',eta*grad_norm)
+                    print('------> delta: ', delta.norm(2))
+                grad_list[index].append( W.grad.data.norm(2) )
+                if is_NaN(grad_norm) or is_NaN(current_loss):
+                    print('----------------- ERROR HAPPENED')
+                    print('loss: {}'.format(current_loss) )
+                    print('error happened at: i = {}'.format(i))
                     print('current_loss: {}, grad_norm: {},\n >>>>> BREAK HAPPENED'.format(current_loss,grad_norm) )
-                    break
+                    #print('grad_list: ', grad_list)
+                    sys.exit()
         ## Manually zero the gradients after updating weights
         mdl_sgd.zero_grad()
         ## COLLECT MOVING AVERAGES
@@ -248,42 +284,36 @@ def main(argv=None):
     ########################################################################################################################################################
     print('\a')
     ##
+    nb_params = count_params(mdl_sgd)
     X, Y = X.data.numpy(), Y.data.numpy()
     #
     if len(D_layers) <= 2:
         c_sgd = list(mdl_sgd.parameters())[0].data.numpy()
         c_sgd = c_sgd.transpose()
     else:
-        ## tmdl
         tmdl = mdl_sgd
-        ## sNN
-        act = sQuad
-        smdl = sNN(act,mdl=tmdl)
+        sact = sQuad
+        smdl = sNN(sact,mdl=tmdl)
         ## get simplification
         x = symbols('x')
         expr = smdl.forward(x)
         s_expr = poly(expr,x)
-        #c_sgd = s_expr.coeffs()
-        #c_sgd.reverse()
-        #c_sgd = np.array( c_sgd ) # first coeff is lowest degree
         c_sgd = np.array( s_expr.coeffs()[::-1] )
         c_sgd = [ np.float64(num) for num in c_sgd]
-        #c_sgd = [ float(num) for num in c_sgd]
-        #pdb.set_trace()
     if debug:
+        print('c_sgd = ', c_sgd)
+        print('c_pinv: ', c_pinv)
         print('X = ', X)
         print('Y = ', Y)
         print(mdl_sgd)
         if len(D_layers) > 2:
-            print('structured poly: ', s_expr)
-        print('c_sgd = ', c_sgd)
-        print('c_pinv: ', c_pinv)
+            print('\n---- structured poly: {}'.format(str(s_expr)) )
     #
-    print('\n--> data set stats: data_set_name={}, init_config_data={}'.format(data_set_name,init_config_data) )
+    print('\n----> Data set stats:\n data_filename= {}, run_type={}, init_config_data={}\n'.format(data_filename,run_type,init_config_data) )
     print('---- Learning params')
-    print('Degree_mdl = {}, N = {}, M = {}, eta = {}, nb_iter = {}'.format(Degree_mdl,N,M,eta,nb_iter))
+    print('Degree_mdl = {}, N = {}, M = {}, eta = {}, nb_iter = {} nb_params={},D_layers={}'.format(Degree_mdl,N,M,eta,nb_iter,nb_params,D_layers))
+    print('Activations: act={}, sact={}'.format(act.__name__,sact.__name__) )
     print('init_config: ', init_config)
-    print('D_layers,act: ', D_layers,act)
     print('number of layers = {}'.format(nb_module_params))
     #
     if len(D_layers) >= 2:
@@ -344,8 +374,8 @@ def main(argv=None):
             nb_non_linear_layers = len(D_layers)-2
             degree_sgd = 2**(len(D_layers)-2)
             sgd_legend_str = 'Degree model={} non linear-layers={}'.format(degree_sgd,nb_non_linear_layers)
-        plt.legend(p_list,['SGD solution {}, batch-size={}, iterations={}, step size={}'.format(
-        sgd_legend_str,M,nb_iter,eta),
+        plt.legend(p_list,['SGD solution {}, param count={}, batch-size={}, iterations={}, step size={}'.format(
+        sgd_legend_str,nb_params,M,nb_iter,eta),
         'minimum norm solution Degree model='+str(D_pinv-1),
         'data points'])
         plt.ylabel('f(x)')
