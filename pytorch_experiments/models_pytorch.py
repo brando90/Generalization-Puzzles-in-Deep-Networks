@@ -24,7 +24,20 @@ def get_relu_poly_act(degree=2,lb=-1,ub=1,N=100):
         f = lambda x: quad_ax2_bx_c(x,a,b,x)
         f.__name__ = 'quad_ax2_bx_c'
         return f
-    return lambda x: x.mm(c_pinv)
+    #
+    def poly_act(x):
+        #print('poly_act')
+        #print('degree ', degree)
+        a = x**0
+        for i in range(1,len(c_pinv)):
+            coeff = float(c_pinv[i])
+            a += coeff*x**i
+        #W = Variable( torch.FloatTensor(c_pinv),requires_grad=False)
+        #activation = W.mm(X)
+        #print(activation)
+        return a
+    poly_act.__name__ = 'poly_act_degree{}'.format(degree)
+    return poly_act
 
 ## Kernel methods
 

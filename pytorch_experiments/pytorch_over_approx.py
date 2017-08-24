@@ -18,12 +18,6 @@ from data_file import *
 import matplotlib.pyplot as plt
 import scipy.integrate as integrate
 
-def make_features(x):
-    """Builds features i.e. a matrix with columns [x, x^2, x^3, x^4]."""
-    #https://github.com/jucor/pytorch-examples/blob/master/regression/main.py
-    x = x.unsqueeze(1)
-    return torch.cat([x ** i for i in range(1, POLY_DEGREE+1)], 1)
-
 def f_mdl_LA(x,c):
     D,_ = c.shape
     X = poly_kernel_matrix( [x],D-1 )
@@ -113,9 +107,9 @@ def main(argv=None):
     D_rls = D_pinv
     ## sgd
     M = 10
-    eta = 1e-4 # eta = 1e-6
+    eta = 1e-15 # eta = 1e-6
     A = 0.0
-    nb_iter = int(1*1000)
+    nb_iter = int(1*100)
     # RLS
     lambda_rls = 0.001
     #### 1-layered mdl
@@ -133,7 +127,12 @@ def main(argv=None):
     # bias = False
 
     #### 2-layered mdl
-    act = get_relu_poly_act(degree=2,lb=-1,ub=1,N=100) # ax**2+bx+c
+    print('about to make ACT')
+    act = get_relu_poly_act(degree=10,lb=-20,ub=20,N=100) # ax**2+bx+c
+    print('ACT MADE')
+    # xv = Variable( torch.FloatTensor(3,2) )
+    # act(xv)
+    # pdb.set_trace()
     #act = quadratic # x**2
     #act = lambda x: F.relu(x) # relu act
 
@@ -154,7 +153,7 @@ def main(argv=None):
     # D_layers,act = [D0,D1,D2,D3,D4,D5], act
 
     bias = True
-    init_config = Maps( {'w_init':'w_init_normal','mu':0.0,'std':1.0, 'bias_init':'b_fill','bias_value':0.01,'bias':bias ,'nb_layers':len(D_layers)} )
+    init_config = Maps( {'w_init':'w_init_normal','mu':0.0,'std':0.01, 'bias_init':'b_fill','bias_value':0.01,'bias':bias ,'nb_layers':len(D_layers)} )
     w_inits_sgd, b_inits_sgd = get_initialization(init_config)
     #### Get Data set
     ## Get input variables X
@@ -187,8 +186,8 @@ def main(argv=None):
         ##10
         #data_filename = 'data_numpy_D_layers_[1, 2, 1]_nb_layers3_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1.npz'
         #data_filename = 'data_numpy_D_layers_[1, 2, 2, 1]_nb_layers4_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1.npz'
-        data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1.npz'
-        #data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1_act_quad_ax2_bx_c_msg_.npz'
+        #data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1.npz'
+        data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1_act_quad_ax2_bx_c_msg_.npz'
         ##
         data = np.load( './data/{}'.format(data_filename) )
         x_true, Y = data['X_train'], data['Y_train']
@@ -252,7 +251,8 @@ def main(argv=None):
             #delta = torch.clamp(eta*W.grad.data,min=-clip,max=clip)
             #print(delta)
             #W.data.copy_(W.data - delta + A*gdl_eps)
-            W.data.copy_(W.data - eta*W.grad.data + A*gdl_eps) # W - eta*g + A*gdl_eps
+            delta = eta*W.grad.data
+            W.data.copy_(W.data - delta + A*gdl_eps) # W - eta*g + A*gdl_eps
         #pdb.set_trace()
         ## TRAINING STATS
         if i % 1 == 0 or i == 0:
@@ -264,6 +264,7 @@ def main(argv=None):
             for index, W in enumerate(mdl_sgd.parameters()):
                 grad_norm = W.grad.data.norm(2)
                 if debug_sgd:
+                    print()
                     print('-> grad_norm: ',grad_norm)
                     print('----> eta*grad_norm: ',eta*grad_norm)
                     print('------> delta: ', delta.norm(2))
@@ -274,6 +275,7 @@ def main(argv=None):
                     print('error happened at: i = {}'.format(i))
                     print('current_loss: {}, grad_norm: {},\n >>>>> BREAK HAPPENED'.format(current_loss,grad_norm) )
                     #print('grad_list: ', grad_list)
+                    print('\a')
                     sys.exit()
         ## Manually zero the gradients after updating weights
         mdl_sgd.zero_grad()
@@ -375,9 +377,9 @@ def main(argv=None):
             degree_sgd = 2**(len(D_layers)-2)
             sgd_legend_str = 'Degree model={} non linear-layers={}'.format(degree_sgd,nb_non_linear_layers)
         plt.legend(p_list,['SGD solution {}, param count={}, batch-size={}, iterations={}, step size={}'.format(
-        sgd_legend_str,nb_params,M,nb_iter,eta),
-        'minimum norm solution Degree model='+str(D_pinv-1),
-        'data points'])
+            sgd_legend_str,nb_params,M,nb_iter,eta),
+            'minimum norm solution Degree model='+str(D_pinv-1),
+            'data points'])
         plt.ylabel('f(x)')
     else:
         plt.legend(p_list,['sgd curve Degree_mdl={}, batch-size= {}, iterations={}, step size={}'.format(
@@ -398,6 +400,19 @@ def main(argv=None):
         p_grads, = plt.plot(np.arange(len(current_grad_list)), current_grad_list,color='g')
         plt.legend([p_grads],['plot grads'])
         plt.title('Gradient vs Iterations: # {}'.format(i))
+    ##
+    fig3 = plt.figure()
+    x_horizontal = np.linspace(-20,20,1000)
+    plt_poly_act, = plt.plot(x_horizontal,act(x_horizontal))
+    y_relu = np.maximum(0,x_horizontal)
+    plt_relu, = plt.plot(x_horizontal,y_relu)
+    plt.legend(
+        [plt_poly_act,plt_relu],
+        ['polynomial activation {}'.format(act.__name__),'ReLU activation'])
+    # plt.legend(
+    #     [plt_relu],
+    #     ['ReLU activation'])
+    plt.title('Activation function: {}'.format(act.__name__))
     ##
     plt.show()
 
