@@ -88,8 +88,61 @@ def count_params(mdl):
     #pdb.set_trace()
     return tot # sum([m.nelement() for m in mdl.parameters()])
 
+def plot_activation_func(act,lb=-20,ub=20,N=1000):
+    ## PLOT ACTIVATION
+    fig3 = plt.figure()
+    x_horizontal = np.linspace(lb,ub,N)
+    plt_poly_act, = plt.plot(x_horizontal,act(x_horizontal))
+    y_relu = np.maximum(0,x_horizontal)
+    plt_relu, = plt.plot(x_horizontal,y_relu)
+    plt.legend(
+        [plt_poly_act,plt_relu],
+        ['polynomial activation {}'.format(act.__name__),'ReLU activation'])
+    # plt.legend(
+    #     [plt_relu],
+    #     ['ReLU activation'])
+    plt.title('Activation function: {}'.format(act.__name__))
+
 def main(argv=None):
     dtype = torch.FloatTensor
+    ##
+
+    ## activation params
+    # alb, aub = -100, 100
+    # aN = 100
+    adegree = 10
+    ax = np.concatenate( (np.linspace(-20,20,100), np.linspace(-10,10,1000)) )
+    aX = np.concatenate( (ax,np.linspace(-2,2,100000)) )
+    ## activation funcs
+    #act = quadratic
+    act = get_relu_poly_act2(aX,degree=adegree) # ax**2+bx+c
+    #act = get_relu_poly_act(degree=adegree,lb=alb,ub=aub,N=aN) # ax**2+bx+c
+    #act = relu
+    ## plot activation
+    palb, paub = -20, 20
+    paN = 1000
+    plot_activation_func(act,lb=palb,ub=paub,N=paN)
+    plt.show()
+    #### 2-layered mdl
+
+    # H1 = 10
+    # D0,D1,D2 = 1,H1,1
+    # D_layers,act = [D0,D1,D2], act
+
+    # H1,H2 = 5,5
+    # D0,D1,D2,D3 = 1,H1,H2,1
+    # D_layers,act = [D0,D1,D2,D3], act
+
+    # H1,H2,H3 = 5,5,5
+    # D0,D1,D2,D3,D4 = 1,H1,H2,H3,1
+    # D_layers,act = [D0,D1,D2,D3,D4], act
+
+    H1,H2,H3,H4 = 5,5,5,5
+    D0,D1,D2,D3,D4,D5 = 1,H1,H2,H3,H4,1
+    D_layers,act = [D0,D1,D2,D3,D4,D5], act
+
+    bias = True
+
     # dtype = torch.cuda.FloatTensor # Uncomment this to run on GPU
     #pdb.set_trace()
     start_time = time.time()
@@ -99,17 +152,17 @@ def main(argv=None):
     np.set_printoptions(suppress=True)
     lb, ub = -1, 1
     ## true facts of the data set
-    N = 10
+    N = 5
     ## mdl degree and D
-    Degree_mdl = 4
+    Degree_mdl = adegree**( len(D_layers)-2 )
     D_sgd = Degree_mdl+1
     D_pinv = Degree_mdl+1
     D_rls = D_pinv
     ## sgd
-    M = 10
-    eta = 1e-15 # eta = 1e-6
+    M = 8
+    eta = 0.001 # eta = 1e-6
     A = 0.0
-    nb_iter = int(1*100)
+    nb_iter = int(20*1000)
     # RLS
     lambda_rls = 0.001
     #### 1-layered mdl
@@ -125,35 +178,9 @@ def main(argv=None):
     # ##b_inits = [None]+[lambda x: b_fill(x,value=0.0) for i in range(len(D_layers)) ]
     # b_inits = []
     # bias = False
-
-    #### 2-layered mdl
-    print('about to make ACT')
-    act = get_relu_poly_act(degree=10,lb=-20,ub=20,N=100) # ax**2+bx+c
-    print('ACT MADE')
-    # xv = Variable( torch.FloatTensor(3,2) )
-    # act(xv)
-    # pdb.set_trace()
-    #act = quadratic # x**2
-    #act = lambda x: F.relu(x) # relu act
-
-    # H1 = 10
-    # D0,D1,D2 = 1,H1,1
-    # D_layers,act = [D0,D1,D2], act
-
-    # H1,H2 = 5,5
-    # D0,D1,D2,D3 = 1,H1,H2,1
-    # D_layers,act = [D0,D1,D2,D3], act
-
-    H1,H2,H3 = 10,10,10
-    D0,D1,D2,D3,D4 = 1,H1,H2,H3,1
-    D_layers,act = [D0,D1,D2,D3,D4], act
-
-    # H1,H2,H3,H4 = 3,3,3,3
-    # D0,D1,D2,D3,D4,D5 = 1,H1,H2,H3,H4,1
-    # D_layers,act = [D0,D1,D2,D3,D4,D5], act
-
-    bias = True
-    init_config = Maps( {'w_init':'w_init_normal','mu':0.0,'std':0.01, 'bias_init':'b_fill','bias_value':0.01,'bias':bias ,'nb_layers':len(D_layers)} )
+    ##
+    init_config = Maps( {'w_init':'w_init_normal','mu':0.0,'std':0.1, 'bias_init':'b_fill','bias_value':0.01,'bias':bias ,'nb_layers':len(D_layers)} )
+    #init_config = Maps( {'w_init':'xavier_normal','gain':1,'bias_init':'b_fill','bias_value':0.01,'bias':bias,'nb_layers':len(D_layers)})
     w_inits_sgd, b_inits_sgd = get_initialization(init_config)
     #### Get Data set
     ## Get input variables X
@@ -178,16 +205,18 @@ def main(argv=None):
         Y = get_Y_from_new_net(data_generator=data_generator, X=x_true,dtype=dtype)
         f_true = lambda x: f_mdl_eval(x,data_generator,dtype)
     elif run_type == 'from_file':
-        ##5
+        ##5 0,1
         #data_filename = 'data_numpy_D_layers_[1, 2, 1]_nb_layers3_biasTrue_mu0.0_std2.0_N_train_5_N_test_1000.npz'
         #data_filename = 'data_numpy_D_layers_[1, 2, 2, 1]_nb_layers4_biasTrue_mu0.0_std2.0_N_train_5_N_test_1000.npz'
         #data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_5_N_test_1000.npz'
         #data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 2, 1]_nb_layers6_biasTrue_mu0.0_std2.0_N_train_5_N_test_1000.npz'
-        ##10
+        ## 5 -1,1
+        data_filename = 'data_numpy_D_layers_[1, 2, 1]_nb_layers3_biasTrue_mu0.0_std2.0_N_train_5_N_test_1000_lb_-1_ub_1_act_quadratic_msg_.npz'
+        ##10 -1,1
         #data_filename = 'data_numpy_D_layers_[1, 2, 1]_nb_layers3_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1.npz'
         #data_filename = 'data_numpy_D_layers_[1, 2, 2, 1]_nb_layers4_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1.npz'
         #data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1.npz'
-        data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1_act_quad_ax2_bx_c_msg_.npz'
+        #data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1_act_quad_ax2_bx_c_msg_.npz'
         ##
         data = np.load( './data/{}'.format(data_filename) )
         x_true, Y = data['X_train'], data['Y_train']
@@ -197,6 +226,7 @@ def main(argv=None):
     ## LA models
     Kern = poly_kernel_matrix(x_true,Degree_mdl)
     c_pinv = np.dot(np.linalg.pinv( Kern ),Y) # [D_pinv,1]
+    #pdb.set_trace()
     c_rls = get_RLS_soln(Kern,Y,lambda_rls) # [D_pinv,1]
     ## data to TORCH
     print('len(D_layers) ', len(D_layers))
@@ -263,17 +293,19 @@ def main(argv=None):
                 print('current_loss = ',current_loss)
             for index, W in enumerate(mdl_sgd.parameters()):
                 grad_norm = W.grad.data.norm(2)
-                if debug_sgd:
-                    print()
-                    print('-> grad_norm: ',grad_norm)
-                    print('----> eta*grad_norm: ',eta*grad_norm)
-                    print('------> delta: ', delta.norm(2))
+                delta = eta*W.grad.data
                 grad_list[index].append( W.grad.data.norm(2) )
+                if debug_sgd:
+                    print('-------------')
+                    print('-> grad_norm: ',grad_norm)
+                    #print('----> eta*grad_norm: ',eta*grad_norm)
+                    print('------> delta: ', delta.norm(2))
+                    #print(delta)
                 if is_NaN(grad_norm) or is_NaN(current_loss):
-                    print('----------------- ERROR HAPPENED')
+                    print('\n----------------- ERROR HAPPENED')
                     print('loss: {}'.format(current_loss) )
                     print('error happened at: i = {}'.format(i))
-                    print('current_loss: {}, grad_norm: {},\n >>>>> BREAK HAPPENED'.format(current_loss,grad_norm) )
+                    print('current_loss: {}, grad_norm: {},\n -----------------'.format(current_loss,grad_norm) )
                     #print('grad_list: ', grad_list)
                     print('\a')
                     sys.exit()
@@ -317,6 +349,10 @@ def main(argv=None):
     print('Activations: act={}, sact={}'.format(act.__name__,sact.__name__) )
     print('init_config: ', init_config)
     print('number of layers = {}'.format(nb_module_params))
+    #
+    print('---- Stats of flattened to Poly models')
+    print('c_pinv.shape', c_pinv.shape)
+    print('c_sgd.shape', c_pinv.shape)
     #
     if len(D_layers) >= 2:
         print('\n---- statistics about learned params')
@@ -374,7 +410,7 @@ def main(argv=None):
             sgd_legend_str = 'Degree model={} non linear-layers={}'.format(str(D_sgd-1),1)
         else:
             nb_non_linear_layers = len(D_layers)-2
-            degree_sgd = 2**(len(D_layers)-2)
+            degree_sgd = adegree**(len(D_layers)-2)
             sgd_legend_str = 'Degree model={} non linear-layers={}'.format(degree_sgd,nb_non_linear_layers)
         plt.legend(p_list,['SGD solution {}, param count={}, batch-size={}, iterations={}, step size={}'.format(
             sgd_legend_str,nb_params,M,nb_iter,eta),
@@ -393,29 +429,19 @@ def main(argv=None):
     plt.legend([p_loss],['plot loss'])
     plt.title('Loss vs Iterations')
     ##
-    fig2 = plt.figure()
-    for i in range(1):
+    for i in range(len(grad_list)):
+        fig2 = plt.figure()
         current_grad_list = grad_list[i]
         #pdb.set_trace()
         p_grads, = plt.plot(np.arange(len(current_grad_list)), current_grad_list,color='g')
         plt.legend([p_grads],['plot grads'])
         plt.title('Gradient vs Iterations: # {}'.format(i))
     ##
-    fig3 = plt.figure()
-    x_horizontal = np.linspace(-20,20,1000)
-    plt_poly_act, = plt.plot(x_horizontal,act(x_horizontal))
-    y_relu = np.maximum(0,x_horizontal)
-    plt_relu, = plt.plot(x_horizontal,y_relu)
-    plt.legend(
-        [plt_poly_act,plt_relu],
-        ['polynomial activation {}'.format(act.__name__),'ReLU activation'])
-    # plt.legend(
-    #     [plt_relu],
-    #     ['ReLU activation'])
-    plt.title('Activation function: {}'.format(act.__name__))
+    plot_activation_func(act)
     ##
     plt.show()
 
 if __name__ == '__main__':
     main()
+    #print('End')
     print('\a')
