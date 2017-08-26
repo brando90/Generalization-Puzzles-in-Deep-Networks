@@ -31,7 +31,17 @@ def sQuad(x):
 def sPow(x,p):
     return Pow(x,p)
 
+def s_Poly(x,c_pinv_relu):
+    '''
+    Give lowest power fist.
 
+    c_pinv_relu = [ a_0, a_1, ..., a_Deg]
+    '''
+    a = float(c_pinv_relu[0]) * (x**0)
+    for i in range(1,len(c_pinv_relu)):
+        coeff = float(c_pinv_relu[i])
+        a += coeff*x**i
+    return a
 
 class sNN:
 

@@ -31,16 +31,16 @@ def get_relu_poly_act2(X,degree=2):
     def poly_act(x):
         #print('poly_act')
         #print('degree ', degree)
-        a = x**0
+        a = float(c_pinv[0]) * (x**0)
         for i in range(1,len(c_pinv)):
             coeff = float(c_pinv[i])
-            a += coeff*x**i
+            a += coeff * (x**i)
         #W = Variable( torch.FloatTensor(c_pinv),requires_grad=False)
         #activation = W.mm(X)
         #print(activation)
         return a
     poly_act.__name__ = 'poly_act_degree{}'.format(degree)
-    return poly_act
+    return poly_act, c_pinv
 
 def get_relu_poly_act(degree=2,lb=-1,ub=1,N=100):
     X = np.linspace(lb,ub,N)

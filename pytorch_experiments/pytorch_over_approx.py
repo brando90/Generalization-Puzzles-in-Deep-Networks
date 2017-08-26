@@ -105,24 +105,32 @@ def plot_activation_func(act,lb=-20,ub=20,N=1000):
 
 def main(argv=None):
     dtype = torch.FloatTensor
+    #
+    debug = True
+    debug_sgd = False
+    ## sgd
+    M = 8
+    eta = 0.0001 # eta = 1e-6
+    A = 0.0
+    nb_iter = int(80*1000)
     ##
-
     ## activation params
     # alb, aub = -100, 100
     # aN = 100
-    adegree = 10
+    adegree = 2
     ax = np.concatenate( (np.linspace(-20,20,100), np.linspace(-10,10,1000)) )
     aX = np.concatenate( (ax,np.linspace(-2,2,100000)) )
     ## activation funcs
     #act = quadratic
-    act = get_relu_poly_act2(aX,degree=adegree) # ax**2+bx+c
+    act, c_pinv_relu = get_relu_poly_act2(aX,degree=adegree) # ax**2+bx+c, #[1, x^1, ..., x^D]
     #act = get_relu_poly_act(degree=adegree,lb=alb,ub=aub,N=aN) # ax**2+bx+c
     #act = relu
     ## plot activation
     palb, paub = -20, 20
     paN = 1000
-    plot_activation_func(act,lb=palb,ub=paub,N=paN)
-    plt.show()
+    #print('Plotting activation function')
+    #plot_activation_func(act,lb=palb,ub=paub,N=paN)
+    #plt.show()
     #### 2-layered mdl
 
     # H1 = 10
@@ -146,23 +154,16 @@ def main(argv=None):
     # dtype = torch.cuda.FloatTensor # Uncomment this to run on GPU
     #pdb.set_trace()
     start_time = time.time()
-    debug = True
-    debug_sgd = False
     ##
     np.set_printoptions(suppress=True)
     lb, ub = -1, 1
     ## true facts of the data set
-    N = 5
+    N = 10
     ## mdl degree and D
     Degree_mdl = adegree**( len(D_layers)-2 )
     D_sgd = Degree_mdl+1
     D_pinv = Degree_mdl+1
     D_rls = D_pinv
-    ## sgd
-    M = 8
-    eta = 0.001 # eta = 1e-6
-    A = 0.0
-    nb_iter = int(20*1000)
     # RLS
     lambda_rls = 0.001
     #### 1-layered mdl
@@ -211,10 +212,11 @@ def main(argv=None):
         #data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_5_N_test_1000.npz'
         #data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 2, 1]_nb_layers6_biasTrue_mu0.0_std2.0_N_train_5_N_test_1000.npz'
         ## 5 -1,1
-        data_filename = 'data_numpy_D_layers_[1, 2, 1]_nb_layers3_biasTrue_mu0.0_std2.0_N_train_5_N_test_1000_lb_-1_ub_1_act_quadratic_msg_.npz'
+        #data_filename = 'data_numpy_D_layers_[1, 2, 1]_nb_layers3_biasTrue_mu0.0_std2.0_N_train_5_N_test_1000_lb_-1_ub_1_act_quadratic_msg_.npz'
         ##10 -1,1
         #data_filename = 'data_numpy_D_layers_[1, 2, 1]_nb_layers3_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1.npz'
         #data_filename = 'data_numpy_D_layers_[1, 2, 2, 1]_nb_layers4_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1.npz'
+        data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1_act_quadratic_msg_.npz'
         #data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1.npz'
         #data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1_act_quad_ax2_bx_c_msg_.npz'
         ##
@@ -309,6 +311,10 @@ def main(argv=None):
                     #print('grad_list: ', grad_list)
                     print('\a')
                     sys.exit()
+        ##
+        if i % (nb_iter/4) == 0 or i == 0:
+            current_loss = loss.data.numpy()[0]
+            print('\ni = {}, current_loss = {}'.format(i,current_loss) )
         ## Manually zero the gradients after updating weights
         mdl_sgd.zero_grad()
         ## COLLECT MOVING AVERAGES
@@ -316,7 +322,8 @@ def main(argv=None):
         #     W, W_avg = Ws[i], W_avgs[i]
         #     W_avgs[i] = (1/nb_iter)*W + W_avg
     ########################################################################################################################################################
-    print('\a')
+    print('\ni = {}, current_loss = {}'.format(i,current_loss) )
+    print('training ended!\a')
     ##
     nb_params = count_params(mdl_sgd)
     X, Y = X.data.numpy(), Y.data.numpy()
@@ -325,11 +332,19 @@ def main(argv=None):
         c_sgd = list(mdl_sgd.parameters())[0].data.numpy()
         c_sgd = c_sgd.transpose()
     else:
+        x = symbols('x')
         tmdl = mdl_sgd
-        sact = sQuad
+        if act.__name__ == 'poly_act_degree{}'.format(adegree):
+            sact = lambda x: s_Poly(x,c_pinv_relu)
+            sact.__name__ = 'spoly_act_degree{}'.format(adegree)
+            if adegree >= 10:
+                sact = sQuad
+        elif act__name__ == 'quadratic':
+            sact = sQuad
+        elif act.__name__ == 'relu':
+            sact = sReLU
         smdl = sNN(sact,mdl=tmdl)
         ## get simplification
-        x = symbols('x')
         expr = smdl.forward(x)
         s_expr = poly(expr,x)
         c_sgd = np.array( s_expr.coeffs()[::-1] )
@@ -442,6 +457,7 @@ def main(argv=None):
     plt.show()
 
 if __name__ == '__main__':
+    print('main started')
     main()
     #print('End')
     print('\a')

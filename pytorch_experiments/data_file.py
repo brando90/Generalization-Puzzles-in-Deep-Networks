@@ -82,23 +82,23 @@ def load(path):
 if __name__ == '__main__':
     #act = get_relu_poly_act(degree=2,lb=-1,ub=1,N=100)
     act = quadratic
-    H1 = 2
-    D0,D1,D2 = 1,H1,1
-    D_layers,act = [D0,D1,D2], act
+    # H1 = 2
+    # D0,D1,D2 = 1,H1,1
+    # D_layers,act = [D0,D1,D2], act
 
     # H1,H2 = 2,2
     # D0,D1,D2,D3 = 1,H1,H2,1
     # D_layers,act = [D0,D1,D2,D3], act
 
-    # H1,H2,H3 = 2,2,2
-    # D0,D1,D2,D3,D4 = 1,H1,H2,H3,1
-    # D_layers,act = [D0,D1,D2,D3,D4], act
+    H1,H2,H3 = 2,2,2
+    D0,D1,D2,D3,D4 = 1,H1,H2,H3,1
+    D_layers,act = [D0,D1,D2,D3,D4], act
 
     # H1,H2,H3,H4 = 2,2,2,2
     # D0,D1,D2,D3,D4,D5 = 1,H1,H2,H3,H4,1
     # D_layers,act = [D0,D1,D2,D3,D4,D5], act
     #
-    save_data_set(path='./data/{}',D_layers=D_layers,act=act,bias=True,mu=0.0,std=2.0, lb=-1,ub=1,N_train=5,N_test=1000)
+    save_data_set(path='./data/{}',D_layers=D_layers,act=act,bias=True,mu=0.0,std=2.0, lb=-1,ub=1,N_train=10,N_test=1000)
     #save_data_gen(path='./data/{}',D_layers=D_layers,act=act,bias=True,mu=0.0,std=5.0)
     #data_generator = load(path='./data/data_gen_nb_layers3_biasTrue_mu0.0_std5.0')
     print('End! \a')
