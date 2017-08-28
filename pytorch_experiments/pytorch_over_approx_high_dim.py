@@ -18,6 +18,19 @@ from data_file import *
 import matplotlib.pyplot as plt
 import scipy.integrate as integrate
 
+def get_symbols(D):
+    '''
+    D is the number of symbols.
+    x_0, x_1, ..., x_D-1
+
+    input D+1 if you want:
+    x_0, x_1, ..., x_D-1, x_D
+    '''
+    symbols = []
+    for i=0 in range(D):
+        symbols.append( 'x_'+str(i))
+    return symbols
+
 def f_mdl_LA(x,c):
     D,_ = c.shape
     X = poly_kernel_matrix( [x],D-1 )
@@ -195,29 +208,8 @@ def main(argv=None):
         x_true = np.linspace(lb,ub,N) # the real data points
         Y = np.sin(2*np.pi*x_true)
         f_true = lambda x: np.sin(2*np.pi*x)
-    elif run_type == 'similar_nn':
-        ## Get data values from some net itself
-        x_true = np.linspace(lb,ub,N)
-        x_true.shape = x_true.shape[0],1
-        #
-        init_config_data = Maps( {'w_init':'w_init_normal','mu':0.0,'std':2.0, 'bias_init':'b_fill','bias_value':0.1,'bias':bias ,'nb_layers':len(D_layers)} )
-        w_inits_data, b_inits_data = get_initialization(init_config_data)
-        data_generator = NN(D_layers=D_layers,act=act,w_inits=w_inits_data,b_inits=b_inits_data,bias=bias)
-        Y = get_Y_from_new_net(data_generator=data_generator, X=x_true,dtype=dtype)
-        f_true = lambda x: f_mdl_eval(x,data_generator,dtype)
     elif run_type == 'from_file':
-        ##5 0,1
-        #data_filename = 'data_numpy_D_layers_[1, 2, 1]_nb_layers3_biasTrue_mu0.0_std2.0_N_train_5_N_test_1000.npz'
-        #data_filename = 'data_numpy_D_layers_[1, 2, 2, 1]_nb_layers4_biasTrue_mu0.0_std2.0_N_train_5_N_test_1000.npz'
-        #data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_5_N_test_1000.npz'
-        #data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 2, 1]_nb_layers6_biasTrue_mu0.0_std2.0_N_train_5_N_test_1000.npz'
-        ## 5 -1,1
-        #data_filename = 'data_numpy_D_layers_[1, 2, 1]_nb_layers3_biasTrue_mu0.0_std2.0_N_train_5_N_test_1000_lb_-1_ub_1_act_quadratic_msg_.npz'
-        ##10 -1,1
-        #data_filename = 'data_numpy_D_layers_[1, 2, 1]_nb_layers3_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1.npz'
-        #data_filename = 'data_numpy_D_layers_[1, 2, 2, 1]_nb_layers4_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1.npz'
-        data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1_act_quadratic_msg_.npz'
-        #data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1.npz'
+        ##
         #data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1_act_quad_ax2_bx_c_msg_.npz'
         ##
         data = np.load( './data/{}'.format(data_filename) )
@@ -238,7 +230,7 @@ def main(argv=None):
         #pdb.set_trace()
     else:
         X = x_true
-        N, D =  X.shape[0], 1
+        N, D_data =  X.shape[0], D_data
         X.shape = N,D_data
     print('X ', X)
     X = Variable(torch.FloatTensor(X).type(dtype), requires_grad=False)
@@ -246,25 +238,9 @@ def main(argv=None):
     ## SGD model
     mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,bias=bias)
     pdb.set_trace()
-    # loss funtion
-    #loss_fn = torch.nn.MSELoss(size_average=False)
-    ## GPU
-    #mdl_sgd.to_gpu() if (dtype == torch.cuda.FloatTensor) else 1
-
-    ## check if deep net can equal
-    #compare_first_layer(data_generator,mdl_sgd)
-    #check_coeffs_poly(tmdl=mdl_sgd,act=sQuad,c_pinv=c_pinv,debug=True)
-
-    ##
-    #optimizer = optim.SGD(model.parameters(), lr = 0.01, momentum=0.9)
-    #optimizer = optim.Adam(mdl_sgd.parameters(), lr=0.0001)
-
     #
     nb_module_params = len( list(mdl_sgd.parameters()) )
-    loss_list = [ ]
-    grad_list = [ [] for i in range(nb_module_params) ]
-    #Ws = [W]
-    #W_avg = Variable(torch.FloatTensor(W.data).type(dtype), requires_grad=False)
+    loss_list, grad_list =  []], [ [] for i in range(nb_module_params) ]
     print('>>norm(Y): ', ((1/N)*torch.norm(Y)**2).data.numpy()[0] )
     print('>>l2_loss_torch: ', (1/N)*( Y - mdl_sgd.forward(X)).pow(2).sum().data.numpy()[0] )
     ########################################################################################################################################################
@@ -334,23 +310,24 @@ def main(argv=None):
         c_sgd = list(mdl_sgd.parameters())[0].data.numpy()
         c_sgd = c_sgd.transpose()
     else:
-        x = symbols('x')
-        tmdl = mdl_sgd
-        if act.__name__ == 'poly_act_degree{}'.format(adegree):
-            sact = lambda x: s_Poly(x,c_pinv_relu)
-            sact.__name__ = 'spoly_act_degree{}'.format(adegree)
-            if adegree >= 10:
-                sact = sQuad
-        elif act__name__ == 'quadratic':
-            sact = sQuad
-        elif act.__name__ == 'relu':
-            sact = sReLU
-        smdl = sNN(sact,mdl=tmdl)
-        ## get simplification
-        expr = smdl.forward(x)
-        s_expr = poly(expr,x)
-        c_sgd = np.array( s_expr.coeffs()[::-1] )
-        c_sgd = [ np.float64(num) for num in c_sgd]
+        pass
+    #     x = symbols('x')
+    #     tmdl = mdl_sgd
+    #     if act.__name__ == 'poly_act_degree{}'.format(adegree):
+    #         sact = lambda x: s_Poly(x,c_pinv_relu)
+    #         sact.__name__ = 'spoly_act_degree{}'.format(adegree)
+    #         if adegree >= 10:
+    #             sact = sQuad
+    #     elif act__name__ == 'quadratic':
+    #         sact = sQuad
+    #     elif act.__name__ == 'relu':
+    #         sact = sReLU
+    #     smdl = sNN(sact,mdl=tmdl)
+    #     ## get simplification
+    #     expr = smdl.forward(x)
+    #     s_expr = poly(expr,x)
+    #     c_sgd = np.array( s_expr.coeffs()[::-1] )
+    #     c_sgd = [ np.float64(num) for num in c_sgd]
     if debug:
         print('c_sgd = ', c_sgd)
         print('c_pinv: ', c_pinv)
@@ -369,21 +346,21 @@ def main(argv=None):
     #
     print('---- Stats of flattened to Poly models')
     print('c_pinv.shape', c_pinv.shape)
-    print('c_sgd.shape', c_pinv.shape)
+    #print('c_sgd.shape', c_pinv.shape)
     #
     if len(D_layers) >= 2:
         print('\n---- statistics about learned params')
         print('--L1')
         print('||c_pinv||_1 = {} '.format(np.linalg.norm(c_pinv,1)) )
         #print('||c_avg||_1 = {} '.format(np.linalg.norm(c_avg,1)) )
-        print('||c_sgd||_1 = {} '.format(np.linalg.norm(c_sgd,1)) )
+        #print('||c_sgd||_1 = {} '.format(np.linalg.norm(c_sgd,1)) )
         print('--L2')
         print('||c_pinv||_2 = ', np.linalg.norm(c_pinv,2))
         #print('||c_avg||_2 = {} '.format(np.linalg.norm(c_avg,2))
-        print('||c_sgd||_2 = ', np.linalg.norm(c_sgd,2))
+        #print('||c_sgd||_2 = ', np.linalg.norm(c_sgd,2))
     print('---- parameters differences')
     if len(D_layers) >= 2:
-        print('||c_sgd - c_pinv||_2 = ', np.linalg.norm(c_sgd - c_pinv,2))
+        #print('||c_sgd - c_pinv||_2 = ', np.linalg.norm(c_sgd - c_pinv,2))
         #print('||c_sgd - c_avg||_2 = ', np.linalg.norm(c_sgd - c_pinv,2))
         #print('||c_avg - c_pinv||_2 = ', np.linalg.norm(c_avg - c_pinv,2))
     f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
@@ -402,8 +379,8 @@ def main(argv=None):
         print('||f_pinv - f_true||^2_2 = ', L2_norm_2(f=f_pinv,g=f_true,lb=lb,ub=ub))
     #
     print('-- Train Error')
-    print(' J(c_sgd) = ', (1/N)*(mdl_sgd.forward(Variable(torch.FloatTensor(X))) - Variable(torch.FloatTensor(Y)) ).pow(2).sum().data.numpy() )
-    print( ' J(c_pinv) = ',(1/N)*(np.linalg.norm(Y-np.dot( poly_kernel_matrix( x_true,D_sgd-1 ),c_pinv))**2) )
+    print(' J(f_sgd) = ', (1/N)*(mdl_sgd.forward(Variable(torch.FloatTensor(X))) - Variable(torch.FloatTensor(Y)) ).pow(2).sum().data.numpy() )
+    print( ' J(f_pinv) = ',(1/N)*(np.linalg.norm(Y-np.dot( poly_kernel_matrix( x_true,D_sgd-1 ),c_pinv))**2) )
     print( ' J(c_rls) = ',(1/N)*(np.linalg.norm(Y-(1/N)*(np.linalg.norm(Y-np.dot( poly_kernel_matrix( x_true,D_sgd-1 ),c_rls))**2) )**2) )
     #
     seconds = (time.time() - start_time)

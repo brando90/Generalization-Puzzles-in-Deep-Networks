@@ -4,6 +4,8 @@ import torch.nn.functional as F
 
 import numpy as np
 
+import unittest
+
 import pdb
 
 ## Activations
@@ -71,7 +73,7 @@ def get_relu_poly_act(degree=2,lb=-1,ub=1,N=100):
 
 def poly_kernel_matrix( x,D ):
     '''
-    x = single rela number data value
+    x = single real number data value
     D = largest degree of monomial
 
     maps x to a kernel with each row being monomials of up to degree=D.
@@ -83,6 +85,47 @@ def poly_kernel_matrix( x,D ):
         for d in range(D+1):
             Kern[n,d] = x[n]**d;
     return Kern
+
+def generate_all_tuples_for_monomials(N,D):
+    if D == 0:
+        print('\n---')
+        print('=> D ', D)
+        seq0 = N*[0]
+        sequences_degree_0 = [seq0]
+        S_0 = {0:sequences_degree_0}
+        print('S_0 ', S_0)
+        return S_0
+    else:
+        # S_all = [ k->S_D ] ~ [ k->[seq0,...,seqK]]
+        S_all = generate_all_tuples_for_monomials(N,D-1)# S^* = (S^*_D-1) U S_D
+        print('\n---')
+        print('=> D ', D)
+        print(S_all)
+        #
+        S_D_current = []
+        # for every prev set of degree tuples
+        for d in range(len(S_all.items())): # d \in [0,...,D_current]
+            #print('d ', d)
+            d_new = D - d # get new valid degree number
+            print('>d_new ', d_new)
+            # for each sequences, create the new valid degree tuple
+            S_all_seq_for_deg_d = S_all[d]
+            print('S_all_seq_for_deg_d ', S_all_seq_for_deg_d)
+            for seq in S_all[d]:
+                print('seq ', seq)
+                for pos in range(N):
+                    seq_new = seq[:]
+                    seq_new[pos] = seq_new[pos] + d_new # seq elements dd to D
+                    print('seq_new ', seq_new)
+                    S_D_current.append(seq_new)
+                    print('S_D_current after addition: ',S_D_current)
+                    print()
+        #
+        print('before appending D ', S_all)
+        S_all[D] = S_D_current
+        print('after appending D ', S_all)
+        print('+++')
+        return S_all
 
 ##
 
@@ -164,5 +207,35 @@ def get_all_params(var, all_params):
         for j in var.previous_functions:
             get_all_params(j[0], all_params)
 
-
 ##
+
+class TestStringMethods(unittest.TestCase):
+
+    # def test_degree_zero(self):
+    #     S_0 = generate_all_tuples_for_monomials(N=1,D=0)
+    #     self.assertEqual(S_0,{0:[ [0] ]})
+    #     S_0 = generate_all_tuples_for_monomials(N=2,D=0)
+    #     self.assertEqual(S_0,{0:[ [0,0] ]})
+    #     S_0 = generate_all_tuples_for_monomials(N=3,D=0)
+    #     self.assertEqual(S_0,{0:[ [0,0,0] ]})
+    #
+    # def test_degree_one(self):
+    #     S_0 = generate_all_tuples_for_monomials(N=1,D=1)
+    #     self.assertEqual(S_0,{0:[ [0] ], 1:[ [1] ]})
+    #     S_0 = generate_all_tuples_for_monomials(N=2,D=1)
+    #     self.assertEqual(S_0,{0:[ [0,0] ], 1:[ [1,0], [0,1] ]})
+    #     S_0 = generate_all_tuples_for_monomials(N=3,D=1)
+    #     self.assertEqual(S_0,{0:[ [0,0,0] ], 1:[ [1,0,0], [0,1,0], [0,0,1] ]})
+
+    def test_degree_two(self):
+        print('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        S_0 = generate_all_tuples_for_monomials(N=1,D=2)
+        self.assertEqual(S_0,{0:[ [0] ], 1:[ [1] ], 2:[ [2] ]})
+        #S_0 = generate_all_tuples_for_monomials(N=2,D=2)
+        #print(S_0)
+        #self.assertEqual(S_0,{0:[ [0,0] ], 1:[ [1,0], [0,1] ], 2:[ [2,0] ]})
+        #S_0 = generate_all_tuples_for_monomials(N=3,D=1)
+        #self.assertEqual(S_0,{0:[ [0,0,0] ], 1:[ [1,0,0], [0,1,0], [0,0,1] ]})
+
+if __name__ == '__main__':
+    unittest.main()
