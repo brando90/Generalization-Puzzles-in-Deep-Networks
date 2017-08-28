@@ -88,19 +88,19 @@ def poly_kernel_matrix( x,D ):
 
 def generate_all_tuples_for_monomials(N,D):
     if D == 0:
-        print('\n---')
-        print('=> D ', D)
+        #print('\n---')
+        #print('=> D ', D)
         seq0 = N*[0]
         sequences_degree_0 = [seq0]
         S_0 = {0:sequences_degree_0}
-        print('S_0 ', S_0)
-        return S_0
+        #print('S_0 ', S_0)
+        #return S_0
     else:
         # S_all = [ k->S_D ] ~ [ k->[seq0,...,seqK]]
         S_all = generate_all_tuples_for_monomials(N,D-1)# S^* = (S^*_D-1) U S_D
-        print('\n---')
-        print('=> D ', D)
-        print(S_all)
+        #print('\n---')
+        #print('=> D ', D)
+        #print(S_all)
         #
         S_D_current = []
         # for every prev set of degree tuples
@@ -108,26 +108,62 @@ def generate_all_tuples_for_monomials(N,D):
         #print('d ', d)
         d = D-1
         d_new = D - d # get new valid degree number
-        print('>d_new ', d_new)
+        #print('>d_new ', d_new)
         # for each sequences, create the new valid degree tuple
         S_all_seq_for_deg_d = S_all[d]
-        print('S_all_seq_for_deg_d ', S_all_seq_for_deg_d)
+        #print('S_all_seq_for_deg_d ', S_all_seq_for_deg_d)
         for seq in S_all[d]:
-            print('seq ', seq)
+            #print('seq ', seq)
             for pos in range(N):
                 seq_new = seq[:]
                 seq_new[pos] = seq_new[pos] + d_new # seq elements dd to D
-                print('seq_new ', seq_new)
+                #print('seq_new ', seq_new)
                 if seq_new not in S_D_current:
                     S_D_current.append(seq_new)
-                    print('S_D_current after addition: ',S_D_current)
-                print()
+                    #print('S_D_current after addition: ',S_D_current)
+                #print()
         #
-        print('before appending D ', S_all)
+        #print('before appending D ', S_all)
         S_all[D] = S_D_current
-        print('after appending D ', S_all)
-        print('+++')
+        #print('after appending D ', S_all)
+        #print('+++')
         return S_all
+
+
+def generate_all_tuples_for_monomials(N,D):
+    if D == 0:
+        seq0 = N*[0]
+        sequences_degree_0 = [seq0]
+        S_0 = {0:sequences_degree_0}
+        return S_0
+    else:
+        # S_all = [ k->S_D ] ~ [ k->[seq0,...,seqK]]
+        S_all = generate_all_tuples_for_monomials(N,D-1)# S^* = (S^*_D-1) U S_D
+        print(S_all)
+        #
+        S_D_current = []
+        # for every prev set of degree tuples
+        #for d in range(len(S_all.items())): # d \in [0,...,D_current]
+        d = D-1
+        d_new = D - d # get new valid degree number
+        # for each sequences, create the new valid degree tuple
+        S_all_seq_for_deg_d = S_all[d]
+        for seq in S_all[d]:
+            for pos in range(N):
+                seq_new = seq[:]
+                seq_new[pos] = seq_new[pos] + d_new # seq elements dd to D
+                if seq_new not in S_D_current:
+                    S_D_current.append(seq_new)
+        S_all[D] = S_D_current
+        return S_all
+
+def eval_feature_vec_multi_poly(x,S,C):
+    f = 0
+    for _,list_monomial_tuples in S.items():
+        for mon_tuple in list_monomial_tuples:
+            for d in mon_tuple:
+                f+=c[d]*(x[d]**d)
+    return f
 
 ##
 
@@ -236,8 +272,22 @@ class TestStringMethods(unittest.TestCase):
         S_0 = generate_all_tuples_for_monomials(N=2,D=2)
         print(S_0)
         self.assertEqual(S_0,{0:[ [0,0] ], 1:[ [1,0], [0,1] ], 2:[ [2,0], [1,1], [0,2] ]})
-        S_0 = generate_all_tuples_for_monomials(N=3,D=2)
-        self.assertEqual(S_0,{0:[ [0,0,0,0] ], 1:[ [1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1] ],2:[ [2,0,0,0], [1,1,0,0] ]})
+        #S_0 = generate_all_tuples_for_monomials(N=3,D=2)
+        #self.assertEqual(S_0,{0:[ [0,0,0,0] ], 1:[ [1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1] ],2:[ [2,0,0,0], [1,1,0,0] ]})
+
+    def test_poly_feature_eval(self):
+        N,D = 3,2 # N is the number of features, D is the degree
+        x = np.arange(N) # N by 1
+        ##
+        S = generate_all_tuples_for_monomials(N,D)
+        nb_monomial_terms = sum( [len(list_monomial_tuples) for _,list_monomial_tuples in S.items] )
+        C = np.arange(1,nb_monomial_terms)
+        f1 = eval_feature_vec_multi_poly(x,S,C)
+        ##
+        poly = PolynomialFeatures(2)
+        x_poly = poly(x)
+        f2 = C*x_poly
+
 
 if __name__ == '__main__':
     unittest.main()
