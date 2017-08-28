@@ -104,22 +104,24 @@ def generate_all_tuples_for_monomials(N,D):
         #
         S_D_current = []
         # for every prev set of degree tuples
-        for d in range(len(S_all.items())): # d \in [0,...,D_current]
-            #print('d ', d)
-            d_new = D - d # get new valid degree number
-            print('>d_new ', d_new)
-            # for each sequences, create the new valid degree tuple
-            S_all_seq_for_deg_d = S_all[d]
-            print('S_all_seq_for_deg_d ', S_all_seq_for_deg_d)
-            for seq in S_all[d]:
-                print('seq ', seq)
-                for pos in range(N):
-                    seq_new = seq[:]
-                    seq_new[pos] = seq_new[pos] + d_new # seq elements dd to D
-                    print('seq_new ', seq_new)
+        #for d in range(len(S_all.items())): # d \in [0,...,D_current]
+        #print('d ', d)
+        d = D-1
+        d_new = D - d # get new valid degree number
+        print('>d_new ', d_new)
+        # for each sequences, create the new valid degree tuple
+        S_all_seq_for_deg_d = S_all[d]
+        print('S_all_seq_for_deg_d ', S_all_seq_for_deg_d)
+        for seq in S_all[d]:
+            print('seq ', seq)
+            for pos in range(N):
+                seq_new = seq[:]
+                seq_new[pos] = seq_new[pos] + d_new # seq elements dd to D
+                print('seq_new ', seq_new)
+                if seq_new not in S_D_current:
                     S_D_current.append(seq_new)
                     print('S_D_current after addition: ',S_D_current)
-                    print()
+                print()
         #
         print('before appending D ', S_all)
         S_all[D] = S_D_current
@@ -211,31 +213,31 @@ def get_all_params(var, all_params):
 
 class TestStringMethods(unittest.TestCase):
 
-    # def test_degree_zero(self):
-    #     S_0 = generate_all_tuples_for_monomials(N=1,D=0)
-    #     self.assertEqual(S_0,{0:[ [0] ]})
-    #     S_0 = generate_all_tuples_for_monomials(N=2,D=0)
-    #     self.assertEqual(S_0,{0:[ [0,0] ]})
-    #     S_0 = generate_all_tuples_for_monomials(N=3,D=0)
-    #     self.assertEqual(S_0,{0:[ [0,0,0] ]})
-    #
-    # def test_degree_one(self):
-    #     S_0 = generate_all_tuples_for_monomials(N=1,D=1)
-    #     self.assertEqual(S_0,{0:[ [0] ], 1:[ [1] ]})
-    #     S_0 = generate_all_tuples_for_monomials(N=2,D=1)
-    #     self.assertEqual(S_0,{0:[ [0,0] ], 1:[ [1,0], [0,1] ]})
-    #     S_0 = generate_all_tuples_for_monomials(N=3,D=1)
-    #     self.assertEqual(S_0,{0:[ [0,0,0] ], 1:[ [1,0,0], [0,1,0], [0,0,1] ]})
+    def test_degree_zero(self):
+        S_0 = generate_all_tuples_for_monomials(N=1,D=0)
+        self.assertEqual(S_0,{0:[ [0] ]})
+        S_0 = generate_all_tuples_for_monomials(N=2,D=0)
+        self.assertEqual(S_0,{0:[ [0,0] ]})
+        S_0 = generate_all_tuples_for_monomials(N=3,D=0)
+        self.assertEqual(S_0,{0:[ [0,0,0] ]})
+
+    def test_degree_one(self):
+        S_0 = generate_all_tuples_for_monomials(N=1,D=1)
+        self.assertEqual(S_0,{0:[ [0] ], 1:[ [1] ]})
+        S_0 = generate_all_tuples_for_monomials(N=2,D=1)
+        self.assertEqual(S_0,{0:[ [0,0] ], 1:[ [1,0], [0,1] ]})
+        S_0 = generate_all_tuples_for_monomials(N=3,D=1)
+        self.assertEqual(S_0,{0:[ [0,0,0] ], 1:[ [1,0,0], [0,1,0], [0,0,1] ]})
 
     def test_degree_two(self):
         print('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         S_0 = generate_all_tuples_for_monomials(N=1,D=2)
         self.assertEqual(S_0,{0:[ [0] ], 1:[ [1] ], 2:[ [2] ]})
-        #S_0 = generate_all_tuples_for_monomials(N=2,D=2)
-        #print(S_0)
-        #self.assertEqual(S_0,{0:[ [0,0] ], 1:[ [1,0], [0,1] ], 2:[ [2,0] ]})
-        #S_0 = generate_all_tuples_for_monomials(N=3,D=1)
-        #self.assertEqual(S_0,{0:[ [0,0,0] ], 1:[ [1,0,0], [0,1,0], [0,0,1] ]})
+        S_0 = generate_all_tuples_for_monomials(N=2,D=2)
+        print(S_0)
+        self.assertEqual(S_0,{0:[ [0,0] ], 1:[ [1,0], [0,1] ], 2:[ [2,0], [1,1], [0,2] ]})
+        S_0 = generate_all_tuples_for_monomials(N=3,D=2)
+        self.assertEqual(S_0,{0:[ [0,0,0,0] ], 1:[ [1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1] ],2:[ [2,0,0,0], [1,1,0,0] ]})
 
 if __name__ == '__main__':
     unittest.main()
