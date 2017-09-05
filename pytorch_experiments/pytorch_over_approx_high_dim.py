@@ -17,6 +17,7 @@ from data_file import *
 
 import matplotlib.pyplot as plt
 import scipy.integrate as integrate
+import scipy
 
 def get_symbols(D):
     '''
@@ -27,7 +28,7 @@ def get_symbols(D):
     x_0, x_1, ..., x_D-1, x_D
     '''
     symbols = []
-    for i=0 in range(D):
+    for i in range(D):
         symbols.append( 'x_'+str(i))
     return symbols
 
@@ -150,17 +151,17 @@ def main(argv=None):
     # D0,D1,D2 = 1,H1,1
     # D_layers,act = [D0,D1,D2], act
 
-    # H1,H2 = 5,5
-    # D0,D1,D2,D3 = 1,H1,H2,1
-    # D_layers,act = [D0,D1,D2,D3], act
+    H1,H2 = 5,5
+    D0,D1,D2,D3 = 1,H1,H2,1
+    D_layers,act = [D0,D1,D2,D3], act
 
     # H1,H2,H3 = 5,5,5
     # D0,D1,D2,D3,D4 = 1,H1,H2,H3,1
     # D_layers,act = [D0,D1,D2,D3,D4], act
 
-    H1,H2,H3,H4 = 5,5,5,5
-    D0,D1,D2,D3,D4,D5 = 1,H1,H2,H3,H4,1
-    D_layers,act = [D0,D1,D2,D3,D4,D5], act
+    # H1,H2,H3,H4 = 5,5,5,5
+    # D0,D1,D2,D3,D4,D5 = 1,H1,H2,H3,H4,1
+    # D_layers,act = [D0,D1,D2,D3,D4,D5], act
 
     bias = True
 
@@ -209,28 +210,34 @@ def main(argv=None):
         Y = np.sin(2*np.pi*x_true)
         f_true = lambda x: np.sin(2*np.pi*x)
     elif run_type == 'similar_nn':
+        pass
         ## Get data values from some net itself
-        x_true = np.linspace(lb,ub,N)
-        x_true.shape = x_true.shape[0],1
-        #
-        init_config_data = Maps( {'w_init':'w_init_normal','mu':0.0,'std':2.0, 'bias_init':'b_fill','bias_value':0.1,'bias':bias ,'nb_layers':len(D_layers)} )
-        w_inits_data, b_inits_data = get_initialization(init_config_data)
-        data_generator = NN(D_layers=D_layers,act=act,w_inits=w_inits_data,b_inits=b_inits_data,bias=bias)
-        Y = get_Y_from_new_net(data_generator=data_generator, X=x_true,dtype=dtype)
-        f_true = lambda x: f_mdl_eval(x,data_generator,dtype)
+        # x_true = np.linspace(lb,ub,N)
+        # x_true.shape = x_true.shape[0],D
+        # #
+        # init_config_data = Maps( {'w_init':'w_init_normal','mu':0.0,'std':2.0, 'bias_init':'b_fill','bias_value':0.1,'bias':bias ,'nb_layers':len(D_layers)} )
+        # w_inits_data, b_inits_data = get_initialization(init_config_data)
+        # data_generator = NN(D_layers=D_layers,act=act,w_inits=w_inits_data,b_inits=b_inits_data,bias=bias)
+        # Y = get_Y_from_new_net(data_generator=data_generator, X=x_true,dtype=dtype)
+        # f_true = lambda x: f_mdl_eval(x,data_generator,dtype)
     elif run_type == 'from_file':
         ##
         #data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1_act_quad_ax2_bx_c_msg_.npz'
+        data_filename = 'data_numpy_D_layers_[2, 3, 3, 1]_nb_layers4_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1_act_quadratic_msg_.npz'
         ##
         data = np.load( './data/{}'.format(data_filename) )
         x_true, Y = data['X_train'], data['Y_train']
         X_test, Y_test = data['X_test'], data['Y_test']
-    ## reshape
-    Y.shape = (N,1) # TODO why do I need this?
+        nb_inputs = X_test.shape[1]
     ## LA models
-    Kern = poly_kernel_matrix(x_true,Degree_mdl)
+    poly = PolynomialFeatures(D_pinv)
+    Kern = poly.fit_transform(x_true)
     c_pinv = np.dot(np.linalg.pinv( Kern ),Y) # [D_pinv,1]
-    #pdb.set_trace()
+    nb_monomials = int(scipy.misc.comb(nb_inputs+D_pinv,D_pinv))
+    print(' c_pinv.shape[0]={} \n nb_monomials={} '.format( c_pinv.shape[0], nb_monomials ))
+    if c_pinv.shape[0] != int(scipy.misc.comb(nb_inputs+D_pinv,D_pinv)):
+        raise ValueError('nb of monomials dont match')
+    pdb.set_trace()
     c_rls = get_RLS_soln(Kern,Y,lambda_rls) # [D_pinv,1]
     ## data to TORCH
     print('len(D_layers) ', len(D_layers))
@@ -250,7 +257,7 @@ def main(argv=None):
     pdb.set_trace()
     #
     nb_module_params = len( list(mdl_sgd.parameters()) )
-    loss_list, grad_list =  []], [ [] for i in range(nb_module_params) ]
+    loss_list, grad_list =  [], [ [] for i in range(nb_module_params) ]
     print('>>norm(Y): ', ((1/N)*torch.norm(Y)**2).data.numpy()[0] )
     print('>>l2_loss_torch: ', (1/N)*( Y - mdl_sgd.forward(X)).pow(2).sum().data.numpy()[0] )
     ########################################################################################################################################################
@@ -373,6 +380,7 @@ def main(argv=None):
         #print('||c_sgd - c_pinv||_2 = ', np.linalg.norm(c_sgd - c_pinv,2))
         #print('||c_sgd - c_avg||_2 = ', np.linalg.norm(c_sgd - c_pinv,2))
         #print('||c_avg - c_pinv||_2 = ', np.linalg.norm(c_avg - c_pinv,2))
+        pass
     f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
     #f_sgd = lambda x: np.dot(poly_kernel_matrix( [x], c_sgd.shape[0]-1 ),c_sgd)
     f_pinv = lambda x: f_mdl_LA(x,c_pinv)
