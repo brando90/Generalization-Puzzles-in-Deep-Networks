@@ -124,7 +124,7 @@ def main(argv=None):
     debug_sgd = False
     ## sgd
     M = 8
-    eta = 0.0001 # eta = 1e-6
+    eta = 0.00001 # eta = 1e-6
     A = 0.0
     nb_iter = int(80*1000)
     ##
@@ -152,7 +152,7 @@ def main(argv=None):
     # D_layers,act = [D0,D1,D2], act
 
     H1,H2 = 5,5
-    D0,D1,D2,D3 = 1,H1,H2,1
+    D0,D1,D2,D3 = 2,H1,H2,1
     D_layers,act = [D0,D1,D2,D3], act
 
     # H1,H2,H3 = 5,5,5
@@ -228,16 +228,16 @@ def main(argv=None):
         data = np.load( './data/{}'.format(data_filename) )
         x_true, Y = data['X_train'], data['Y_train']
         X_test, Y_test = data['X_test'], data['Y_test']
-        nb_inputs = X_test.shape[1]
+        D_data = X_test.shape[1]
     ## LA models
     poly = PolynomialFeatures(D_pinv)
     Kern = poly.fit_transform(x_true)
     c_pinv = np.dot(np.linalg.pinv( Kern ),Y) # [D_pinv,1]
-    nb_monomials = int(scipy.misc.comb(nb_inputs+D_pinv,D_pinv))
+    nb_monomials = int(scipy.misc.comb(D_data+D_pinv,D_pinv))
     print(' c_pinv.shape[0]={} \n nb_monomials={} '.format( c_pinv.shape[0], nb_monomials ))
-    if c_pinv.shape[0] != int(scipy.misc.comb(nb_inputs+D_pinv,D_pinv)):
+    if c_pinv.shape[0] != int(scipy.misc.comb(D_data+D_pinv,D_pinv)):
         raise ValueError('nb of monomials dont match')
-    pdb.set_trace()
+    #pdb.set_trace()
     c_rls = get_RLS_soln(Kern,Y,lambda_rls) # [D_pinv,1]
     ## data to TORCH
     print('len(D_layers) ', len(D_layers))
@@ -247,14 +247,12 @@ def main(argv=None):
         #pdb.set_trace()
     else:
         X = x_true
-        N, D_data =  X.shape[0], D_data
-        X.shape = N,D_data
     print('X ', X)
     X = Variable(torch.FloatTensor(X).type(dtype), requires_grad=False)
     Y = Variable(torch.FloatTensor(Y).type(dtype), requires_grad=False)
     ## SGD model
     mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,bias=bias)
-    pdb.set_trace()
+    #pdb.set_trace()
     #
     nb_module_params = len( list(mdl_sgd.parameters()) )
     loss_list, grad_list =  [], [ [] for i in range(nb_module_params) ]
@@ -317,6 +315,7 @@ def main(argv=None):
         #     W, W_avg = Ws[i], W_avgs[i]
         #     W_avgs[i] = (1/nb_iter)*W + W_avg
     ########################################################################################################################################################
+    pdb.set_trace()
     print('\ni = {}, current_loss = {}'.format(i,current_loss) )
     print('training ended!\a')
     ##
