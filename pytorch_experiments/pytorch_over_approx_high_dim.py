@@ -208,6 +208,16 @@ def main(argv=None):
         x_true = np.linspace(lb,ub,N) # the real data points
         Y = np.sin(2*np.pi*x_true)
         f_true = lambda x: np.sin(2*np.pi*x)
+    elif run_type == 'similar_nn':
+        ## Get data values from some net itself
+        x_true = np.linspace(lb,ub,N)
+        x_true.shape = x_true.shape[0],1
+        #
+        init_config_data = Maps( {'w_init':'w_init_normal','mu':0.0,'std':2.0, 'bias_init':'b_fill','bias_value':0.1,'bias':bias ,'nb_layers':len(D_layers)} )
+        w_inits_data, b_inits_data = get_initialization(init_config_data)
+        data_generator = NN(D_layers=D_layers,act=act,w_inits=w_inits_data,b_inits=b_inits_data,bias=bias)
+        Y = get_Y_from_new_net(data_generator=data_generator, X=x_true,dtype=dtype)
+        f_true = lambda x: f_mdl_eval(x,data_generator,dtype)
     elif run_type == 'from_file':
         ##
         #data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1_act_quad_ax2_bx_c_msg_.npz'

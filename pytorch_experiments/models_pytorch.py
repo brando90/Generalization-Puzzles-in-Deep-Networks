@@ -1,12 +1,17 @@
+import sklearn
+import scipy
+
 import torch
 from torch.autograd import Variable
 import torch.nn.functional as F
 
 import numpy as np
-
+#from numpy import preprocessing.PolynomialFeatures as PolynomialFeatures
 import unittest
 
 import pdb
+
+from sklearn.preprocessing import PolynomialFeatures
 
 ## Activations
 
@@ -162,7 +167,7 @@ def eval_feature_vec_multi_poly(x,S,C):
     for _,list_monomial_tuples in S.items():
         for mon_tuple in list_monomial_tuples:
             for d in mon_tuple:
-                f+=c[d]*(x[d]**d)
+                f+=C[d]*(x[d]**d)
     return f
 
 ##
@@ -277,16 +282,24 @@ class TestStringMethods(unittest.TestCase):
 
     def test_poly_feature_eval(self):
         N,D = 3,2 # N is the number of features, D is the degree
-        x = np.arange(N) # N by 1
+        N_data = 2 # number of data points
+        amount_of_numbers = 6
+        x = np.arange(amount_of_numbers).reshape(N_data,N) # map to raw data set of size [N_data, D]
         ##
-        S = generate_all_tuples_for_monomials(N,D)
-        nb_monomial_terms = sum( [len(list_monomial_tuples) for _,list_monomial_tuples in S.items] )
-        C = np.arange(1,nb_monomial_terms)
-        f1 = eval_feature_vec_multi_poly(x,S,C)
-        ##
+        #S = generate_all_tuples_for_monomials(N,D)
+        #nb_monomial_terms = sum( [len(list_monomial_tuples) for _,list_monomial_tuples in S.items()] )
+        #C = np.arange(1,nb_monomial_terms)
+        # f1 = eval_feature_vec_multi_poly(x,S,C)
+        ## get polynomial stuff
         poly = PolynomialFeatures(2)
-        x_poly = poly(x)
-        f2 = C*x_poly
+        x_poly = poly.fit_transform(x) # [N_data, nb_monomial_terms]
+        ##
+        self.assertEqual( int(scipy.misc.comb(5,2)), x_poly.shape[1])
+        ## compute f
+        nb_monomial_terms = x_poly.shape[1]
+        C = np.arange(nb_monomial_terms) # [nb_monomial_terms, 1]
+        #pdb.set_trace()
+        f2 = np.dot(x_poly,C)
 
 
 if __name__ == '__main__':

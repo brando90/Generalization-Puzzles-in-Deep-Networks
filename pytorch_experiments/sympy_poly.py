@@ -78,7 +78,7 @@ class sNN:
             self.bias = bias
             for i in range(1,len(D_layers)):
                 D_in,D_out = D_layers[i-1],D_layers[i]
-                self.weights.append( symarray('W'+str(i)+'l', (D_out,D_in)) ) # [D_out, D_in]
+                self.weights.append( symarray('W^'+str(i), (D_out,D_in)) ) # [D_out, D_in]
                 if self.bias:
                     #print('i ', i)
                     self.biases.append( Matrix( symarray('b', (D_out,1)) ) ) # [D_out, D_in]
@@ -198,16 +198,19 @@ def test_tNN_2_sNN():
     print( 'type(coefs): {}'.format( type(s_expr.coeffs()) ) )
 
 def test_purely_symbolic_sNN():
-    H1,H2 = 2,2
-    D0,D1,D2,D3 = 1,H1,H2,1
-    D_layers,act = [D0,D1,D2,D3], sQuad
+    # H1,H2 = 2,2
+    # D0,D1,D2,D3 = 1,H1,H2,1
+    # D_layers,act = [D0,D1,D2,D3], sQuad
+    H1 = 2
+    D0,D1,D3 = 1,H1,1
+    D_layers,act = [D0,D1,D3], sQuad
     smdl = sNN(act=act,D_layers=D_layers,bias=True)
     print(smdl)
     #
     x = symbols('x')
     expr = smdl.forward(x)
     s_expr = poly(expr,x)
-    print( '\n--->>> unstructed poly \n {} \n\n--->>> structured poly \n {} \n'.format(expr,s_expr) )
+    print( '\n--->>> unstructed poly \n {} \n\n--->>> structured poly \n {} \n'.format( latex(expr), latex(s_expr) ) )
     print( 'coefs: {}'.format( s_expr.coeffs() ) )
     print( 'type(coefs): {}'.format( type(s_expr.coeffs()) ) )
 

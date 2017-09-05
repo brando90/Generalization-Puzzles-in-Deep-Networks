@@ -109,10 +109,10 @@ def main(argv=None):
     debug = True
     debug_sgd = False
     ## sgd
-    M = 8
-    eta = 0.0001 # eta = 1e-6
+    M = 3
+    eta = 0.01 # eta = 1e-6
     A = 0.0
-    nb_iter = int(80*1000)
+    nb_iter = int(20*1000)
     ##
     ## activation params
     # alb, aub = -100, 100
@@ -137,17 +137,17 @@ def main(argv=None):
     # D0,D1,D2 = 1,H1,1
     # D_layers,act = [D0,D1,D2], act
 
-    # H1,H2 = 5,5
-    # D0,D1,D2,D3 = 1,H1,H2,1
-    # D_layers,act = [D0,D1,D2,D3], act
+    H1,H2 = 5,5
+    D0,D1,D2,D3 = 1,H1,H2,1
+    D_layers,act = [D0,D1,D2,D3], act
 
     # H1,H2,H3 = 5,5,5
     # D0,D1,D2,D3,D4 = 1,H1,H2,H3,1
     # D_layers,act = [D0,D1,D2,D3,D4], act
 
-    H1,H2,H3,H4 = 5,5,5,5
-    D0,D1,D2,D3,D4,D5 = 1,H1,H2,H3,H4,1
-    D_layers,act = [D0,D1,D2,D3,D4,D5], act
+    # H1,H2,H3,H4 = 5,5,5,5
+    # D0,D1,D2,D3,D4,D5 = 1,H1,H2,H3,H4,1
+    # D_layers,act = [D0,D1,D2,D3,D4,D5], act
 
     bias = True
 
@@ -215,8 +215,8 @@ def main(argv=None):
         #data_filename = 'data_numpy_D_layers_[1, 2, 1]_nb_layers3_biasTrue_mu0.0_std2.0_N_train_5_N_test_1000_lb_-1_ub_1_act_quadratic_msg_.npz'
         ##10 -1,1
         #data_filename = 'data_numpy_D_layers_[1, 2, 1]_nb_layers3_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1.npz'
-        #data_filename = 'data_numpy_D_layers_[1, 2, 2, 1]_nb_layers4_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1.npz'
-        data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1_act_quadratic_msg_.npz'
+        data_filename = 'data_numpy_D_layers_[1, 2, 2, 1]_nb_layers4_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1.npz'
+        #data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1_act_quadratic_msg_.npz'
         #data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1.npz'
         #data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1_act_quad_ax2_bx_c_msg_.npz'
         ##
@@ -239,13 +239,13 @@ def main(argv=None):
     else:
         X = x_true
         N, D =  X.shape[0], 1
-        X.shape = N,D_data
+        X.shape = N,1
     print('X ', X)
     X = Variable(torch.FloatTensor(X).type(dtype), requires_grad=False)
     Y = Variable(torch.FloatTensor(Y).type(dtype), requires_grad=False)
     ## SGD model
     mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,bias=bias)
-    pdb.set_trace()
+    #pdb.set_trace()
     # loss funtion
     #loss_fn = torch.nn.MSELoss(size_average=False)
     ## GPU
