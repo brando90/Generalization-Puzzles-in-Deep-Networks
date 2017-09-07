@@ -124,9 +124,9 @@ def main(argv=None):
     debug_sgd = False
     ## sgd
     M = 8
-    eta = 0.00001 # eta = 1e-6
+    eta = 0.00005 # eta = 1e-6
     A = 0.0
-    nb_iter = int(80*1000)
+    nb_iter = int(90*1)
     ##
     ## activation params
     # alb, aub = -100, 100
@@ -194,7 +194,7 @@ def main(argv=None):
     # b_inits = []
     # bias = False
     ##
-    init_config = Maps( {'w_init':'w_init_normal','mu':0.0,'std':0.1, 'bias_init':'b_fill','bias_value':0.01,'bias':bias ,'nb_layers':len(D_layers)} )
+    init_config = Maps( {'w_init':'w_init_normal','mu':0.0,'std':0.01, 'bias_init':'b_fill','bias_value':0.01,'bias':bias ,'nb_layers':len(D_layers)} )
     #init_config = Maps( {'w_init':'xavier_normal','gain':1,'bias_init':'b_fill','bias_value':0.01,'bias':bias,'nb_layers':len(D_layers)})
     w_inits_sgd, b_inits_sgd = get_initialization(init_config)
     #### Get Data set
@@ -227,11 +227,12 @@ def main(argv=None):
         ##
         data = np.load( './data/{}'.format(data_filename) )
         x_true, Y = data['X_train'], data['Y_train']
+        X_train, Y_train = x_true, Y
         X_test, Y_test = data['X_test'], data['Y_test']
         D_data = X_test.shape[1]
     ## LA models
-    poly = PolynomialFeatures(D_pinv)
-    Kern = poly.fit_transform(x_true)
+    poly_feat = PolynomialFeatures(D_pinv)
+    Kern = poly_feat.fit_transform(x_true)
     c_pinv = np.dot(np.linalg.pinv( Kern ),Y) # [D_pinv,1]
     nb_monomials = int(scipy.misc.comb(D_data+D_pinv,D_pinv))
     print(' c_pinv.shape[0]={} \n nb_monomials={} '.format( c_pinv.shape[0], nb_monomials ))
@@ -315,7 +316,7 @@ def main(argv=None):
         #     W, W_avg = Ws[i], W_avgs[i]
         #     W_avgs[i] = (1/nb_iter)*W + W_avg
     ########################################################################################################################################################
-    pdb.set_trace()
+    #pdb.set_trace()
     print('\ni = {}, current_loss = {}'.format(i,current_loss) )
     print('training ended!\a')
     ##
@@ -326,24 +327,27 @@ def main(argv=None):
         c_sgd = list(mdl_sgd.parameters())[0].data.numpy()
         c_sgd = c_sgd.transpose()
     else:
-        pass
-    #     x = symbols('x')
-    #     tmdl = mdl_sgd
-    #     if act.__name__ == 'poly_act_degree{}'.format(adegree):
-    #         sact = lambda x: s_Poly(x,c_pinv_relu)
-    #         sact.__name__ = 'spoly_act_degree{}'.format(adegree)
-    #         if adegree >= 10:
-    #             sact = sQuad
-    #     elif act__name__ == 'quadratic':
-    #         sact = sQuad
-    #     elif act.__name__ == 'relu':
-    #         sact = sReLU
-    #     smdl = sNN(sact,mdl=tmdl)
-    #     ## get simplification
-    #     expr = smdl.forward(x)
-    #     s_expr = poly(expr,x)
-    #     c_sgd = np.array( s_expr.coeffs()[::-1] )
-    #     c_sgd = [ np.float64(num) for num in c_sgd]
+        # e.g. x = Matrix(2,1,[a,a])
+        x_list = [ symbols('x'+str(i)) for i in range(D0) ]
+        x = Matrix(D0,1,x_list)
+        tmdl = mdl_sgd
+        if act.__name__ == 'poly_act_degree{}'.format(adegree):
+            sact = lambda x: s_Poly(x,c_pinv_relu)
+            sact.__name__ = 'spoly_act_degree{}'.format(adegree)
+            if adegree >= 10:
+                sact = sQuad
+        elif act__name__ == 'quadratic':
+            sact = sQuad
+        elif act.__name__ == 'relu':
+            sact = sReLU
+        smdl = sNN(sact,mdl=tmdl)
+        ## get simplification
+        expr = smdl.forward(x)
+        #pdb.set_trace()
+        s_expr = poly(expr,x_list)
+        c_sgd = np.array( s_expr.coeffs()[::-1] )
+        c_sgd = [ np.float64(num) for num in c_sgd]
+        #pdb.set_trace()
     if debug:
         print('c_sgd = ', c_sgd)
         print('c_pinv: ', c_pinv)
@@ -385,20 +389,20 @@ def main(argv=None):
     f_pinv = lambda x: f_mdl_LA(x,c_pinv)
     print('-- functional L2 norm difference')
     #pdb.set_trace()
-    print('||f_sgd - f_pinv||^2_2 = ', L2_norm_2(f=f_sgd,g=f_pinv,lb=lb,ub=ub))
+    #print('||f_sgd - f_pinv||^2_2 = ', L2_norm_2(f=f_sgd,g=f_pinv,lb=lb,ub=ub))
     #print('||f_avg - f_pinv||^2_2 = ', L2_norm_2(f=f_avg,g=f_pinv,lb=0,ub=1))
     print('-- Generalization (error vs true curve) functional l2 norm')
     if f_true ==  None:
         print('J_gen(f_sgd) = ', (1/N)*(mdl_sgd.forward(Variable(torch.FloatTensor(X_test))) - Variable(torch.FloatTensor(Y_test)) ).pow(2).sum().data.numpy() )
-        print('J_gen(f_pinv) = ', (1/N)*(np.linalg.norm(Y_test-np.dot( poly_kernel_matrix( X_test,D_sgd-1 ),c_pinv))**2) )
+        print('J_gen(f_pinv) = ', (1/N)*(np.linalg.norm(Y_test-np.dot( poly_feat.fit_transform(X_test),c_pinv))**2) )
     else:
         print('||f_sgd - f_true||^2_2 = ', L2_norm_2(f=f_sgd,g=f_true,lb=lb,ub=ub))
         print('||f_pinv - f_true||^2_2 = ', L2_norm_2(f=f_pinv,g=f_true,lb=lb,ub=ub))
     #
     print('-- Train Error')
     print(' J(f_sgd) = ', (1/N)*(mdl_sgd.forward(Variable(torch.FloatTensor(X))) - Variable(torch.FloatTensor(Y)) ).pow(2).sum().data.numpy() )
-    print( ' J(f_pinv) = ',(1/N)*(np.linalg.norm(Y-np.dot( poly_kernel_matrix( x_true,D_sgd-1 ),c_pinv))**2) )
-    print( ' J(c_rls) = ',(1/N)*(np.linalg.norm(Y-(1/N)*(np.linalg.norm(Y-np.dot( poly_kernel_matrix( x_true,D_sgd-1 ),c_rls))**2) )**2) )
+    print(' J(f_pinv) = ',(1/N)*(np.linalg.norm(Y-np.dot( poly_feat.fit_transform(x_true) ,c_pinv))**2) )
+    #print(' J(c_rls) = ',(1/N)*(np.linalg.norm(Y-(1/N)*(np.linalg.norm(Y-np.dot( poly_kernel_matrix( x_true,D_sgd-1 ),c_rls))**2) )**2) )
     #
     seconds = (time.time() - start_time)
     minutes = seconds/ 60
@@ -408,48 +412,75 @@ def main(argv=None):
     print("--- %s hours ---" % hours )
     print('\a')
     ## plots
-    x_horizontal = np.linspace(lb,ub,1000)
-    X_plot = poly_kernel_matrix(x_horizontal,D_sgd-1)
-    #plots objs
-    p_sgd, = plt.plot(x_horizontal, [ float(f_sgd(x_i)[0]) for x_i in x_horizontal ])
-    p_pinv, = plt.plot(x_horizontal, np.dot(X_plot,c_pinv))
-    p_data, = plt.plot(x_true,Y,'ro')
-    p_list = [p_sgd,p_pinv,p_data]
-    plt.title('SGD vs minimum norm solution curves')
-    if len(p_list) == 3:
-        if len(D_layers) <= 2:
-            sgd_legend_str = 'Degree model={} non linear-layers={}'.format(str(D_sgd-1),1)
+    if D0 == 1:
+        x_horizontal = np.linspace(lb,ub,1000)
+        X_plot = poly_kernel_matrix(x_horizontal,D_sgd-1)
+        #plots objs
+        p_sgd, = plt.plot(x_horizontal, [ float(f_sgd(x_i)[0]) for x_i in x_horizontal ])
+        p_pinv, = plt.plot(x_horizontal, np.dot(X_plot,c_pinv))
+        p_data, = plt.plot(x_true,Y,'ro')
+        p_list = [p_sgd,p_pinv,p_data]
+        plt.title('SGD vs minimum norm solution curves')
+        if len(p_list) == 3:
+            if len(D_layers) <= 2:
+                sgd_legend_str = 'Degree model={} non linear-layers={}'.format(str(D_sgd-1),1)
+            else:
+                nb_non_linear_layers = len(D_layers)-2
+                degree_sgd = adegree**(len(D_layers)-2)
+                sgd_legend_str = 'Degree model={} non linear-layers={}'.format(degree_sgd,nb_non_linear_layers)
+            plt.legend(p_list,['SGD solution {}, param count={}, batch-size={}, iterations={}, step size={}'.format(
+                sgd_legend_str,nb_params,M,nb_iter,eta),
+                'minimum norm solution Degree model='+str(D_pinv-1),
+                'data points'])
+            plt.ylabel('f(x)')
         else:
-            nb_non_linear_layers = len(D_layers)-2
-            degree_sgd = adegree**(len(D_layers)-2)
-            sgd_legend_str = 'Degree model={} non linear-layers={}'.format(degree_sgd,nb_non_linear_layers)
-        plt.legend(p_list,['SGD solution {}, param count={}, batch-size={}, iterations={}, step size={}'.format(
-            sgd_legend_str,nb_params,M,nb_iter,eta),
-            'minimum norm solution Degree model='+str(D_pinv-1),
-            'data points'])
+            plt.legend(p_list,['sgd curve Degree_mdl={}, batch-size= {}, iterations={}, step size={}'.format(
+            str(D_sgd-1),M,nb_iter,eta),'min norm (pinv) Degree_mdl='+str(D_pinv-1), 'data points'])
+        #plt.legend(p_list,['average sgd model Degree_mdl={}'.format( str(D_sgd-1) ),'sgd curve Degree_mdl={}, batch-size= {}, iterations={}, eta={}'.format(str(D_sgd-1),M,nb_iter,eta),'min norm (pinv) Degree_mdl='+str(D_pinv-1),'data points'])
+        #plt.legend(p_list,['min norm (pinv) Degree_mdl='+str(D_pinv-1),'data points'])
         plt.ylabel('f(x)')
+        ##
+        fig1 = plt.figure()
+        p_loss, = plt.plot(np.arange(len(loss_list)), loss_list,color='m')
+        plt.legend([p_loss],['plot loss'])
+        plt.title('Loss vs Iterations')
+        ##
+        for i in range(len(grad_list)):
+            fig2 = plt.figure()
+            current_grad_list = grad_list[i]
+            #pdb.set_trace()
+            p_grads, = plt.plot(np.arange(len(current_grad_list)), current_grad_list,color='g')
+            plt.legend([p_grads],['plot grads'])
+            plt.title('Gradient vs Iterations: # {}'.format(i))
+        ##
+        plot_activation_func(act)
+        ##
     else:
-        plt.legend(p_list,['sgd curve Degree_mdl={}, batch-size= {}, iterations={}, step size={}'.format(
-        str(D_sgd-1),M,nb_iter,eta),'min norm (pinv) Degree_mdl='+str(D_pinv-1), 'data points'])
-    #plt.legend(p_list,['average sgd model Degree_mdl={}'.format( str(D_sgd-1) ),'sgd curve Degree_mdl={}, batch-size= {}, iterations={}, eta={}'.format(str(D_sgd-1),M,nb_iter,eta),'min norm (pinv) Degree_mdl='+str(D_pinv-1),'data points'])
-    #plt.legend(p_list,['min norm (pinv) Degree_mdl='+str(D_pinv-1),'data points'])
-    plt.ylabel('f(x)')
-    ##
-    fig1 = plt.figure()
-    p_loss, = plt.plot(np.arange(len(loss_list)), loss_list,color='m')
-    plt.legend([p_loss],['plot loss'])
-    plt.title('Loss vs Iterations')
-    ##
-    for i in range(len(grad_list)):
+        #
+        X_data, Y_data = X_test,Y_test
+        Xp,Yp,Zp = make_meshgrid_data_from_training_data(X_data=X_data, Y_data=Y_data)
+        ##
+        fig1 = plt.figure()
+        ax1 = Axes3D(fig1)
+        ## plot data points
+        #surf = ax.plot_surface(Xp,Yp,Zp, cmap=cm.coolwarm)
+        Xp_train,Yp_train,Zp_train = make_meshgrid_data_from_training_data(X_data=X_train, Y_data=Y_train)
+        ax1.scatter(Xp_train,Yp_train,Zp_train)
+        ##
+        Y_pinv = np.dot(poly_feat.fit_transform(X_data),c_pinv)
+        _,_,Zp_pinv = make_meshgrid_data_from_training_data(X_data=X_data, Y_data=Y_pinv)
+        surf = ax1.plot_surface(Xp,Yp,Zp_pinv, cmap=cm.coolwarm)
+        ##
         fig2 = plt.figure()
-        current_grad_list = grad_list[i]
+        ax2 = Axes3D(fig2)
+        #
+        ax2.scatter(Xp_train,Yp_train,Zp_train)
+        #
+        Y_sgd = mdl_sgd.forward(Variable(torch.FloatTensor(X_data))).data.numpy()
         #pdb.set_trace()
-        p_grads, = plt.plot(np.arange(len(current_grad_list)), current_grad_list,color='g')
-        plt.legend([p_grads],['plot grads'])
-        plt.title('Gradient vs Iterations: # {}'.format(i))
-    ##
-    plot_activation_func(act)
-    ##
+        _,_,Zp_sgd = make_meshgrid_data_from_training_data(X_data=X_data, Y_data=Y_sgd)
+        surf = ax2.plot_surface(Xp,Yp,Zp_sgd, cmap=cm.coolwarm)
+        plt.title('Test function')
     plt.show()
 
 if __name__ == '__main__':

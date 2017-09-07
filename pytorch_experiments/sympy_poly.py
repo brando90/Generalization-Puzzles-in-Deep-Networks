@@ -105,6 +105,7 @@ class sNN:
             W_d = self.weights[d] # [D_out,D_in]
             b_d = self.biases[d] # [D_out,1]
             if b_d != None:
+                #pdb.set_trace()
                 z = W_d*a + b_d # [D_out,N] = [D_out,D_in] x [D_in,N] .+ [D_out,1]
             else:
                 z = W_d*a # [D_out,N] = [D_out,D_in] x [D_in,N]
