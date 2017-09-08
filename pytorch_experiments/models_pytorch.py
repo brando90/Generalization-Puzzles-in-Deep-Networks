@@ -28,7 +28,6 @@ def quadratic(x):
 def quad_ax2_bx_c(x,a,b,c):
     return a*x**2+b*x+c
 
-
 def get_relu_poly_act2(X,degree=2):
     #Kern = poly_kernel_matrix(X,degree) #[1, x^1, ..., x^D]
     Y = np.maximum(0,X)

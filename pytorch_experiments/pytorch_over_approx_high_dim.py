@@ -15,6 +15,7 @@ from sympy_poly import *
 from poly_checks_on_deep_net_coeffs import *
 from data_file import *
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import scipy.integrate as integrate
 import scipy
@@ -124,9 +125,10 @@ def main(argv=None):
     debug_sgd = False
     ## sgd
     M = 8
-    eta = 0.00005 # eta = 1e-6
+    eta = 0.00003 # eta = 1e-6
     A = 0.0
-    nb_iter = int(90*1)
+    nb_iter = int(100*1000)
+    logging_freq = 500
     ##
     ## activation params
     # alb, aub = -100, 100
@@ -146,21 +148,22 @@ def main(argv=None):
     #plot_activation_func(act,lb=palb,ub=paub,N=paN)
     #plt.show()
     #### 2-layered mdl
+    D0 = 2
 
     # H1 = 10
     # D0,D1,D2 = 1,H1,1
     # D_layers,act = [D0,D1,D2], act
 
-    H1,H2 = 5,5
-    D0,D1,D2,D3 = 2,H1,H2,1
-    D_layers,act = [D0,D1,D2,D3], act
+    # H1,H2 = 5,5
+    # D0,D1,D2,D3 = D0,H1,H2,1
+    # D_layers,act = [D0,D1,D2,D3], act
 
-    # H1,H2,H3 = 5,5,5
-    # D0,D1,D2,D3,D4 = 1,H1,H2,H3,1
-    # D_layers,act = [D0,D1,D2,D3,D4], act
+    H1,H2,H3 = 5,5,5
+    D0,D1,D2,D3,D4 = D0,H1,H2,H3,1
+    D_layers,act = [D0,D1,D2,D3,D4], act
 
     # H1,H2,H3,H4 = 5,5,5,5
-    # D0,D1,D2,D3,D4,D5 = 1,H1,H2,H3,H4,1
+    # D0,D1,D2,D3,D4,D5 = D0,H1,H2,H3,H4,1
     # D_layers,act = [D0,D1,D2,D3,D4,D5], act
 
     bias = True
@@ -172,7 +175,7 @@ def main(argv=None):
     np.set_printoptions(suppress=True)
     lb, ub = -1, 1
     ## true facts of the data set
-    N = 10
+    N = 30
     ## mdl degree and D
     Degree_mdl = adegree**( len(D_layers)-2 )
     D_sgd = Degree_mdl+1
@@ -201,7 +204,8 @@ def main(argv=None):
     ## Get input variables X
     #run_type = 'sine'
     #run_type = 'similar_nn'
-    run_type = 'from_file'
+    #run_type = 'from_file'
+    run_type = 'h_add'
     data_filename = None
     init_config_data = Maps({})
     f_true = None
@@ -226,37 +230,34 @@ def main(argv=None):
         data_filename = 'data_numpy_D_layers_[2, 3, 3, 1]_nb_layers4_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1_act_quadratic_msg_.npz'
         ##
         data = np.load( './data/{}'.format(data_filename) )
-        x_true, Y = data['X_train'], data['Y_train']
-        X_train, Y_train = x_true, Y
+        X_train, Y_train = data['X_train'], data['Y_train']
         X_test, Y_test = data['X_test'], data['Y_test']
-        D_data = X_test.shape[1]
+        D_data = D0
+    elif run_type == 'h_add':
+        X,Y,Z = generate_meshgrid_h_add(N=N,start_val=-1,end_val=1)
+        X_train,Y_train = make_mesh_grid_to_data_set(X,Y,Z)
+        X,Y,Z = generate_meshgrid_h_add(N=1000,start_val=-1,end_val=1)
+        X_test,Y_test = make_mesh_grid_to_data_set(X,Y,Z)
+        D_data = D0
     ## LA models
     poly_feat = PolynomialFeatures(D_pinv)
-    Kern = poly_feat.fit_transform(x_true)
-    c_pinv = np.dot(np.linalg.pinv( Kern ),Y) # [D_pinv,1]
+    Kern = poly_feat.fit_transform(X_train)
+    c_pinv = np.dot(np.linalg.pinv( Kern ),Y_train) # [D_pinv,1]
     nb_monomials = int(scipy.misc.comb(D_data+D_pinv,D_pinv))
     print(' c_pinv.shape[0]={} \n nb_monomials={} '.format( c_pinv.shape[0], nb_monomials ))
     if c_pinv.shape[0] != int(scipy.misc.comb(D_data+D_pinv,D_pinv)):
         raise ValueError('nb of monomials dont match')
     #pdb.set_trace()
-    c_rls = get_RLS_soln(Kern,Y,lambda_rls) # [D_pinv,1]
+    #c_rls = get_RLS_soln(Kern,Y_train,lambda_rls) # [D_pinv,1]
     ## data to TORCH
     print('len(D_layers) ', len(D_layers))
-    #pdb.set_trace()
-    if len(D_layers) == 2:
-        X = poly_kernel_matrix(x_true,Degree_mdl) # maps to the feature space of the model
-        #pdb.set_trace()
-    else:
-        X = x_true
-    print('X ', X)
-    X = Variable(torch.FloatTensor(X).type(dtype), requires_grad=False)
-    Y = Variable(torch.FloatTensor(Y).type(dtype), requires_grad=False)
+    X = Variable(torch.FloatTensor(X_train).type(dtype), requires_grad=False)
+    Y = Variable(torch.FloatTensor(Y_train).type(dtype), requires_grad=False)
     ## SGD model
     mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,bias=bias)
-    #pdb.set_trace()
-    #
     nb_module_params = len( list(mdl_sgd.parameters()) )
     loss_list, grad_list =  [], [ [] for i in range(nb_module_params) ]
+    func_diff = []
     print('>>norm(Y): ', ((1/N)*torch.norm(Y)**2).data.numpy()[0] )
     print('>>l2_loss_torch: ', (1/N)*( Y - mdl_sgd.forward(X)).pow(2).sum().data.numpy()[0] )
     ########################################################################################################################################################
@@ -281,9 +282,11 @@ def main(argv=None):
             W.data.copy_(W.data - delta + A*gdl_eps) # W - eta*g + A*gdl_eps
         #pdb.set_trace()
         ## TRAINING STATS
-        if i % 1 == 0 or i == 0:
+        if i % logging_freq == 0 or i == 0:
             current_loss = loss.data.numpy()[0]
             loss_list.append(current_loss)
+
+            #func_diff.append( )
             if debug_sgd:
                 print('\ni =',i)
                 print('current_loss = ',current_loss)
@@ -373,11 +376,11 @@ def main(argv=None):
         print('--L1')
         print('||c_pinv||_1 = {} '.format(np.linalg.norm(c_pinv,1)) )
         #print('||c_avg||_1 = {} '.format(np.linalg.norm(c_avg,1)) )
-        #print('||c_sgd||_1 = {} '.format(np.linalg.norm(c_sgd,1)) )
+        print('||c_sgd||_1 = {} '.format(np.linalg.norm(c_sgd,1)) )
         print('--L2')
         print('||c_pinv||_2 = ', np.linalg.norm(c_pinv,2))
         #print('||c_avg||_2 = {} '.format(np.linalg.norm(c_avg,2))
-        #print('||c_sgd||_2 = ', np.linalg.norm(c_sgd,2))
+        print('||c_sgd||_2 = ', np.linalg.norm(c_sgd,2))
     print('---- parameters differences')
     if len(D_layers) >= 2:
         #print('||c_sgd - c_pinv||_2 = ', np.linalg.norm(c_sgd - c_pinv,2))
@@ -389,7 +392,7 @@ def main(argv=None):
     f_pinv = lambda x: f_mdl_LA(x,c_pinv)
     print('-- functional L2 norm difference')
     #pdb.set_trace()
-    #print('||f_sgd - f_pinv||^2_2 = ', L2_norm_2(f=f_sgd,g=f_pinv,lb=lb,ub=ub))
+    print('||f_sgd - f_pinv||^2_2 = ', L2_norm_2(f=f_sgd,g=f_pinv,lb=lb,ub=ub))
     #print('||f_avg - f_pinv||^2_2 = ', L2_norm_2(f=f_avg,g=f_pinv,lb=0,ub=1))
     print('-- Generalization (error vs true curve) functional l2 norm')
     if f_true ==  None:
@@ -401,7 +404,7 @@ def main(argv=None):
     #
     print('-- Train Error')
     print(' J(f_sgd) = ', (1/N)*(mdl_sgd.forward(Variable(torch.FloatTensor(X))) - Variable(torch.FloatTensor(Y)) ).pow(2).sum().data.numpy() )
-    print(' J(f_pinv) = ',(1/N)*(np.linalg.norm(Y-np.dot( poly_feat.fit_transform(x_true) ,c_pinv))**2) )
+    print(' J(f_pinv) = ',(1/N)*(np.linalg.norm(Y-np.dot( poly_feat.fit_transform(X_train) ,c_pinv))**2) )
     #print(' J(c_rls) = ',(1/N)*(np.linalg.norm(Y-(1/N)*(np.linalg.norm(Y-np.dot( poly_kernel_matrix( x_true,D_sgd-1 ),c_rls))**2) )**2) )
     #
     seconds = (time.time() - start_time)
@@ -457,29 +460,60 @@ def main(argv=None):
         ##
     else:
         #
+        nb_non_linear_layers = len(D_layers)-2
+        degree_sgd = adegree**(len(D_layers)-2)
+        sgd_legend_str = 'Degree model={} non linear-layers={}'.format(degree_sgd,nb_non_linear_layers)
+        #
         X_data, Y_data = X_test,Y_test
-        Xp,Yp,Zp = make_meshgrid_data_from_training_data(X_data=X_data, Y_data=Y_data)
-        ##
-        fig1 = plt.figure()
-        ax1 = Axes3D(fig1)
-        ## plot data points
-        #surf = ax.plot_surface(Xp,Yp,Zp, cmap=cm.coolwarm)
-        Xp_train,Yp_train,Zp_train = make_meshgrid_data_from_training_data(X_data=X_train, Y_data=Y_train)
-        ax1.scatter(Xp_train,Yp_train,Zp_train)
-        ##
+        Xp,Yp,Zp = make_meshgrid_data_from_training_data(X_data=X_data, Y_data=Y_data) # meshgrid for visualization
+        #visualize(Xp,Yp,Zp,title_name='Test function') # visualize function
+        Xp_train,Yp_train,Zp_train = make_meshgrid_data_from_training_data(X_data=X_train, Y_data=Y_train) # meshgrid for trainign points
+        #pdb.set_trace()
+        ## plot data PINV
         Y_pinv = np.dot(poly_feat.fit_transform(X_data),c_pinv)
         _,_,Zp_pinv = make_meshgrid_data_from_training_data(X_data=X_data, Y_data=Y_pinv)
-        surf = ax1.plot_surface(Xp,Yp,Zp_pinv, cmap=cm.coolwarm)
+        ## plot data SGD
+        Y_sgd = mdl_sgd.forward(Variable(torch.FloatTensor(X_data))).data.numpy()
+        _,_,Zp_sgd = make_meshgrid_data_from_training_data(X_data=X_data, Y_data=Y_sgd)
+
+        ## FIG PINV
+        fig1 = plt.figure()
+        ax1 = Axes3D(fig1)
+        ## plot data points fig1
+        points_scatter = ax1.scatter(Xp_train,Yp_train,Zp_train, marker='D')
+        ## surf PINV
+        surf = ax1.plot_surface(Xp,Yp,Zp_pinv,color='y',cmap=cm.coolwarm)
         ##
+        ax1.set_xlabel('x1'),ax1.set_ylabel('x2'),ax1.set_zlabel('f(x)')
+        surf_proxy = mpl.lines.Line2D([0],[0], linestyle="none", c='r', marker ='_')
+        ax1.legend([surf_proxy,points_scatter],[
+            'minimum norm solution Degree model={}, number of monomials={}'.format(str(D_pinv-1),nb_monomials),
+            'data points'])
+        #plt.title('minimum norm solution')
+        #minimum norm solution Degree model='+str(D_pinv-1)
+        # ## FIG SGD
         fig2 = plt.figure()
         ax2 = Axes3D(fig2)
-        #
-        ax2.scatter(Xp_train,Yp_train,Zp_train)
-        #
-        Y_sgd = mdl_sgd.forward(Variable(torch.FloatTensor(X_data))).data.numpy()
-        #pdb.set_trace()
-        _,_,Zp_sgd = make_meshgrid_data_from_training_data(X_data=X_data, Y_data=Y_sgd)
-        surf = ax2.plot_surface(Xp,Yp,Zp_sgd, cmap=cm.coolwarm)
+        ## plot data points fig1
+        data_pts = ax2.scatter(Xp_train,Yp_train,Zp_train, marker='D')
+        ## surf SGD
+        surf = ax2.plot_surface(Xp,Yp,Zp_sgd,cmap=cm.coolwarm)
+        ##
+        ax2.set_xlabel('x1'),ax2.set_ylabel('x2'),ax2.set_zlabel('f(x)')
+        surf_proxy = mpl.lines.Line2D([0],[0], linestyle="none", c='r', marker = '_')
+        ax2.legend([surf_proxy,data_pts],[
+            'SGD solution {}, param count={}, batch-size={}, iterations={}, step size={}'.format(sgd_legend_str,nb_params,M,nb_iter,eta),
+            'data points'])
+        #plt.title('SGD solution')
+        ##
+        fig = plt.figure()
+        ax = Axes3D(fig)
+        #train
+        points_scatter = ax.scatter(Xp_train,Yp_train,Zp_train, marker='D')
+        surf = ax.plot_surface(Xp_train,Yp_train,Zp_train, cmap=cm.coolwarm)
+        #Test
+        #points_scatter = ax.scatter(Xp,Yp,Zp, marker='D')
+        #surf = ax.plot_surface(Xp,Yp,Zp, cmap=cm.coolwarm)
         plt.title('Test function')
     plt.show()
 

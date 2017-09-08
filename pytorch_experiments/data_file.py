@@ -44,7 +44,7 @@ def make_mesh_grid_to_data_set(X, Y, Z=None):
             y = Y[dx, dy]
             x_data = np.array([x, y])
             # func val
-            if Z==None:
+            if np.any(Z) == None:
                 z = None
                 y_data = None
             else:
@@ -172,26 +172,44 @@ def load(path):
     # return data_generator
     pass
 
+def generate_meshgrid_h_add(N=60000,start_val=-1,end_val=1):
+    (X,Y) = generate_meshgrid(N,start_val,end_val)
+    #Z = sin(2*pi*X) + 4*(Y - 0.5).^2; %% h_add
+    #Z = np.sin(2*np.pi*X) + 4*np.power(Y - 0.5, 2) # h_add
+    Z = np.sin(2*np.pi*X)
+    #pdb.set_trace()
+    return X,Y,Z
+
+def visualize(X,Y,Z,title_name='Test function'):
+    #Xp,Yp,Zp = make_meshgrid_data_from_training_data(X_data=X_test, Y_data=Y_test)
+    fig = plt.figure()
+    ax = Axes3D(fig)
+    surf = ax.plot_surface(X,Y,Z, cmap=cm.coolwarm)
+    plt.title(title_name)
+    plt.show()
+
 if __name__ == '__main__':
+    X,Y,Z = generate_meshgrid_h_add(N=60000,start_val=-1,end_val=1)
+    visualize(X,Y,Z)
     #act = get_relu_poly_act(degree=2,lb=-1,ub=1,N=100)
     act = quadratic
     # H1 = 2
     # D0,D1,D2 = 1,H1,1
     # D_layers,act = [D0,D1,D2], act
 
-    H1,H2 = 3,3
-    D0,D1,D2,D3 = 2,H1,H2,1
-    D_layers,act = [D0,D1,D2,D3], act
+    # H1,H2 = 3,3
+    # D0,D1,D2,D3 = 2,H1,H2,1
+    # D_layers,act = [D0,D1,D2,D3], act
 
-    # H1,H2,H3 = 2,2,2
-    # D0,D1,D2,D3,D4 = 2,H1,H2,H3,1
-    # D_layers,act = [D0,D1,D2,D3,D4], act
+    H1,H2,H3 = 2,2,2
+    D0,D1,D2,D3,D4 = 2,H1,H2,H3,1
+    D_layers,act = [D0,D1,D2,D3,D4], act
 
     # H1,H2,H3,H4 = 2,2,2,2
     # D0,D1,D2,D3,D4,D5 = 1,H1,H2,H3,H4,1
     # D_layers,act = [D0,D1,D2,D3,D4,D5], act
     #
-    save_data_set(path='./data/{}',D_layers=D_layers,act=act,bias=True,mu=0.0,std=2.0, lb=-1,ub=1,N_train=10,N_test=1000,visualize=True)
+    #save_data_set(path='./data/{}',D_layers=D_layers,act=act,bias=True,mu=0.0,std=2.0, lb=-1,ub=1,N_train=10,N_test=1000,visualize=True)
     #save_data_gen(path='./data/{}',D_layers=D_layers,act=act,bias=True,mu=0.0,std=5.0)
     #data_generator = load(path='./data/data_gen_nb_layers3_biasTrue_mu0.0_std5.0')
     print('End! \a')
