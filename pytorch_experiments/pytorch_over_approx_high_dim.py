@@ -33,33 +33,51 @@ def get_symbols(D):
         symbols.append( 'x_'+str(i))
     return symbols
 
-def f_mdl_LA(x,c):
-    D,_ = c.shape
-    X = poly_kernel_matrix( [x],D-1 )
-    # np.dot(poly_kernel_matrix( [x], c.shape[0]-1 ),c)
-    return np.dot(X,c)
+def f_mdl_LA(x,c,D_mdl=None):
+    _,D = x.shape
+    if D==1:
+        Deg,_ = c.shape
+        Kern = poly_kernel_matrix( [x],Deg-1 )
+        Y = np.dot(Kern,c)
+    elif D>=2:
+        poly_feat = PolynomialFeatures(D_mdl)
+        Kern = poly_feat.fit_transform(x)
+        Y = np.dot(Kern,c)
+    return Y
 
 def f_mdl_eval(x,mdl_eval,dtype):
     _,D = list(mdl_eval.parameters())[0].data.numpy().shape
     #pdb.set_trace()
     if len(list(mdl_eval.parameters())) == 2 or len(list(mdl_eval.parameters())) == 1:
+        # TODO: I think this is when we are training a linear model with SGD
         x = poly_kernel_matrix( [x],D-1 )
         x = Variable(torch.FloatTensor([x]).type(dtype))
     else:
-        x = Variable(torch.FloatTensor([x]).type(dtype))
-        x = x.view(1,1)
+        if D==1:
+            x = Variable(torch.FloatTensor([x]).type(dtype)).view(1,1)
+        elif D==2:
+            x = Variable(torch.FloatTensor([x]).type(dtype))
+        else:
+            raise ValueError('D {} is not supported yet.'.format(D))
     y_pred = mdl_eval.forward(x)
     return y_pred.data.numpy()
 
-def L2_norm_2(f,g,lb=0,ub=1):
-    f_g_2 = lambda x: (f(x) - g(x))**2
-    #import scipy
-    #import scipy.integrate as integrate
-    #import scipy.integrate.quad as quad
-    #pdb.set_trace()
-    result = integrate.quad(func=f_g_2, a=lb,b=ub)
-    #result = quad(func=f_g_2, a=lb,b=ub)
-    integral_val = result[0]
+def L2_norm_2(f,g,lb=0,ub=1,D=1):
+    if D==1:
+        f_g_2 = lambda x: (f(x) - g(x))**2
+        result = integrate.quad(func=f_g_2, a=lb,b=ub)
+        integral_val = result[0]
+    elif D==2:
+        gfun,hfun = lambda x: x, lambda x: x
+        #pdb.set_trace()
+        def f_g_2(x,y):
+            #pdb.set_trace()
+            x = np.array([[x,y]])
+            return (f(x) - g(x))**2
+        result = integrate.dblquad(func=f_g_2, a=lb,b=ub, gfun=gfun,hfun=hfun)
+        integral_val = result[0]
+    else:
+        raise ValueError(' D {} is not handled yet'.format(D))
     return integral_val
 
 def get_RLS_soln( X,Y,lambda_rls):
@@ -127,7 +145,7 @@ def main(argv=None):
     M = 8
     eta = 0.00003 # eta = 1e-6
     A = 0.0
-    nb_iter = int(100*1000)
+    nb_iter = int(1*1000)
     logging_freq = 500
     ##
     ## activation params
@@ -387,13 +405,19 @@ def main(argv=None):
         #print('||c_sgd - c_avg||_2 = ', np.linalg.norm(c_sgd - c_pinv,2))
         #print('||c_avg - c_pinv||_2 = ', np.linalg.norm(c_avg - c_pinv,2))
         pass
-    f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
-    #f_sgd = lambda x: np.dot(poly_kernel_matrix( [x], c_sgd.shape[0]-1 ),c_sgd)
-    f_pinv = lambda x: f_mdl_LA(x,c_pinv)
     print('-- functional L2 norm difference')
+    if D0 == 1:
+        f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
+        f_pinv = lambda x: f_mdl_LA(x,c_pinv)
+        print('||f_sgd - f_pinv||^2_2 = ', L2_norm_2(f=f_sgd,g=f_pinv,lb=lb,ub=ub,D=1) )
+        #print('||f_avg - f_pinv||^2_2 = ', L2_norm_2(f=f_avg,g=f_pinv,lb=0,ub=1))
+    elif D0 == 2:
+        f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
+        f_pinv = lambda x: f_mdl_LA(x,c_pinv,D_mdl=D_pinv)
+        print('||f_sgd - f_pinv||^2_2 = ', L2_norm_2(f=f_sgd,g=f_pinv,lb=lb,ub=ub,D=2))
+    else:
+        pass
     #pdb.set_trace()
-    print('||f_sgd - f_pinv||^2_2 = ', L2_norm_2(f=f_sgd,g=f_pinv,lb=lb,ub=ub))
-    #print('||f_avg - f_pinv||^2_2 = ', L2_norm_2(f=f_avg,g=f_pinv,lb=0,ub=1))
     print('-- Generalization (error vs true curve) functional l2 norm')
     if f_true ==  None:
         print('J_gen(f_sgd) = ', (1/N)*(mdl_sgd.forward(Variable(torch.FloatTensor(X_test))) - Variable(torch.FloatTensor(Y_test)) ).pow(2).sum().data.numpy() )
