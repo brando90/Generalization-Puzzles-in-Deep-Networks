@@ -186,9 +186,9 @@ def main(**kwargs):
     debug = True
     debug_sgd = False
     ## nb data points
-    N = 45
+    N = 1000
     ## sgd
-    M = 35
+    M = 254
     eta = 0.05 # eta = 1e-6
     A = 0.0
     nb_iter = int(20*1000)
@@ -353,8 +353,10 @@ def main(**kwargs):
         if i % logging_freq == 0 or i == 0:
             current_loss = loss.data.numpy()[0]
             loss_list.append(current_loss)
-
-            #func_diff.append( )
+            if i!=0:
+                f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
+                f_pinv = lambda x: f_mdl_LA(x,c_pinv,D_mdl=D_pinv)
+                func_diff.append( L2_norm_2(f=f_sgd,g=f_pinv,lb=lb,ub=ub,D=2) )
             if debug_sgd:
                 print('\ni =',i)
                 print('current_loss = ',current_loss)
@@ -546,7 +548,7 @@ def main(**kwargs):
         surf_proxy = mpl.lines.Line2D([0],[0], linestyle="none", c='r', marker ='_')
         ax1.legend([surf_proxy,points_scatter],[
             'minimum norm solution Degree model={}, number of monomials={}'.format(str(D_pinv-1),nb_monomials),
-            'data points'])
+            'data points, number of data points = {}'.format(N)])
         #plt.title('minimum norm solution')
         #minimum norm solution Degree model='+str(D_pinv-1)
         # ## FIG SGD
@@ -560,8 +562,8 @@ def main(**kwargs):
         ax2.set_xlabel('x1'),ax2.set_ylabel('x2'),ax2.set_zlabel('f(x)')
         surf_proxy = mpl.lines.Line2D([0],[0], linestyle="none", c='r', marker = '_')
         ax2.legend([surf_proxy,data_pts],[
-            'SGD solution {}, param count={}, batch-size={}, iterations={}, step size={}'.format(sgd_legend_str,nb_params,M,nb_iter,eta),
-            'data points'])
+            'SGD solution {}, number of monomials={}, param count={}, batch-size={}, iterations={}, step size={}'.format(sgd_legend_str,nb_monomials,nb_params,M,nb_iter,eta),
+            'data points, number of data points = {}'.format(N)])
         #plt.title('SGD solution')
         ## train
         fig = plt.figure()
@@ -591,6 +593,12 @@ def main(**kwargs):
     ##
     plot_activation_func(act)
     ##
+    #func_diff
+    fig = plt.figure()
+    p_func_diff, = plt.plot(np.arange(len(func_diff)), func_diff,color='g')
+    plt.legend([p_grads],[' L2 distance: SGD minus minimum norm solution'])
+    plt.title('Functional L2 difference between minimum norm and SGD functions')
+    ##
     plt.show()
     ## is kwargs empty? If yes then execute if statement
     if kwargs: # if dictionary is empty, note empty dictionaries evaluate to false, so not false gives true
@@ -598,7 +606,7 @@ def main(**kwargs):
 
 if __name__ == '__main__':
     print('main started')
-    main()
-    #save_data_set_mdl_sgd(path='./data/{}', run_type='h_add', lb=-1,ub=1,N_train=65,N_test=2000,msg='',visualize=True)
+    #main()
+    #save_data_set_mdl_sgd(path='./data/{}', run_type='h_add', lb=-1,ub=1,N_train=16,N_test=2000,msg='',visualize=True)
     #print('End')
     print('\a')
