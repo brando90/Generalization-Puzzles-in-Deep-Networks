@@ -68,12 +68,11 @@ def L2_norm_2(f,g,lb=0,ub=1,D=1):
         result = integrate.quad(func=f_g_2, a=lb,b=ub)
         integral_val = result[0]
     elif D==2:
-        gfun,hfun = lambda x: x, lambda x: x
-        #pdb.set_trace()
+        gfun,hfun = lambda x: -1, lambda x: 1
         def f_g_2(x,y):
             #pdb.set_trace()
-            x = np.array([[x,y]])
-            return (f(x) - g(x))**2
+            x_vec = np.array([[x,y]])
+            return (f(x_vec) - g(x_vec))**2
         result = integrate.dblquad(func=f_g_2, a=lb,b=ub, gfun=gfun,hfun=hfun)
         integral_val = result[0]
     else:
@@ -136,16 +135,63 @@ def plot_activation_func(act,lb=-20,ub=20,N=1000):
     #     ['ReLU activation'])
     plt.title('Activation function: {}'.format(act.__name__))
 
-def main(argv=None):
+def save_data_set_mdl_sgd(path, run_type, lb=-1,ub=1,N_train=30,N_test=1000,msg='',visualize=False):
+    dtype = torch.FloatTensor
+    #
+    data_generator, D_layers, act = main(run_type=run_type)
+    #
+    D = D_layers[0]
+    np_filename = 'data_numpy_D_layers_{}_nb_layers{}_N_train_{}_N_test_{}_lb_{}_ub_{}_act_{}_run_type_{}_msg_{}'.format(
+        D_layers,len(D_layers),N_train,N_test,lb,ub,run_type,act.__name__,msg
+    )
+    #
+    if D==1:
+        X_train = np.linspace(lb,ub,N_train).reshape(N_train,D)
+        X_test = np.linspace(lb,ub,N_train).reshape(N_train,D)
+    elif D ==  2:
+        Xm_train,Ym_train = generate_meshgrid(N_train,lb,ub)
+        X_train,_ = make_mesh_grid_to_data_set(Xm_train,Ym_train)
+        #
+        Xm_test,Ym_test = generate_meshgrid(N_test,lb,ub)
+        X_test,_ = make_mesh_grid_to_data_set(Xm_test,Ym_test)
+    else:
+        pass
+    #
+    Y_train = get_Y_from_new_net(data_generator=data_generator, X=X_train,dtype=dtype)
+    #
+    Y_test = get_Y_from_new_net(data_generator=data_generator, X=X_test,dtype=dtype)
+    #
+    np.savez(path.format(np_filename), X_train=X_train,Y_train=Y_train, X_test=X_test,Y_test=Y_test)
+    filename = 'data_numpy_D_layers_{}_nb_layers{}_N_train_{}_N_test_{}_lb_{}_ub_{}_act_{}_run_type_{}_msg_{}'.format(
+        D_layers,len(D_layers),N_train,N_test,lb,ub,run_type,act.__name__,msg
+    )
+    torch.save( data_generator.state_dict(), path.format(filename) )
+    if visualize:
+        if D==1:
+            pass
+        elif D==2:
+            Xp,Yp,Zp = make_meshgrid_data_from_training_data(X_data=X_test, Y_data=Y_test)
+            ##
+            fig = plt.figure()
+            #ax = fig.gca(projection='3d')
+            ax = Axes3D(fig)
+            surf = ax.plot_surface(Xp,Yp,Zp, cmap=cm.coolwarm)
+            plt.title('Test function')
+            ##
+            plt.show()
+
+def main(**kwargs):
     dtype = torch.FloatTensor
     #
     debug = True
     debug_sgd = False
+    ## nb data points
+    N = 45
     ## sgd
-    M = 8
-    eta = 0.00003 # eta = 1e-6
+    M = 35
+    eta = 0.05 # eta = 1e-6
     A = 0.0
-    nb_iter = int(1*1000)
+    nb_iter = int(20*1000)
     logging_freq = 500
     ##
     ## activation params
@@ -172,13 +218,13 @@ def main(argv=None):
     # D0,D1,D2 = 1,H1,1
     # D_layers,act = [D0,D1,D2], act
 
-    # H1,H2 = 5,5
-    # D0,D1,D2,D3 = D0,H1,H2,1
-    # D_layers,act = [D0,D1,D2,D3], act
+    H1,H2 = 5,5
+    D0,D1,D2,D3 = D0,H1,H2,1
+    D_layers,act = [D0,D1,D2,D3], act
 
-    H1,H2,H3 = 5,5,5
-    D0,D1,D2,D3,D4 = D0,H1,H2,H3,1
-    D_layers,act = [D0,D1,D2,D3,D4], act
+    # H1,H2,H3 = 5,5,5
+    # D0,D1,D2,D3,D4 = D0,H1,H2,H3,1
+    # D_layers,act = [D0,D1,D2,D3,D4], act
 
     # H1,H2,H3,H4 = 5,5,5,5
     # D0,D1,D2,D3,D4,D5 = D0,H1,H2,H3,H4,1
@@ -192,8 +238,6 @@ def main(argv=None):
     ##
     np.set_printoptions(suppress=True)
     lb, ub = -1, 1
-    ## true facts of the data set
-    N = 30
     ## mdl degree and D
     Degree_mdl = adegree**( len(D_layers)-2 )
     D_sgd = Degree_mdl+1
@@ -215,15 +259,19 @@ def main(argv=None):
     # b_inits = []
     # bias = False
     ##
-    init_config = Maps( {'w_init':'w_init_normal','mu':0.0,'std':0.01, 'bias_init':'b_fill','bias_value':0.01,'bias':bias ,'nb_layers':len(D_layers)} )
+    init_config = Maps( {'w_init':'w_init_normal','mu':0.0,'std':1.0, 'bias_init':'b_fill','bias_value':0.01,'bias':bias ,'nb_layers':len(D_layers)} )
     #init_config = Maps( {'w_init':'xavier_normal','gain':1,'bias_init':'b_fill','bias_value':0.01,'bias':bias,'nb_layers':len(D_layers)})
     w_inits_sgd, b_inits_sgd = get_initialization(init_config)
     #### Get Data set
     ## Get input variables X
-    #run_type = 'sine'
-    #run_type = 'similar_nn'
-    #run_type = 'from_file'
-    run_type = 'h_add'
+    if kwargs: # empty dictionaries evluate to false
+        # only executes this if kwargs dict is NOT empty
+        run_type = kwargs['run_type']
+    else:
+        #run_type = 'sine'
+        #run_type = 'similar_nn'
+        run_type = 'from_file'
+        #run_type = 'h_add'
     data_filename = None
     init_config_data = Maps({})
     f_true = None
@@ -245,7 +293,8 @@ def main(argv=None):
     elif run_type == 'from_file':
         ##
         #data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1_act_quad_ax2_bx_c_msg_.npz'
-        data_filename = 'data_numpy_D_layers_[2, 3, 3, 1]_nb_layers4_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1_act_quadratic_msg_.npz'
+        #data_filename = 'data_numpy_D_layers_[2, 3, 3, 1]_nb_layers4_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1_act_quadratic_msg_.npz'
+        data_filename = 'data_numpy_D_layers_[2, 5, 5, 1]_nb_layers4_N_train_45_N_test_2000_lb_-1_ub_1_act_h_add_run_type_poly_act_degree2_msg_.npz'
         ##
         data = np.load( './data/{}'.format(data_filename) )
         X_train, Y_train = data['X_train'], data['Y_train']
@@ -254,7 +303,7 @@ def main(argv=None):
     elif run_type == 'h_add':
         X,Y,Z = generate_meshgrid_h_add(N=N,start_val=-1,end_val=1)
         X_train,Y_train = make_mesh_grid_to_data_set(X,Y,Z)
-        X,Y,Z = generate_meshgrid_h_add(N=1000,start_val=-1,end_val=1)
+        X,Y,Z = generate_meshgrid_h_add(N=2000,start_val=-1,end_val=1)
         X_test,Y_test = make_mesh_grid_to_data_set(X,Y,Z)
         D_data = D0
     ## LA models
@@ -263,6 +312,7 @@ def main(argv=None):
     c_pinv = np.dot(np.linalg.pinv( Kern ),Y_train) # [D_pinv,1]
     nb_monomials = int(scipy.misc.comb(D_data+D_pinv,D_pinv))
     print(' c_pinv.shape[0]={} \n nb_monomials={} '.format( c_pinv.shape[0], nb_monomials ))
+    #pdb.set_trace()
     if c_pinv.shape[0] != int(scipy.misc.comb(D_data+D_pinv,D_pinv)):
         raise ValueError('nb of monomials dont match')
     #pdb.set_trace()
@@ -466,22 +516,6 @@ def main(argv=None):
         #plt.legend(p_list,['average sgd model Degree_mdl={}'.format( str(D_sgd-1) ),'sgd curve Degree_mdl={}, batch-size= {}, iterations={}, eta={}'.format(str(D_sgd-1),M,nb_iter,eta),'min norm (pinv) Degree_mdl='+str(D_pinv-1),'data points'])
         #plt.legend(p_list,['min norm (pinv) Degree_mdl='+str(D_pinv-1),'data points'])
         plt.ylabel('f(x)')
-        ##
-        fig1 = plt.figure()
-        p_loss, = plt.plot(np.arange(len(loss_list)), loss_list,color='m')
-        plt.legend([p_loss],['plot loss'])
-        plt.title('Loss vs Iterations')
-        ##
-        for i in range(len(grad_list)):
-            fig2 = plt.figure()
-            current_grad_list = grad_list[i]
-            #pdb.set_trace()
-            p_grads, = plt.plot(np.arange(len(current_grad_list)), current_grad_list,color='g')
-            plt.legend([p_grads],['plot grads'])
-            plt.title('Gradient vs Iterations: # {}'.format(i))
-        ##
-        plot_activation_func(act)
-        ##
     else:
         #
         nb_non_linear_layers = len(D_layers)-2
@@ -529,20 +563,42 @@ def main(argv=None):
             'SGD solution {}, param count={}, batch-size={}, iterations={}, step size={}'.format(sgd_legend_str,nb_params,M,nb_iter,eta),
             'data points'])
         #plt.title('SGD solution')
-        ##
+        ## train
         fig = plt.figure()
         ax = Axes3D(fig)
-        #train
         points_scatter = ax.scatter(Xp_train,Yp_train,Zp_train, marker='D')
         surf = ax.plot_surface(Xp_train,Yp_train,Zp_train, cmap=cm.coolwarm)
-        #Test
-        #points_scatter = ax.scatter(Xp,Yp,Zp, marker='D')
-        #surf = ax.plot_surface(Xp,Yp,Zp, cmap=cm.coolwarm)
+        plt.title('Train function')
+        ## test
+        fig = plt.figure()
+        ax = Axes3D(fig)
+        points_scatter = ax.scatter(Xp,Yp,Zp, marker='D')
+        surf = ax.plot_surface(Xp,Yp,Zp, cmap=cm.coolwarm)
         plt.title('Test function')
+    ##
+    fig1 = plt.figure()
+    p_loss, = plt.plot(np.arange(len(loss_list)), loss_list,color='m')
+    plt.legend([p_loss],['plot loss'])
+    plt.title('Loss vs Iterations')
+    ##
+    for i in range(len(grad_list)):
+        fig2 = plt.figure()
+        current_grad_list = grad_list[i]
+        #pdb.set_trace()
+        p_grads, = plt.plot(np.arange(len(current_grad_list)), current_grad_list,color='g')
+        plt.legend([p_grads],['plot grads'])
+        plt.title('Gradient vs Iterations: # {}'.format(i))
+    ##
+    plot_activation_func(act)
+    ##
     plt.show()
+    ## is kwargs empty? If yes then execute if statement
+    if kwargs: # if dictionary is empty, note empty dictionaries evaluate to false, so not false gives true
+        return mdl_sgd, D_layers, act
 
 if __name__ == '__main__':
     print('main started')
     main()
+    #save_data_set_mdl_sgd(path='./data/{}', run_type='h_add', lb=-1,ub=1,N_train=65,N_test=2000,msg='',visualize=True)
     #print('End')
     print('\a')

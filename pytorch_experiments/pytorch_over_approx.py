@@ -350,7 +350,7 @@ def main(argv=None):
         expr = smdl.forward(x)
         s_expr = poly(expr,x)
         c_sgd = np.array( s_expr.coeffs()[::-1] )
-        c_sgd = [ np.float64(num) for num in c_sgd]
+          = [ np.float64(num) for num in c_sgd]
     if debug:
         print('c_sgd = ', c_sgd)
         print('c_pinv: ', c_pinv)

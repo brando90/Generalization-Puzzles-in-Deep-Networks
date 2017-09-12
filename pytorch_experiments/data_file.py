@@ -150,7 +150,6 @@ def save_data_set(path, D_layers,act, bias=True,mu=0.0,std=5.0, lb=-1,ub=1,N_tra
             ##
             plt.show()
 
-
 def get_mdl(D_layers,act,bias=True,mu=0.0,std=5.0):
     init_config_data = Maps( {'w_init':'w_init_normal','mu':mu,'std':std, 'bias_init':'b_fill','bias_value':0.1,'bias':bias ,'nb_layers':len(D_layers)} )
     w_inits_data, b_inits_data = get_initialization(init_config_data)
@@ -176,7 +175,9 @@ def generate_meshgrid_h_add(N=60000,start_val=-1,end_val=1):
     (X,Y) = generate_meshgrid(N,start_val,end_val)
     #Z = sin(2*pi*X) + 4*(Y - 0.5).^2; %% h_add
     #Z = np.sin(2*np.pi*X) + 4*np.power(Y - 0.5, 2) # h_add
-    Z = np.sin(2*np.pi*X)
+    #Z = np.sin(2*np.pi*X)
+    #Z = np.sin(2*np.pi*X) + np.cos(1*np.pi*Y)
+    Z = np.sin(1.8*np.pi*X) + np.cos(1.5*np.pi*Y)
     #pdb.set_trace()
     return X,Y,Z
 
@@ -189,10 +190,10 @@ def visualize(X,Y,Z,title_name='Test function'):
     plt.show()
 
 if __name__ == '__main__':
-    X,Y,Z = generate_meshgrid_h_add(N=60000,start_val=-1,end_val=1)
-    visualize(X,Y,Z)
+    #X,Y,Z = generate_meshgrid_h_add(N=60000,start_val=-1,end_val=1)
+    #visualize(X,Y,Z)
     #act = get_relu_poly_act(degree=2,lb=-1,ub=1,N=100)
-    act = quadratic
+    #act = quadratic
     # H1 = 2
     # D0,D1,D2 = 1,H1,1
     # D_layers,act = [D0,D1,D2], act
@@ -201,15 +202,16 @@ if __name__ == '__main__':
     # D0,D1,D2,D3 = 2,H1,H2,1
     # D_layers,act = [D0,D1,D2,D3], act
 
-    H1,H2,H3 = 2,2,2
-    D0,D1,D2,D3,D4 = 2,H1,H2,H3,1
-    D_layers,act = [D0,D1,D2,D3,D4], act
+    # H1,H2,H3 = 2,2,2
+    # D0,D1,D2,D3,D4 = 2,H1,H2,H3,1
+    # D_layers,act = [D0,D1,D2,D3,D4], act
 
     # H1,H2,H3,H4 = 2,2,2,2
     # D0,D1,D2,D3,D4,D5 = 1,H1,H2,H3,H4,1
     # D_layers,act = [D0,D1,D2,D3,D4,D5], act
     #
-    #save_data_set(path='./data/{}',D_layers=D_layers,act=act,bias=True,mu=0.0,std=2.0, lb=-1,ub=1,N_train=10,N_test=1000,visualize=True)
+    save_data_set_mdl_sgd(path='./data/{}', run_type='h_add', lb=-1,ub=1,N_train=35,N_test=2000,msg='',visualize=False)
+    #save_data_set(path='./data/{}',D_layers=D_layers,act=act,bias=True,mu=0.0,std=1, lb=-1,ub=1,N_train=10,N_test=1000,visualize=True)
     #save_data_gen(path='./data/{}',D_layers=D_layers,act=act,bias=True,mu=0.0,std=5.0)
     #data_generator = load(path='./data/data_gen_nb_layers3_biasTrue_mu0.0_std5.0')
     print('End! \a')
