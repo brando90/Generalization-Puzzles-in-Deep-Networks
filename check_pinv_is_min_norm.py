@@ -10,6 +10,7 @@ X = np.random.rand(N,D)
 X_np_pinv = np.linalg.pinv(X)
 
 ## My/Manual PINV: X^T (X X^T)^-1
+# note: thats only the correct equations when X has linearly indepedent rows
 XXt_inv = np.linalg.inv(np.dot(X,X.T))
 X_my_pinv = np.dot(X.T ,XXt_inv )
 
@@ -22,8 +23,8 @@ S[:N,:N] = np.diag(ss_inv)
 S_inv = S
 #S_inv = np.linalg.inv(S)
 #
-Sp_Ut = np.dot( S_inv, U)
-X_svd_pinv = np.dot(V, Sp_Ut)
+#Sp_Ut = np.dot( S_inv, U)
+X_svd_pinv = np.dot(V.T, np.dot( S_inv, U.T))
 
 ## Scipt pinv
 X_scipy_pinv = scipy_linalg.pinv2(X)
