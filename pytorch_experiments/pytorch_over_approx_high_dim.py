@@ -135,16 +135,12 @@ def plot_activation_func(act,lb=-20,ub=20,N=1000):
     #     ['ReLU activation'])
     plt.title('Activation function: {}'.format(act.__name__))
 
-def save_data_set_mdl_sgd(path, run_type, lb=-1,ub=1,N_train=30,N_test=1000,msg='',visualize=False):
+def save_data_set_mdl_sgd(path, run_type, lb=-1,ub=1,N_train=36,N_test=2025,msg='',visualize=False):
     dtype = torch.FloatTensor
     #
     data_generator, D_layers, act = main(run_type=run_type)
     #
     D = D_layers[0]
-    np_filename = 'data_numpy_D_layers_{}_nb_layers{}_N_train_{}_N_test_{}_lb_{}_ub_{}_act_{}_run_type_{}_msg_{}'.format(
-        D_layers,len(D_layers),N_train,N_test,lb,ub,run_type,act.__name__,msg
-    )
-    #
     if D==1:
         X_train = np.linspace(lb,ub,N_train).reshape(N_train,D)
         X_test = np.linspace(lb,ub,N_train).reshape(N_train,D)
@@ -156,15 +152,18 @@ def save_data_set_mdl_sgd(path, run_type, lb=-1,ub=1,N_train=30,N_test=1000,msg=
         X_test,_ = make_mesh_grid_to_data_set(Xm_test,Ym_test)
     else:
         pass
-    #
+    ## data sets
     Y_train = get_Y_from_new_net(data_generator=data_generator, X=X_train,dtype=dtype)
-    #
     Y_test = get_Y_from_new_net(data_generator=data_generator, X=X_test,dtype=dtype)
-    #
-    np.savez(path.format(np_filename), X_train=X_train,Y_train=Y_train, X_test=X_test,Y_test=Y_test)
+    ##
+    np_filename = 'data_numpy_D_layers_{}_nb_layers{}_N_train_{}_N_test_{}_lb_{}_ub_{}_act_{}_run_type_{}_msg_{}'.format(
+        D_layers,len(D_layers),N_train,N_test,lb,ub,run_type,act.__name__,msg
+    )
     filename = 'data_numpy_D_layers_{}_nb_layers{}_N_train_{}_N_test_{}_lb_{}_ub_{}_act_{}_run_type_{}_msg_{}'.format(
         D_layers,len(D_layers),N_train,N_test,lb,ub,run_type,act.__name__,msg
     )
+    ## save data and data generator
+    np.savez(path.format(np_filename), X_train=X_train,Y_train=Y_train, X_test=X_test,Y_test=Y_test)
     torch.save( data_generator.state_dict(), path.format(filename) )
     if visualize:
         if D==1:
@@ -185,10 +184,8 @@ def main(**kwargs):
     #
     debug = True
     debug_sgd = False
-    ## nb data points
-    N = 1000
     ## sgd
-    M = 254
+    M = 12
     eta = 0.05 # eta = 1e-6
     A = 0.0
     nb_iter = int(20*1000)
@@ -267,6 +264,7 @@ def main(**kwargs):
     if kwargs: # empty dictionaries evluate to false
         # only executes this if kwargs dict is NOT empty
         run_type = kwargs['run_type']
+        #collect_functional_diffs = kwargs['collect_functional_diffs']
     else:
         #run_type = 'sine'
         #run_type = 'similar_nn'
@@ -276,36 +274,42 @@ def main(**kwargs):
     init_config_data = Maps({})
     f_true = None
     if run_type == 'sine':
-        x_true = np.linspace(lb,ub,N) # the real data points
+        collect_functional_diffs = True
+        N_data = 10
+        x_true = np.linspace(lb,ub,N_data) # the real data points
         Y = np.sin(2*np.pi*x_true)
         f_true = lambda x: np.sin(2*np.pi*x)
     elif run_type == 'similar_nn':
         pass
-        ## Get data values from some net itself
-        # x_true = np.linspace(lb,ub,N)
-        # x_true.shape = x_true.shape[0],D
-        # #
-        # init_config_data = Maps( {'w_init':'w_init_normal','mu':0.0,'std':2.0, 'bias_init':'b_fill','bias_value':0.1,'bias':bias ,'nb_layers':len(D_layers)} )
-        # w_inits_data, b_inits_data = get_initialization(init_config_data)
-        # data_generator = NN(D_layers=D_layers,act=act,w_inits=w_inits_data,b_inits=b_inits_data,bias=bias)
-        # Y = get_Y_from_new_net(data_generator=data_generator, X=x_true,dtype=dtype)
-        # f_true = lambda x: f_mdl_eval(x,data_generator,dtype)
     elif run_type == 'from_file':
+        collect_functional_diffs = True
         ##
         #data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1_act_quad_ax2_bx_c_msg_.npz'
         #data_filename = 'data_numpy_D_layers_[2, 3, 3, 1]_nb_layers4_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1_act_quadratic_msg_.npz'
         data_filename = 'data_numpy_D_layers_[2, 5, 5, 1]_nb_layers4_N_train_45_N_test_2000_lb_-1_ub_1_act_h_add_run_type_poly_act_degree2_msg_.npz'
+        #data_filename = 'data_numpy_D_layers_[2, 5, 5, 1]_nb_layers4_N_train_18_N_test_2000_lb_-1_ub_1_act_h_add_run_type_poly_act_degree2_msg_.npz'
         ##
         data = np.load( './data/{}'.format(data_filename) )
         X_train, Y_train = data['X_train'], data['Y_train']
         X_test, Y_test = data['X_test'], data['Y_test']
         D_data = D0
     elif run_type == 'h_add':
-        X,Y,Z = generate_meshgrid_h_add(N=N,start_val=-1,end_val=1)
+        #collect_functional_diffs = True
+        collect_functional_diffs = False
+        N_train=1024 # 32**2
+        N_test=2025 # 45**2
+        #
+        X,Y,Z = generate_meshgrid_h_add(N=N_train,start_val=-1,end_val=1)
         X_train,Y_train = make_mesh_grid_to_data_set(X,Y,Z)
-        X,Y,Z = generate_meshgrid_h_add(N=2000,start_val=-1,end_val=1)
+        print('N_train = {}'.format(X_train.shape[0]))
+        X,Y,Z = generate_meshgrid_h_add(N=N_test,start_val=-1,end_val=1)
         X_test,Y_test = make_mesh_grid_to_data_set(X,Y,Z)
+        print('N_train = {}, N_test = {}'.format(X_train.shape[0],X_test.shape[0]))
         D_data = D0
+    ##
+    N_train,_ = X_train.shape
+    N_test,_ = X_test.shape
+    print('N_train = {}, N_test = {}'.format(N_train,N_test))
     ## LA models
     poly_feat = PolynomialFeatures(D_pinv)
     Kern = poly_feat.fit_transform(X_train)
@@ -326,8 +330,8 @@ def main(**kwargs):
     nb_module_params = len( list(mdl_sgd.parameters()) )
     loss_list, grad_list =  [], [ [] for i in range(nb_module_params) ]
     func_diff = []
-    print('>>norm(Y): ', ((1/N)*torch.norm(Y)**2).data.numpy()[0] )
-    print('>>l2_loss_torch: ', (1/N)*( Y - mdl_sgd.forward(X)).pow(2).sum().data.numpy()[0] )
+    print('>>norm(Y): ', ((1/N_train)*torch.norm(Y)**2).data.numpy()[0] )
+    print('>>l2_loss_torch: ', (1/N_train)*( Y - mdl_sgd.forward(X)).pow(2).sum().data.numpy()[0] )
     ########################################################################################################################################################
     for i in range(nb_iter):
         # Forward pass: compute predicted Y using operations on Variables
@@ -335,7 +339,7 @@ def main(**kwargs):
         ## FORWARD PASS
         y_pred = mdl_sgd.forward(batch_xs)
         ## LOSS
-        loss = (1/N)*(y_pred - batch_ys).pow(2).sum()
+        loss = (1/N_train)*(y_pred - batch_ys).pow(2).sum()
         ## BACKARD PASS
         loss.backward() # Use autograd to compute the backward pass. Now w will have gradients
         ## SGD update
@@ -354,9 +358,12 @@ def main(**kwargs):
             current_loss = loss.data.numpy()[0]
             loss_list.append(current_loss)
             if i!=0:
-                f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
-                f_pinv = lambda x: f_mdl_LA(x,c_pinv,D_mdl=D_pinv)
-                func_diff.append( L2_norm_2(f=f_sgd,g=f_pinv,lb=lb,ub=ub,D=2) )
+                if collect_functional_diffs:
+                    f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
+                    f_pinv = lambda x: f_mdl_LA(x,c_pinv,D_mdl=D_pinv)
+                    func_diff.append( L2_norm_2(f=f_sgd,g=f_pinv,lb=lb,ub=ub,D=2) )
+                else:
+                    func_diff.append(-1)
             if debug_sgd:
                 print('\ni =',i)
                 print('current_loss = ',current_loss)
@@ -432,7 +439,7 @@ def main(**kwargs):
     #
     print('\n----> Data set stats:\n data_filename= {}, run_type={}, init_config_data={}\n'.format(data_filename,run_type,init_config_data) )
     print('---- Learning params')
-    print('Degree_mdl = {}, N = {}, M = {}, eta = {}, nb_iter = {} nb_params={},D_layers={}'.format(Degree_mdl,N,M,eta,nb_iter,nb_params,D_layers))
+    print('Degree_mdl = {}, N_train = {}, M = {}, eta = {}, nb_iter = {} nb_params={},D_layers={}'.format(Degree_mdl,N_train,M,eta,nb_iter,nb_params,D_layers))
     print('Activations: act={}, sact={}'.format(act.__name__,sact.__name__) )
     print('init_config: ', init_config)
     print('number of layers = {}'.format(nb_module_params))
@@ -472,15 +479,15 @@ def main(**kwargs):
     #pdb.set_trace()
     print('-- Generalization (error vs true curve) functional l2 norm')
     if f_true ==  None:
-        print('J_gen(f_sgd) = ', (1/N)*(mdl_sgd.forward(Variable(torch.FloatTensor(X_test))) - Variable(torch.FloatTensor(Y_test)) ).pow(2).sum().data.numpy() )
-        print('J_gen(f_pinv) = ', (1/N)*(np.linalg.norm(Y_test-np.dot( poly_feat.fit_transform(X_test),c_pinv))**2) )
+        print('J_gen(f_sgd) = ', (1/N_test)*(mdl_sgd.forward(Variable(torch.FloatTensor(X_test))) - Variable(torch.FloatTensor(Y_test)) ).pow(2).sum().data.numpy() )
+        print('J_gen(f_pinv) = ', (1/N_test)*(np.linalg.norm(Y_test-np.dot( poly_feat.fit_transform(X_test),c_pinv))**2) )
     else:
         print('||f_sgd - f_true||^2_2 = ', L2_norm_2(f=f_sgd,g=f_true,lb=lb,ub=ub))
         print('||f_pinv - f_true||^2_2 = ', L2_norm_2(f=f_pinv,g=f_true,lb=lb,ub=ub))
     #
     print('-- Train Error')
-    print(' J(f_sgd) = ', (1/N)*(mdl_sgd.forward(Variable(torch.FloatTensor(X))) - Variable(torch.FloatTensor(Y)) ).pow(2).sum().data.numpy() )
-    print(' J(f_pinv) = ',(1/N)*(np.linalg.norm(Y-np.dot( poly_feat.fit_transform(X_train) ,c_pinv))**2) )
+    print(' J(f_sgd) = ', (1/N_train)*(mdl_sgd.forward(Variable(torch.FloatTensor(X))) - Variable(torch.FloatTensor(Y)) ).pow(2).sum().data.numpy() )
+    print(' J(f_pinv) = ',(1/N_train)*(np.linalg.norm(Y-np.dot( poly_feat.fit_transform(X_train) ,c_pinv))**2) )
     #print(' J(c_rls) = ',(1/N)*(np.linalg.norm(Y-(1/N)*(np.linalg.norm(Y-np.dot( poly_kernel_matrix( x_true,D_sgd-1 ),c_rls))**2) )**2) )
     #
     seconds = (time.time() - start_time)
@@ -607,6 +614,7 @@ def main(**kwargs):
 if __name__ == '__main__':
     print('main started')
     #main()
-    #save_data_set_mdl_sgd(path='./data/{}', run_type='h_add', lb=-1,ub=1,N_train=16,N_test=2000,msg='',visualize=True)
+    N_train, N_test = 16, 2025 ## 4**2, 45**2
+    save_data_set_mdl_sgd(path='./data/{}', run_type='h_add', lb=-1,ub=1,N_train=N_train,N_test=N_test,msg='',visualize=True)
     #print('End')
     print('\a')
