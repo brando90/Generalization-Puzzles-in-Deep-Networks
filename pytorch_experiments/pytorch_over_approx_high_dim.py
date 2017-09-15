@@ -185,10 +185,10 @@ def main(**kwargs):
     debug = True
     debug_sgd = False
     ## sgd
-    M = 12
+    M = 8
     eta = 0.05 # eta = 1e-6
     A = 0.0
-    nb_iter = int(20*1000)
+    nb_iter = int(30*1000)
     logging_freq = 500
     ##
     ## activation params
@@ -215,17 +215,17 @@ def main(**kwargs):
     # D0,D1,D2 = 1,H1,1
     # D_layers,act = [D0,D1,D2], act
 
-    H1,H2 = 5,5
-    D0,D1,D2,D3 = D0,H1,H2,1
-    D_layers,act = [D0,D1,D2,D3], act
+    # H1,H2 = 5,5
+    # D0,D1,D2,D3 = D0,H1,H2,1
+    # D_layers,act = [D0,D1,D2,D3], act
 
     # H1,H2,H3 = 5,5,5
     # D0,D1,D2,D3,D4 = D0,H1,H2,H3,1
     # D_layers,act = [D0,D1,D2,D3,D4], act
 
-    # H1,H2,H3,H4 = 5,5,5,5
-    # D0,D1,D2,D3,D4,D5 = D0,H1,H2,H3,H4,1
-    # D_layers,act = [D0,D1,D2,D3,D4,D5], act
+    H1,H2,H3,H4 = 5,5,5,5
+    D0,D1,D2,D3,D4,D5 = D0,H1,H2,H3,H4,1
+    D_layers,act = [D0,D1,D2,D3,D4,D5], act
 
     bias = True
 
@@ -282,12 +282,14 @@ def main(**kwargs):
     elif run_type == 'similar_nn':
         pass
     elif run_type == 'from_file':
-        collect_functional_diffs = True
+        #collect_functional_diffs = True
+        collect_functional_diffs = False
+        collect_generalization_diffs = True
         ##
         #data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1_act_quad_ax2_bx_c_msg_.npz'
         #data_filename = 'data_numpy_D_layers_[2, 3, 3, 1]_nb_layers4_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1_act_quadratic_msg_.npz'
-        data_filename = 'data_numpy_D_layers_[2, 5, 5, 1]_nb_layers4_N_train_45_N_test_2000_lb_-1_ub_1_act_h_add_run_type_poly_act_degree2_msg_.npz'
-        #data_filename = 'data_numpy_D_layers_[2, 5, 5, 1]_nb_layers4_N_train_18_N_test_2000_lb_-1_ub_1_act_h_add_run_type_poly_act_degree2_msg_.npz'
+        #data_filename = 'data_numpy_D_layers_[2, 5, 5, 1]_nb_layers4_N_train_16_N_test_2025_lb_-1_ub_1_act_h_add_run_type_poly_act_degree2_msg_.npz'
+        data_filename = 'data_numpy_D_layers_[2, 5, 5, 1]_nb_layers4_N_train_16_N_test_5041_lb_-1_ub_1_act_h_add_run_type_poly_act_degree2_msg_.npz'
         ##
         data = np.load( './data/{}'.format(data_filename) )
         X_train, Y_train = data['X_train'], data['Y_train']
@@ -296,6 +298,9 @@ def main(**kwargs):
     elif run_type == 'h_add':
         #collect_functional_diffs = True
         collect_functional_diffs = False
+        #
+        collect_generalization_diffs = True
+        #
         N_train=1024 # 32**2
         N_test=2025 # 45**2
         #
@@ -312,8 +317,8 @@ def main(**kwargs):
     print('N_train = {}, N_test = {}'.format(N_train,N_test))
     ## LA models
     poly_feat = PolynomialFeatures(D_pinv)
-    Kern = poly_feat.fit_transform(X_train)
-    c_pinv = np.dot(np.linalg.pinv( Kern ),Y_train) # [D_pinv,1]
+    Kern_train = poly_feat.fit_transform(X_train)
+    c_pinv = np.dot(np.linalg.pinv( Kern_train ),Y_train) # [D_pinv,1]
     nb_monomials = int(scipy.misc.comb(D_data+D_pinv,D_pinv))
     print(' c_pinv.shape[0]={} \n nb_monomials={} '.format( c_pinv.shape[0], nb_monomials ))
     #pdb.set_trace()
@@ -332,6 +337,9 @@ def main(**kwargs):
     func_diff = []
     print('>>norm(Y): ', ((1/N_train)*torch.norm(Y)**2).data.numpy()[0] )
     print('>>l2_loss_torch: ', (1/N_train)*( Y - mdl_sgd.forward(X)).pow(2).sum().data.numpy()[0] )
+    ##
+    X_pytorch_test = Variable(torch.FloatTensor(X_test).type(dtype), requires_grad=False)
+    Kern_test = poly_feat.fit_transform(X_test)
     ########################################################################################################################################################
     for i in range(nb_iter):
         # Forward pass: compute predicted Y using operations on Variables
@@ -355,13 +363,20 @@ def main(**kwargs):
         #pdb.set_trace()
         ## TRAINING STATS
         if i % logging_freq == 0 or i == 0:
-            current_loss = loss.data.numpy()[0]
+            current_loss = (1/N_train)*(mdl_sgd.forward(X) - Y).pow(2).sum().data.numpy()
+            #current_loss = loss.data.numpy()[0]
             loss_list.append(current_loss)
             if i!=0:
                 if collect_functional_diffs:
                     f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
                     f_pinv = lambda x: f_mdl_LA(x,c_pinv,D_mdl=D_pinv)
                     func_diff.append( L2_norm_2(f=f_sgd,g=f_pinv,lb=lb,ub=ub,D=2) )
+                elif collect_generalization_diffs:
+                    y_test_sgd = mdl_sgd.forward(X_pytorch_test)
+                    #y_test_pinv = torch.FloatTensor( np.dot( Kern_test, c_pinv) )
+                    y_test_pinv = Variable( torch.FloatTensor( np.dot( Kern_test, c_pinv) ) )
+                    loss = (1/N_test)*(y_test_sgd - y_test_pinv).pow(2).sum()
+                    func_diff.append( loss.data.numpy() )
                 else:
                     func_diff.append(-1)
             if debug_sgd:
@@ -465,15 +480,19 @@ def main(**kwargs):
         #print('||c_avg - c_pinv||_2 = ', np.linalg.norm(c_avg - c_pinv,2))
         pass
     print('-- functional L2 norm difference')
+    y_test_pinv = Variable( torch.FloatTensor( np.dot( Kern_test, c_pinv) ) )
+    loss = (1/N_test)*(y_test_sgd - y_test_pinv).pow(2).sum()
+    print('J_Gen((f_sgd(x) - f_pinv(x))^2) = 1/{}sum (f_sgd(x) - f_pinv(x))^2 = {}'.format( N_test, loss.data.numpy()[0] ) )
     if D0 == 1:
         f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
         f_pinv = lambda x: f_mdl_LA(x,c_pinv)
         print('||f_sgd - f_pinv||^2_2 = ', L2_norm_2(f=f_sgd,g=f_pinv,lb=lb,ub=ub,D=1) )
         #print('||f_avg - f_pinv||^2_2 = ', L2_norm_2(f=f_avg,g=f_pinv,lb=0,ub=1))
     elif D0 == 2:
-        f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
-        f_pinv = lambda x: f_mdl_LA(x,c_pinv,D_mdl=D_pinv)
-        print('||f_sgd - f_pinv||^2_2 = ', L2_norm_2(f=f_sgd,g=f_pinv,lb=lb,ub=ub,D=2))
+        #f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
+        #f_pinv = lambda x: f_mdl_LA(x,c_pinv,D_mdl=D_pinv)
+        #print('||f_sgd - f_pinv||^2_2 = ', L2_norm_2(f=f_sgd,g=f_pinv,lb=lb,ub=ub,D=2))
+        pass
     else:
         pass
     #pdb.set_trace()
@@ -555,7 +574,7 @@ def main(**kwargs):
         surf_proxy = mpl.lines.Line2D([0],[0], linestyle="none", c='r', marker ='_')
         ax1.legend([surf_proxy,points_scatter],[
             'minimum norm solution Degree model={}, number of monomials={}'.format(str(D_pinv-1),nb_monomials),
-            'data points, number of data points = {}'.format(N)])
+            'data points, number of data points = {}'.format(N_train)])
         #plt.title('minimum norm solution')
         #minimum norm solution Degree model='+str(D_pinv-1)
         # ## FIG SGD
@@ -570,7 +589,7 @@ def main(**kwargs):
         surf_proxy = mpl.lines.Line2D([0],[0], linestyle="none", c='r', marker = '_')
         ax2.legend([surf_proxy,data_pts],[
             'SGD solution {}, number of monomials={}, param count={}, batch-size={}, iterations={}, step size={}'.format(sgd_legend_str,nb_monomials,nb_params,M,nb_iter,eta),
-            'data points, number of data points = {}'.format(N)])
+            'data points, number of data points = {}'.format(N_train)])
         #plt.title('SGD solution')
         ## train
         fig = plt.figure()
@@ -603,8 +622,14 @@ def main(**kwargs):
     #func_diff
     fig = plt.figure()
     p_func_diff, = plt.plot(np.arange(len(func_diff)), func_diff,color='g')
-    plt.legend([p_grads],[' L2 distance: SGD minus minimum norm solution'])
-    plt.title('Functional L2 difference between minimum norm and SGD functions')
+    if collect_functional_diffs:
+        plt.legend([p_grads],[' L2 functional distance: SGD minus minimum norm solution'])
+        plt.title('Functional L2 difference between minimum norm and SGD functions')
+    elif collect_generalization_diffs:
+        plt.legend([p_grads],[' L2 generalization distance: SGD minus minimum norm solution, number test points = {}'.format(N_test)])
+        plt.title('Generalization L2 difference between minimum norm and SGD functions')
+    else:
+        raise ValueError('Plot Functional not supported.')
     ##
     plt.show()
     ## is kwargs empty? If yes then execute if statement
@@ -613,8 +638,10 @@ def main(**kwargs):
 
 if __name__ == '__main__':
     print('main started')
-    #main()
-    N_train, N_test = 16, 2025 ## 4**2, 45**2
-    save_data_set_mdl_sgd(path='./data/{}', run_type='h_add', lb=-1,ub=1,N_train=N_train,N_test=N_test,msg='',visualize=True)
+    main()
+    #N_train, N_test = 16, 2025 ## 4**2, 45**2
+    #N_train, N_test = 16, 5041 ## 4**2, 71**2
+    #N_train, N_test = 16, 10000 ## 4**2, 100**2
+    #save_data_set_mdl_sgd(path='./data/{}', run_type='h_add', lb=-1,ub=1,N_train=N_train,N_test=N_test,msg='',visualize=True)
     #print('End')
     print('\a')
