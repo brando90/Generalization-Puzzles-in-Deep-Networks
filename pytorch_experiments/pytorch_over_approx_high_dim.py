@@ -615,18 +615,20 @@ def main(**kwargs):
         X_plot = poly_feat.fit_transform(x_horizontal)
         X_plot_pytorch = Variable( torch.FloatTensor(X_plot), requires_grad=False)
         #plots objs
-        pdb.set_trace()
-        p_sgd_stand, = plt.plot(x_horizontal, np.array( mdl_standard_sgd.forward(X_plot_pytorch).data.numpy() ) )
+        Y_sgd_stand =  [ float(f_val) for f_val in mdl_standard_sgd.forward(X_plot_pytorch).data.numpy() ]
+        p_sgd_stand, = plt.plot(x_horizontal, Y_sgd_stand)
         p_sgd, = plt.plot(x_horizontal, [ float(f_sgd(x_i)[0]) for x_i in x_horizontal ])
         p_pinv, = plt.plot(x_horizontal, np.dot(X_plot,c_pinv))
         p_data, = plt.plot(X_train,Y,'ro')
         ## legend
-        plt.legend( [p_sgd_stand,p_sgd,p_pinv,p_data],
-                    ['SGD solution standard parametrization, number of monomials={}, batch-size={}, iterations={}, step size={}'.format(c_sgd.shape,M_standard_sgd,nb_iter_standard_sgd,eta_standard_sgd),
-                    'SGD solution weight parametrization, number of monomials={}, batch-size={}, iterations={}, step size={}'.format(mdl_standard_sgd[0].weight.shape,M,nb_iter,eta),
-                    'min norm (pinv) Degree_mdl='.format(c_pinv.shape),
-                    'data points']
-                    )
+        #pdb.set_trace()
+        plt.legend(
+                [p_sgd_stand,p_sgd,p_pinv,p_data],
+                ['SGD solution standard parametrization, number of monomials={}, batch-size={}, iterations={}, step size={}'.format(len(c_sgd),M_standard_sgd,nb_iter_standard_sgd,eta_standard_sgd),
+                'SGD solution weight parametrization, number of monomials={}, batch-size={}, iterations={}, step size={}'.format(mdl_standard_sgd[0].weight.data.numpy().shape[0],M,nb_iter,eta),
+                'min norm (pinv) Degree_mdl='.format(c_pinv.shape),
+                'data points']
+            )
         ##
         plt.xlabel('x'), plt.ylabel('f(x)')
         plt.title('SGD vs minimum norm solution curves')
