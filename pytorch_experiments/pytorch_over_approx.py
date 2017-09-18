@@ -133,13 +133,13 @@ def main(argv=None):
     #plt.show()
     #### 2-layered mdl
 
-    # H1 = 10
-    # D0,D1,D2 = 1,H1,1
-    # D_layers,act = [D0,D1,D2], act
+    H1 = 10
+    D0,D1,D2 = 1,H1,1
+    D_layers,act = [D0,D1,D2], act
 
-    H1,H2 = 5,5
-    D0,D1,D2,D3 = 1,H1,H2,1
-    D_layers,act = [D0,D1,D2,D3], act
+    # H1,H2 = 5,5
+    # D0,D1,D2,D3 = 1,H1,H2,1
+    # D_layers,act = [D0,D1,D2,D3], act
 
     # H1,H2,H3 = 5,5,5
     # D0,D1,D2,D3,D4 = 1,H1,H2,H3,1
@@ -185,9 +185,9 @@ def main(argv=None):
     w_inits_sgd, b_inits_sgd = get_initialization(init_config)
     #### Get Data set
     ## Get input variables X
-    #run_type = 'sine'
+    run_type = 'sine'
     #run_type = 'similar_nn'
-    run_type = 'from_file'
+    #run_type = 'from_file'
     data_filename = None
     init_config_data = Maps({})
     f_true = None

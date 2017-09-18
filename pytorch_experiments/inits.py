@@ -13,7 +13,6 @@ def w_init_normal(l,mu=0,std=1):
 def b_fill(l,value=0.1):
     l.bias.data.fill_(value=value)
 
-
 def get_initialization(init_config):
     #init_config = Maps( {'name':'xavier_normal','gain':1} )
     nb_layers = init_config.nb_layers
