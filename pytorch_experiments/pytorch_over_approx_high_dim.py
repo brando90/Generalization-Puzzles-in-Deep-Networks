@@ -20,24 +20,18 @@ import matplotlib.pyplot as plt
 import scipy.integrate as integrate
 import scipy
 
-def avg():
-    pass
-    ## COLLECT MOVING AVERAGES
-    # for i in range(len(Ws)):
-    #     W, W_avg = Ws[i], W_avgs[i]
-    #     W_avgs[i] = (1/nb_iter)*W + W_avg
-
-def old_SGD_update():
-    ## SGD update
-    for W in mdl_sgd.parameters():
-        gdl_eps = torch.randn(W.data.size()).type(dtype)
-        #clip=0.001
-        #torch.nn.utils.clip_grad_norm(mdl_sgd.parameters(),clip)
-        #delta = torch.clamp(eta*W.grad.data,min=-clip,max=clip)
-        #print(delta)
-        #W.data.copy_(W.data - delta + A*gdl_eps)
-        delta = eta*W.grad.data
-        W.data.copy_(W.data - delta + A*gdl_eps) # W - eta*g + A*gdl_eps
+def get_data_struct(X_train,Y_train,X_test,Y_test):
+    X_train_pytorch = Variable(torch.FloatTensor(X_train).type(dtype), requires_grad=False)
+    Y_train_pytorch = Variable(torch.FloatTensor(Y_train).type(dtype), requires_grad=False)
+    X_test_pytorch = Variable(torch.FloatTensor(X_test).type(dtype), requires_grad=False)
+    Y_test_pytorch = Variable(torch.FloatTensor(Y_test).type(dtype), requires_grad=False)
+    Kern_train_pytorch = Variable(torch.FloatTensor(Kern_train).type(dtype), requires_grad=False)
+    Kern_test_pytorch = Variable(torch.FloatTensor(Kern_test).type(dtype), requires_grad=False)
+    data_pytorch_struct = Maps( {'X_train':X_train_pytorch,'Y_train':Y_train_pytorch,
+        'X_test':X_test_pytorch,'Y_test':Y_test_pytorch,
+        'Kern_train':Kern_train_pytorch, 'Kern_test':Kern_test_pytorch}
+         )
+    return data_pytorch_struct
 
 def get_symbols(D):
     '''
@@ -53,6 +47,9 @@ def get_symbols(D):
     return symbols
 
 def f_mdl_LA(x,c,D_mdl=None):
+    '''
+    evaluates linear algebra (LA) model
+    '''
     if type(x)==float:
         Deg,_ = c.shape
         Kern = poly_kernel_matrix( [x],Deg-1 )
@@ -64,6 +61,9 @@ def f_mdl_LA(x,c,D_mdl=None):
     return Y
 
 def f_mdl_eval(x,mdl_eval,dtype):
+    '''
+    evalautes pytorch model
+    '''
     _,D = list(mdl_eval.parameters())[0].data.numpy().shape
     #pdb.set_trace()
     if len(list(mdl_eval.parameters())) == 2 or len(list(mdl_eval.parameters())) == 1:
@@ -81,6 +81,9 @@ def f_mdl_eval(x,mdl_eval,dtype):
     return y_pred.data.numpy()
 
 def L2_norm_2(f,g,lb=0,ub=1,D=1):
+    '''
+    compute L2 functional norm
+    '''
     if D==1:
         f_g_2 = lambda x: (f(x) - g(x))**2
         result = integrate.quad(func=f_g_2, a=lb,b=ub)
@@ -97,13 +100,10 @@ def L2_norm_2(f,g,lb=0,ub=1,D=1):
         raise ValueError(' D {} is not handled yet'.format(D))
     return integral_val
 
-def get_RLS_soln( X,Y,lambda_rls):
-    N,D = X.shape
-    XX_lI = np.dot(X.transpose(),X) + lambda_rls*N*np.identity(D)
-    w = np.dot( np.dot( np.linalg.inv(XX_lI), X.transpose() ), Y)
-    return w
-
 def index_batch(X,batch_indices,dtype):
+    '''
+    returns the batch indexed/sliced batch
+    '''
     if len(X.shape) == 1: # i.e. dimension (M,) just a vector
         batch_xs = torch.FloatTensor(X[batch_indices]).type(dtype)
     else:
@@ -111,7 +111,10 @@ def index_batch(X,batch_indices,dtype):
     return batch_xs
 
 def get_batch2(X,Y,M,dtype):
-    # TODO fix and make it nicer
+    '''
+    get batch for pytorch model
+    '''
+    # TODO fix and make it nicer, there is pytorch forum question
     X,Y = X.data.numpy(), Y.data.numpy()
     N = len(Y)
     valid_indices = np.array( range(N) )
@@ -128,6 +131,9 @@ def is_NaN(value):
     return not np.isfinite(value) or np.isinf(value) or np.isnan(value)
 
 def count_params(mdl):
+    '''
+    count the number of parameters of a pytorch model
+    '''
     tot = 0
     #params = []
     for m in mdl.parameters():
@@ -139,6 +145,9 @@ def count_params(mdl):
     return tot # sum([m.nelement() for m in mdl.parameters()])
 
 def plot_activation_func(act,lb=-20,ub=20,N=1000):
+    '''
+    plots activation function
+    '''
     ## PLOT ACTIVATION
     fig3 = plt.figure()
     x_horizontal = np.linspace(lb,ub,N)
@@ -154,6 +163,9 @@ def plot_activation_func(act,lb=-20,ub=20,N=1000):
     plt.title('Activation function: {}'.format(act.__name__))
 
 def save_data_set_mdl_sgd(path, run_type, lb=-1,ub=1,N_train=36,N_test=2025,msg='',visualize=False):
+    '''
+    generates a data set
+    '''
     dtype = torch.FloatTensor
     #
     data_generator, D_layers, act = main(run_type=run_type)
@@ -197,23 +209,83 @@ def save_data_set_mdl_sgd(path, run_type, lb=-1,ub=1,N_train=36,N_test=2025,msg=
             ##
             plt.show()
 
+def print_debug():
+    grad_norm = W.grad.data.norm(2)
+    delta = eta*W.grad.data
+    for index, W in enumerate(mdl_sgd.parameters()):
+        if debug_sgd:
+            print('------------- grad_norm={} delta={} ',grad_norm,delta.norm(2))
+
+def stats_logger(mdl, X,Y, X_test,Y_test, i,logging_freq):
+    if i % logging_freq == 0 or i == 0:
+        # log current train loss
+        current_train_loss = (1/N_train)*(mdl.forward(X) - Y).pow(2).sum().data.numpy()
+        loss_list.append(current_train_loss)
+        ## generalization/func diff
+        y_test_sgd = mdl_sgd.forward(X_test)
+        y_test_pinv = Variable( torch.FloatTensor( np.dot( Kern_test, c_pinv) ) )
+        func_diff.append( (1/N_test)*(y_test_sgd - y_test_pinv).pow(2).sum() )
+        ## collect param stats
+        for index, W in enumerate(mdl_sgd.parameters()):
+            delta = eta*W.grad.data
+            grad_list[index].append( W.grad.data.norm(2) )
+            if is_NaN(W.grad.data.norm(2)) or is_NaN(current_train_loss):
+                print('\n----------------- ERROR HAPPENED')
+                print('error happened at: i = {} current_train_loss: {}, grad_norm: {},\n ----------------- \a'.format(i,current_train_loss,W.grad.data.norm(2)))
+                sys.exit()
+
+def train_SGD(mdl,X,Y, M,eta,nb_iter,A ,logging_freq ,dtype):
+    '''
+    '''
+    ##
+    nb_module_params = len( list(mdl_standard_sgd.parameters()) )
+    loss_list_standard_sgd, grad_list_standard_sgd =  [], [ [] for i in range(nb_module_params) ]
+    func_diff_standard_sgd = []
+    ##
+    N_train, _ = tuple( X.size() )
+    for i in range(nb_iter):
+        # Forward pass: compute predicted Y using operations on Variables
+        batch_xs, batch_ys = get_batch2(X,Y,M,dtype) # [M, D], [M, 1]
+        ## FORWARD PASS
+        y_pred = mdl.forward(batch_xs)
+        ## LOSS
+        batch_loss = (1/N_train)*(y_pred - batch_ys).pow(2).sum()
+        ## BACKARD PASS
+        batch_loss.backward() # Use autograd to compute the backward pass. Now w will have gradients
+        ## SGD update
+        for W in mdl.parameters():
+            delta = eta*W.grad.data
+            W.data.copy_(W.data - delta) # W - eta*g + A*gdl_eps
+        ## stats logger
+        stats_logger(mdl, debug_sgd)
+        ## train stats
+        if i % (nb_iter/10) == 0 or i == 0:
+            print('i = {}, current_loss = {}'.format(i, loss.data.numpy()[0] ) )
+        ## Manually zero the gradients after updating weights
+        mdl.zero_grad()
+    return
+
 def main(**kwargs):
+    '''
+    main code, where experiments for over parametrization are made
+    '''
+    ##dtype = torch.cuda.FloatTensor # Uncomment this to run on GPU
     dtype = torch.FloatTensor
     #
     debug = True
     debug_sgd = False
     #debug_sgd = True
     ## Hyper Params SGD weight parametrization
-    M = 8
+    M = 3
     eta = 0.05 # eta = 1e-6
-    A = 0.0
     nb_iter = int(30*10)
+    A = 0.0
     logging_freq = 500
     ## Hyper Params SGD standard parametrization
-    M_standard_sgd = 8
-    eta_standard_sgd = 0.000001 # eta = 1e-6
+    M_standard_sgd = 3
+    eta_standard_sgd = 0.001 # eta = 1e-6
+    nb_iter_standard_sgd = int(100*1000)
     A_standard_sgd = 0.0
-    nb_iter_standard_sgd = int(100*1)
     logging_freq_standard_sgd = 100
     ##
     ## activation params
@@ -253,13 +325,11 @@ def main(**kwargs):
     # D_layers,act = [D0,D1,D2,D3,D4,D5], act
 
     bias = True
-
-    # dtype = torch.cuda.FloatTensor # Uncomment this to run on GPU
     #pdb.set_trace()
     start_time = time.time()
     ##
     np.set_printoptions(suppress=True)
-    lb, ub = -1, 1
+    lb, ub = 0, 1
     ## mdl degree and D
     #Degree_mdl = adegree**( len(D_layers)-2 )
     Degree_mdl = 25
@@ -281,11 +351,6 @@ def main(**kwargs):
     # ##b_inits = [None]+[lambda x: b_fill(x,value=0.0) for i in range(len(D_layers)) ]
     # b_inits = []
     # bias = False
-    ## inits
-    init_config = Maps( {'w_init':'w_init_normal','mu':0.0,'std':1.0, 'bias_init':'b_fill','bias_value':0.01,'bias':bias ,'nb_layers':len(D_layers)} )
-    init_config_standard_sgd = Maps( {'mu':0.0,'std':0.001, 'bias_value':0.01} )
-    ##
-    w_inits_sgd, b_inits_sgd = get_initialization(init_config)
     #### Get Data set
     if kwargs: # empty dictionaries evluate to false
         # only executes this if kwargs dict is NOT empty
@@ -302,7 +367,7 @@ def main(**kwargs):
     if run_type == 'sine':
         collect_functional_diffs = False
         collect_generalization_diffs = True
-        N_train=10
+        N_train=5
         #N_train=1024 # 32**2
         N_test=2025 # 45**2
         X_train = np.linspace(lb,ub,N_train).reshape(N_train,1) # the real data points
@@ -344,40 +409,34 @@ def main(**kwargs):
         X,Y,Z = generate_meshgrid_h_add(N=N_test,start_val=-1,end_val=1)
         X_test,Y_test = make_mesh_grid_to_data_set(X,Y,Z)
         print('N_train = {}, N_test = {}'.format(X_train.shape[0],X_test.shape[0]))
-    ##
+    ## get nb data points
     N_train,_ = X_train.shape
     N_test,_ = X_test.shape
     print('N_train = {}, N_test = {}'.format(N_train,N_test))
-    ## LA models
+    ## Lift data/Kernelize data
     poly_feat = PolynomialFeatures(D_pinv)
     Kern_train = poly_feat.fit_transform(X_train)
+    Kern_test = poly_feat.fit_transform(X_test)
+    ## LA models
     c_pinv = np.dot(np.linalg.pinv( Kern_train ),Y_train) # [D_pinv,1]
+    ## inits
+    init_config = Maps( {'w_init':'w_init_normal','mu':0.0,'std':1.0, 'bias_init':'b_fill','bias_value':0.01,'bias':bias ,'nb_layers':len(D_layers)} )
+    w_inits_sgd, b_inits_sgd = get_initialization(init_config)
+    init_config_standard_sgd = Maps( {'mu':0.0,'std':0.001, 'bias_value':0.01} )
+    mdl_stand_initializer = lambda mdl: lifted_initializer(mdl,init_config_standard_sgd)
+    ## SGD models
+    mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,bias=bias)
+    mdl_standard_sgd = get_sequential_lifted_mdl(nb_monomials=c_pinv.shape[0],D_out=1, bias=False)
+    ## DEBUG PRINTs
+    print('>>norm(Y): ', ((1/N_train)*torch.norm(Y)**2).data.numpy()[0] )
+    print('>>l2_loss_torch: ', (1/N_train)*( Y - mdl_sgd.forward(X)).pow(2).sum().data.numpy()[0] )
+    ## data to TORCH
+    data_pytorch_struct = get_data_struct(X_train,Y_train,X_test,Y_test)
     ## check number of monomials
     nb_monomials = int(scipy.misc.comb(D0+D_pinv,D_pinv))
     print(' c_pinv.shape[0]={} \n nb_monomials={} '.format( c_pinv.shape[0], nb_monomials ))
     if c_pinv.shape[0] != int(scipy.misc.comb(D0+D_pinv,D_pinv)):
        raise ValueError('nb of monomials dont match D0={},D_pinv={}, number of monimials fron pinv={}, number of monomials analyticall = {}'.format( D0,D_pinv,c_pinv.shape[0],int(scipy.misc.comb(D0+D_pinv,D_pinv)) )    )
-    ## data to TORCH
-    X = Variable(torch.FloatTensor(X_train).type(dtype), requires_grad=False)
-    Y = Variable(torch.FloatTensor(Y_train).type(dtype), requires_grad=False)
-    Kern_train_pytorch = Variable(torch.FloatTensor(Kern_train).type(dtype), requires_grad=False)
-    ## SGD models
-    mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,bias=bias)
-    mdl_standard_sgd = torch.nn.Sequential( torch.nn.Linear(nb_monomials,1, bias=False) )
-    ## initialize
-    mu,std = init_config_standard_sgd['mu'], init_config_standard_sgd['std']
-    bias_value = init_config_standard_sgd['bias_value']
-    mdl_standard_sgd[0].weight.data.normal_(mean=mu,std=std)
-    if mdl_standard_sgd[0].bias != None:
-        mdl_standard_sgd[0].bias.fill_(bias_value)
-    print('mdl_standard_sgd[0].weight = ', mdl_standard_sgd[0].weight.data.numpy())
-    ## DEBUG PRINTs
-    print('>>norm(Y): ', ((1/N_train)*torch.norm(Y)**2).data.numpy()[0] )
-    print('>>l2_loss_torch: ', (1/N_train)*( Y - mdl_sgd.forward(X)).pow(2).sum().data.numpy()[0] )
-    ##
-    X_pytorch_test = Variable(torch.FloatTensor(X_test).type(dtype), requires_grad=False)
-    Kern_test = poly_feat.fit_transform(X_test)
-    Kern_test_pytorch = Variable(torch.FloatTensor(Kern_test).type(dtype), requires_grad=False)
     ########################################################################################################################################################
     ## standard SGD
     nb_module_params = len( list(mdl_standard_sgd.parameters()) )
@@ -505,8 +564,7 @@ def main(**kwargs):
     print('\ni = {}, current_loss = {}'.format(i,current_loss) )
     ########################################################################################################################################################
     nb_params = count_params(mdl_sgd)
-    X, Y = X.data.numpy(), Y.data.numpy()
-    #
+    ## Do SYMPY magic
     if len(D_layers) <= 2:
         c_sgd = list(mdl_sgd.parameters())[0].data.numpy()
         c_sgd = c_sgd.transpose()
@@ -527,11 +585,9 @@ def main(**kwargs):
         smdl = sNN(sact,mdl=tmdl)
         ## get simplification
         expr = smdl.forward(x)
-        #pdb.set_trace()
         s_expr = poly(expr,x_list)
         c_sgd = np.array( s_expr.coeffs()[::-1] )
         c_sgd = [ np.float64(num) for num in c_sgd]
-        #pdb.set_trace()
     if debug:
         print('c_sgd_standard = ', mdl_standard_sgd[0].weight)
         print('c_sgd_weight = ', c_sgd)
@@ -541,18 +597,15 @@ def main(**kwargs):
         print(mdl_sgd)
         if len(D_layers) > 2:
             print('\n---- structured poly: {}'.format(str(s_expr)) )
-    #
+    ## Stats of models
+    print('---- Stats of flattened to Poly models')
     print('\n----> Data set stats:\n data_filename= {}, run_type={}, init_config_data={}\n'.format(data_filename,run_type,init_config_data) )
     print('---- Learning params')
     print('Degree_mdl = {}, N_train = {}, M = {}, eta = {}, nb_iter = {} nb_params={},D_layers={}'.format(Degree_mdl,N_train,M,eta,nb_iter,nb_params,D_layers))
     print('Activations: act={}, sact={}'.format(act.__name__,sact.__name__) )
     print('init_config: ', init_config)
     print('number of layers = {}'.format(nb_module_params))
-    #
-    print('---- Stats of flattened to Poly models')
-    print('c_pinv.shape', c_pinv.shape)
-    #print('c_sgd.shape', c_pinv.shape)
-    #
+    ## Parameter Norms
     if len(D_layers) >= 2:
         print('\n---- statistics about learned params')
         print('--L1')
@@ -563,31 +616,21 @@ def main(**kwargs):
         print('||c_pinv||_2 = ', np.linalg.norm(c_pinv,2))
         print('||c_sgd_weight||_2 = ', np.linalg.norm(c_sgd,2))
         print('||c_sgd_stand||_2 = {} '.format(np.linalg.norm(mdl_standard_sgd[0].weight.data.numpy(),2)) )
+    ## Parameter Difference
     print('---- parameters differences')
     if len(D_layers) >= 2:
         #print('||c_sgd - c_pinv||_2 = ', np.linalg.norm(c_sgd - c_pinv,2))
         #print('||c_sgd - c_avg||_2 = ', np.linalg.norm(c_sgd - c_pinv,2))
         #print('||c_avg - c_pinv||_2 = ', np.linalg.norm(c_avg - c_pinv,2))
         pass
-    print('-- functional L2 norm difference')
+    ## Generalization L2 (functional) norm difference
+    print('-- Generalization L2 (functional) norm difference')
     y_test_pinv = Variable( torch.FloatTensor( np.dot( Kern_test, c_pinv) ) )
     y_test_sgd = mdl_sgd.forward(X_pytorch_test)
     loss = (1/N_test)*(y_test_sgd - y_test_pinv).pow(2).sum()
     print('J_Gen((f_sgd(x) - f_pinv(x))^2) = 1/{}sum (f_sgd(x) - f_pinv(x))^2 = {}'.format( N_test, loss.data.numpy()[0] ) )
-    if D0 == 1:
-        f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
-        f_pinv = lambda x: f_mdl_LA(x,c_pinv)
-        print('||f_sgd - f_pinv||^2_2 = ', L2_norm_2(f=f_sgd,g=f_pinv,lb=lb,ub=ub,D=1) )
-        #print('||f_avg - f_pinv||^2_2 = ', L2_norm_2(f=f_avg,g=f_pinv,lb=0,ub=1))
-    elif D0 == 2:
-        #f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
-        #f_pinv = lambda x: f_mdl_LA(x,c_pinv,D_mdl=D_pinv)
-        #print('||f_sgd - f_pinv||^2_2 = ', L2_norm_2(f=f_sgd,g=f_pinv,lb=lb,ub=ub,D=2))
-        pass
-    else:
-        pass
     ## FUNCTIONAL DIFF or GENERALIZATION DIFF
-    print('-- Generalization (error vs true curve) functional l2 norm')
+    print('-- Generalization l2 error')
     if f_true ==  None:
         print('J_gen(f_sgd)_standard = ', (1/N_test)*(mdl_standard_sgd.forward(Kern_test_pytorch) - Variable(torch.FloatTensor(Y_test)) ).pow(2).sum().data.numpy() )
         print('J_gen(f_sgd)_weight = ', (1/N_test)*(mdl_sgd.forward(X_pytorch_test) - Variable(torch.FloatTensor(Y_test)) ).pow(2).sum().data.numpy() )

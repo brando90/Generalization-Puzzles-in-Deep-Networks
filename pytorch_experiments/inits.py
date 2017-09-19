@@ -28,3 +28,10 @@ def get_initialization(init_config):
     elif init_config.bias_init == 'empty':
         b_inits = []
     return w_inits, b_inits
+
+##
+
+def lifted_initializer(mdl, init_config):
+    mdl[0].weight.data.normal_(mean=init_config.mu,std=init_config.std)
+    if mdl[0].bias != None:
+        mdl[0].bias.fill_(init_config.bias_value)
