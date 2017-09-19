@@ -20,7 +20,9 @@ import matplotlib.pyplot as plt
 import scipy.integrate as integrate
 import scipy
 
-def get_data_struct(X_train,Y_train,X_test,Y_test):
+#TODO make dtype, DTYPE accross all script
+
+def get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test, dtype):
     X_train_pytorch = Variable(torch.FloatTensor(X_train).type(dtype), requires_grad=False)
     Y_train_pytorch = Variable(torch.FloatTensor(Y_train).type(dtype), requires_grad=False)
     X_test_pytorch = Variable(torch.FloatTensor(X_test).type(dtype), requires_grad=False)
@@ -216,14 +218,16 @@ def print_debug():
         if debug_sgd:
             print('------------- grad_norm={} delta={} ',grad_norm,delta.norm(2))
 
-def stats_logger(mdl, X,Y, X_test,Y_test, i,logging_freq):
+def stats_logger(mdl, data, loss_list,func_diff,grad_list, i,logging_freq):
+    N_train,_ = data.X_train.shape
+    N_test,_ = data.X_test.shape
     if i % logging_freq == 0 or i == 0:
         # log current train loss
-        current_train_loss = (1/N_train)*(mdl.forward(X) - Y).pow(2).sum().data.numpy()
+        current_train_loss = (1/N_train)*(mdl.forward(data.X_train) - data.Y_train).pow(2).sum().data.numpy()
         loss_list.append(current_train_loss)
         ## generalization/func diff
-        y_test_sgd = mdl_sgd.forward(X_test)
-        y_test_pinv = Variable( torch.FloatTensor( np.dot( Kern_test, c_pinv) ) )
+        y_test_sgd = mdl_sgd.forward(data.X_test)
+        y_test_pinv = Variable( torch.FloatTensor( np.dot( data.Kern_test.data.numpy(), c_pinv) ) )
         func_diff.append( (1/N_test)*(y_test_sgd - y_test_pinv).pow(2).sum() )
         ## collect param stats
         for index, W in enumerate(mdl_sgd.parameters()):
@@ -234,18 +238,17 @@ def stats_logger(mdl, X,Y, X_test,Y_test, i,logging_freq):
                 print('error happened at: i = {} current_train_loss: {}, grad_norm: {},\n ----------------- \a'.format(i,current_train_loss,W.grad.data.norm(2)))
                 sys.exit()
 
-def train_SGD(mdl,X,Y, M,eta,nb_iter,A ,logging_freq ,dtype):
+def train_SGD(mdl,data, M,eta,nb_iter,A ,logging_freq ,dtype):
     '''
     '''
+    nb_module_params = len( list(mdl.parameters()) )
+    loss_list, grad_list =  [], [ [] for i in range(nb_module_params) ]
+    func_diff = []
     ##
-    nb_module_params = len( list(mdl_standard_sgd.parameters()) )
-    loss_list_standard_sgd, grad_list_standard_sgd =  [], [ [] for i in range(nb_module_params) ]
-    func_diff_standard_sgd = []
-    ##
-    N_train, _ = tuple( X.size() )
+    N_train, _ = tuple( data.X_train.size() )
     for i in range(nb_iter):
         # Forward pass: compute predicted Y using operations on Variables
-        batch_xs, batch_ys = get_batch2(X,Y,M,dtype) # [M, D], [M, 1]
+        batch_xs, batch_ys = get_batch2(data.X_train,data.Y_train,M,dtype) # [M, D], [M, 1]
         ## FORWARD PASS
         y_pred = mdl.forward(batch_xs)
         ## LOSS
@@ -257,13 +260,14 @@ def train_SGD(mdl,X,Y, M,eta,nb_iter,A ,logging_freq ,dtype):
             delta = eta*W.grad.data
             W.data.copy_(W.data - delta) # W - eta*g + A*gdl_eps
         ## stats logger
-        stats_logger(mdl, debug_sgd)
+        stats_logger(mdl, data, loss_list,func_diff,grad_list, i,logging_freq)
         ## train stats
         if i % (nb_iter/10) == 0 or i == 0:
-            print('i = {}, current_loss = {}'.format(i, loss.data.numpy()[0] ) )
+            current_train_loss = (1/N_train)*(mdl.forward(data.X_train) - data.Y_train).pow(2).sum().data.numpy()
+            print('i = {}, current_loss = {}'.format(i, current_train_loss ) )
         ## Manually zero the gradients after updating weights
         mdl.zero_grad()
-    return
+    return loss_list_standard_sgd,grad_list_standard_sgd,func_diff_standard_sgd,nb_module_params
 
 def main(**kwargs):
     '''
@@ -277,14 +281,14 @@ def main(**kwargs):
     #debug_sgd = True
     ## Hyper Params SGD weight parametrization
     M = 3
-    eta = 0.05 # eta = 1e-6
-    nb_iter = int(30*10)
+    eta = 0.02 # eta = 1e-6
+    nb_iter = int(20*10)
     A = 0.0
     logging_freq = 500
     ## Hyper Params SGD standard parametrization
     M_standard_sgd = 3
-    eta_standard_sgd = 0.001 # eta = 1e-6
-    nb_iter_standard_sgd = int(100*1000)
+    eta_standard_sgd = 0.02 # eta = 1e-6
+    nb_iter_standard_sgd = int(20*10)
     A_standard_sgd = 0.0
     logging_freq_standard_sgd = 100
     ##
@@ -306,19 +310,19 @@ def main(**kwargs):
     #plot_activation_func(act,lb=palb,ub=paub,N=paN)
     #plt.show()
     #### 2-layered mdl
-    D0 = 1
+    D0 = 2
 
     # H1 = 10
     # D0,D1,D2 = 1,H1,1
     # D_layers,act = [D0,D1,D2], act
 
-    H1,H2 = 5,5
-    D0,D1,D2,D3 = D0,H1,H2,1
-    D_layers,act = [D0,D1,D2,D3], act
+    # H1,H2 = 5,5
+    # D0,D1,D2,D3 = D0,H1,H2,1
+    # D_layers,act = [D0,D1,D2,D3], act
 
-    # H1,H2,H3 = 5,5,5
-    # D0,D1,D2,D3,D4 = D0,H1,H2,H3,1
-    # D_layers,act = [D0,D1,D2,D3,D4], act
+    H1,H2,H3 = 5,5,5
+    D0,D1,D2,D3,D4 = D0,H1,H2,H3,1
+    D_layers,act = [D0,D1,D2,D3,D4], act
 
     # H1,H2,H3,H4 = 5,5,5,5
     # D0,D1,D2,D3,D4,D5 = D0,H1,H2,H3,H4,1
@@ -329,10 +333,10 @@ def main(**kwargs):
     start_time = time.time()
     ##
     np.set_printoptions(suppress=True)
-    lb, ub = 0, 1
+    lb, ub = -1, 1
     ## mdl degree and D
-    #Degree_mdl = adegree**( len(D_layers)-2 )
-    Degree_mdl = 25
+    Degree_mdl = adegree**( len(D_layers)-2 )
+    #Degree_mdl = 25
     D_sgd = Degree_mdl+1
     D_pinv = Degree_mdl+1
     D_rls = D_pinv
@@ -357,9 +361,9 @@ def main(**kwargs):
         run_type = kwargs['run_type']
         #collect_functional_diffs = kwargs['collect_functional_diffs']
     else:
-        run_type = 'sine'
+        #run_type = 'sine'
         #run_type = 'similar_nn'
-        #run_type = 'from_file'
+        run_type = 'from_file'
         #run_type = 'h_add'
     data_filename = None
     init_config_data = Maps({})
@@ -427,142 +431,29 @@ def main(**kwargs):
     ## SGD models
     mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,bias=bias)
     mdl_standard_sgd = get_sequential_lifted_mdl(nb_monomials=c_pinv.shape[0],D_out=1, bias=False)
-    ## DEBUG PRINTs
-    print('>>norm(Y): ', ((1/N_train)*torch.norm(Y)**2).data.numpy()[0] )
-    print('>>l2_loss_torch: ', (1/N_train)*( Y - mdl_sgd.forward(X)).pow(2).sum().data.numpy()[0] )
     ## data to TORCH
-    data_pytorch_struct = get_data_struct(X_train,Y_train,X_test,Y_test)
+    data = get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test,dtype)
+    data_stand = get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test,dtype)
+    data_stand.X_train, data_stand.X_test = data_stand.Kern_train, data_stand.Kern_test
+    ## DEBUG PRINTs
+    print('>>norm(Y): ', ((1/N_train)*torch.norm(data.Y_train)**2).data.numpy()[0] )
+    print('>>l2_loss_torch: ', (1/N_train)*( data.Y_train - mdl_sgd.forward(data.X_train)).pow(2).sum().data.numpy()[0] )
     ## check number of monomials
     nb_monomials = int(scipy.misc.comb(D0+D_pinv,D_pinv))
     print(' c_pinv.shape[0]={} \n nb_monomials={} '.format( c_pinv.shape[0], nb_monomials ))
     if c_pinv.shape[0] != int(scipy.misc.comb(D0+D_pinv,D_pinv)):
        raise ValueError('nb of monomials dont match D0={},D_pinv={}, number of monimials fron pinv={}, number of monomials analyticall = {}'.format( D0,D_pinv,c_pinv.shape[0],int(scipy.misc.comb(D0+D_pinv,D_pinv)) )    )
     ########################################################################################################################################################
-    ## standard SGD
-    nb_module_params = len( list(mdl_standard_sgd.parameters()) )
-    loss_list_standard_sgd, grad_list_standard_sgd =  [], [ [] for i in range(nb_module_params) ]
-    func_diff_standard_sgd = []
-    for i in range(nb_iter_standard_sgd):
-        # Forward pass: compute predicted Y using operations on Variables]
-        kern_batch_xs, kern_batch_ys = get_batch2(Kern_train_pytorch,Y,M_standard_sgd,dtype) # [M, D], [M, 1]
-        ## FORWARD PASS
-        y_standard = mdl_standard_sgd.forward(kern_batch_xs)
-        ## LOSS
-        loss_standard = (1/N_train)*(y_standard - kern_batch_ys).pow(2).sum()
-        ## BACKARD PASS
-        loss_standard.backward()
-        ## SGD update
-        for W in mdl_standard_sgd.parameters():
-            delta = eta_standard_sgd*W.grad.data
-            W.data.copy_(W.data - delta) # W - eta*g
-        ## TRAINING STATS
-        if i % logging_freq_standard_sgd == 0 or i == 0:
-            current_loss_stand_sgd = (1/N_train)*(mdl_standard_sgd.forward(Kern_train_pytorch) - Y).pow(2).sum().data.numpy()
-            loss_list_standard_sgd.append(current_loss_stand_sgd)
-            if i!=0:
-                if collect_functional_diffs:
-                    pass
-                elif collect_generalization_diffs:
-                    y_test_sgd = mdl_standard_sgd.forward(Kern_test_pytorch)
-                    y_test_pinv = Variable( torch.FloatTensor( np.dot( Kern_test, c_pinv) ) )
-                    #pdb.set_trace()
-                    loss = (1/N_test)*(y_test_sgd - y_test_pinv).pow(2).sum()
-                    func_diff_standard_sgd.append( loss.data.numpy() )
-                else:
-                    func_diff.append(-1)
-            if debug_sgd:
-                print('\ni =',i)
-                print('current_loss_stand_sgd = ',current_loss_stand_sgd)
-            for index, W in enumerate(mdl_standard_sgd.parameters()):
-                grad_norm = W.grad.data.norm(2)
-                grad_list_standard_sgd[index].append( W.grad.data.norm(2) )
-                if debug_sgd:
-                    delta = eta_standard_sgd*W.grad.data
-                    print('-------------')
-                    print('-> grad_norm: {} \n------> delta: {}'.format(grad_norm,delta.norm(2)) )
-                if is_NaN(grad_norm) or is_NaN(current_loss_stand_sgd):
-                    print('\n----------------- ERROR HAPPENED')
-                    print('error happened at: i = {}'.format(i))
-                    print('current_loss_stand_sgd: {}, grad_norm: {},\n -----------------'.format(current_loss_stand_sgd,grad_norm) )
-                    print('\a')
-                    sys.exit()
-        ##
-        if i % (nb_iter_standard_sgd/10) == 0 or i == 0:
-            grad_norm = W.grad.data.norm(2)
-            delta = eta_standard_sgd*W.grad.data
-            current_loss_stand_sgd = (1/N_train)*(mdl_standard_sgd.forward(Kern_train_pytorch) - Y).pow(2).sum().data.numpy()
-            print('i = {}, current_loss_stand_sgd = {}, delta = {}, grad_norm = {}'.format(i,current_loss_stand_sgd,delta.norm(2),grad_norm) )
-        ## Manually zero the gradients after updating weights
-        mdl_sgd.zero_grad()
-    current_loss_stand_sgd = (1/N_train)*(mdl_standard_sgd.forward(Kern_train_pytorch) - Y).pow(2).sum().data.numpy()
-    print('\ncurrent_loss_stand_sgd = {}, i = {}'.format(current_loss_stand_sgd,i) )
+    loss_list_weight_sgd,grad_list_weight_sgd,func_diff_weight_sgd,nb_module_params = train_SGD(
+        mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype
+    )
+    #print('training ended!\a')
+    loss_list_standard_sgd,grad_list_standard_sgd,func_diff_standard_sgd,nb_module_params = train_SGD(
+        mdl_standard_sgd,data_stand, M_standard_sgd,eta_standard_sgd,nb_iter_standard_sgd,A_standard_sgd ,logging_freq ,dtype
+    )
     print('training ended!\a')
     ########################################################################################################################################################
     ## SGD pNN
-    nb_module_params = len( list(mdl_sgd.parameters()) )
-    loss_list, grad_list =  [], [ [] for i in range(nb_module_params) ]
-    func_diff = []
-    for i in range(nb_iter):
-        # Forward pass: compute predicted Y using operations on Variables
-        batch_xs, batch_ys = get_batch2(X,Y,M,dtype) # [M, D], [M, 1]
-        ## FORWARD PASS
-        y_pred = mdl_sgd.forward(batch_xs)
-        ## LOSS
-        loss = (1/N_train)*(y_pred - batch_ys).pow(2).sum()
-        ## BACKARD PASS
-        loss.backward() # Use autograd to compute the backward pass. Now w will have gradients
-        ## SGD update
-        for W in mdl_sgd.parameters():
-            #gdl_eps = torch.randn(W.data.size()).type(dtype)
-            delta = eta*W.grad.data
-            #W.data.copy_(W.data - delta + A*gdl_eps) # W - eta*g + A*gdl_eps
-            W.data.copy_(W.data - delta) # W - eta*g + A*gdl_eps
-        ## TRAINING STATS
-        if i % logging_freq == 0 or i == 0:
-            current_loss = (1/N_train)*(mdl_sgd.forward(X) - Y).pow(2).sum().data.numpy()
-            #current_loss = loss.data.numpy()[0]
-            loss_list.append(current_loss)
-            if i!=0:
-                if collect_functional_diffs:
-                    f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
-                    f_pinv = lambda x: f_mdl_LA(x,c_pinv,D_mdl=D_pinv)
-                    func_diff.append( L2_norm_2(f=f_sgd,g=f_pinv,lb=lb,ub=ub,D=2) )
-                elif collect_generalization_diffs:
-                    y_test_sgd = mdl_sgd.forward(X_pytorch_test)
-                    #y_test_pinv = torch.FloatTensor( np.dot( Kern_test, c_pinv) )
-                    y_test_pinv = Variable( torch.FloatTensor( np.dot( Kern_test, c_pinv) ) )
-                    loss = (1/N_test)*(y_test_sgd - y_test_pinv).pow(2).sum()
-                    func_diff.append( loss.data.numpy() )
-                else:
-                    func_diff.append(-1)
-            if debug_sgd:
-                print('\ni =',i)
-                print('current_loss = ',current_loss)
-            for index, W in enumerate(mdl_sgd.parameters()):
-                grad_norm = W.grad.data.norm(2)
-                delta = eta*W.grad.data
-                grad_list[index].append( W.grad.data.norm(2) )
-                if debug_sgd:
-                    print('-------------')
-                    print('-> grad_norm: ',grad_norm)
-                    #print('----> eta*grad_norm: ',eta*grad_norm)
-                    print('------> delta: ', delta.norm(2))
-                    #print(delta)
-                if is_NaN(grad_norm) or is_NaN(current_loss):
-                    print('\n----------------- ERROR HAPPENED')
-                    print('error happened at: i = {}'.format(i))
-                    print('current_loss: {}, grad_norm: {},\n -----------------'.format(current_loss,grad_norm) )
-                    #print('grad_list: ', grad_list)
-                    print('\a')
-                    sys.exit()
-        ##
-        if i % (nb_iter/4) == 0 or i == 0:
-            current_loss = loss.data.numpy()[0]
-            print('i = {}, current_loss = {}'.format(i,current_loss) )
-        ## Manually zero the gradients after updating weights
-        mdl_sgd.zero_grad()
-    print('\ni = {}, current_loss = {}'.format(i,current_loss) )
-    ########################################################################################################################################################
     nb_params = count_params(mdl_sgd)
     ## Do SYMPY magic
     if len(D_layers) <= 2:
@@ -592,8 +483,8 @@ def main(**kwargs):
         print('c_sgd_standard = ', mdl_standard_sgd[0].weight)
         print('c_sgd_weight = ', c_sgd)
         print('c_pinv: ', c_pinv)
-        print('X = ', X)
-        print('Y = ', Y)
+        print('data.X_train = ', data.X_train)
+        print('data.Y_train = ', data.Y_train)
         print(mdl_sgd)
         if len(D_layers) > 2:
             print('\n---- structured poly: {}'.format(str(s_expr)) )
@@ -626,23 +517,25 @@ def main(**kwargs):
     ## Generalization L2 (functional) norm difference
     print('-- Generalization L2 (functional) norm difference')
     y_test_pinv = Variable( torch.FloatTensor( np.dot( Kern_test, c_pinv) ) )
-    y_test_sgd = mdl_sgd.forward(X_pytorch_test)
+    y_test_sgd = mdl_sgd.forward(data.X_test)
     loss = (1/N_test)*(y_test_sgd - y_test_pinv).pow(2).sum()
     print('J_Gen((f_sgd(x) - f_pinv(x))^2) = 1/{}sum (f_sgd(x) - f_pinv(x))^2 = {}'.format( N_test, loss.data.numpy()[0] ) )
     ## FUNCTIONAL DIFF or GENERALIZATION DIFF
     print('-- Generalization l2 error')
     if f_true ==  None:
-        print('J_gen(f_sgd)_standard = ', (1/N_test)*(mdl_standard_sgd.forward(Kern_test_pytorch) - Variable(torch.FloatTensor(Y_test)) ).pow(2).sum().data.numpy() )
-        print('J_gen(f_sgd)_weight = ', (1/N_test)*(mdl_sgd.forward(X_pytorch_test) - Variable(torch.FloatTensor(Y_test)) ).pow(2).sum().data.numpy() )
+        print('J_gen(f_sgd)_standard = ', (1/N_test)*(mdl_standard_sgd.forward(data.Kern_test) - Variable(torch.FloatTensor(Y_test)) ).pow(2).sum().data.numpy() )
+        print('J_gen(f_sgd)_weight = ', (1/N_test)*(mdl_sgd.forward(data.X_test) - Variable(torch.FloatTensor(Y_test)) ).pow(2).sum().data.numpy() )
         print('J_gen(f_pinv) = ', (1/N_test)*(np.linalg.norm(Y_test-np.dot( poly_feat.fit_transform(X_test),c_pinv))**2) )
     else:
+        f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
+        f_pinv = lambda x: f_mdl_LA(x,c_pinv)
         print('||f_sgd - f_true||^2_2 = ', L2_norm_2(f=f_sgd,g=f_true,lb=lb,ub=ub))
         print('||f_pinv - f_true||^2_2 = ', L2_norm_2(f=f_pinv,g=f_true,lb=lb,ub=ub))
     ## TRAIN ERRORS of mdls
     print('-- Train Error')
-    print(' J(f_sgd)_standard = ', (1/N_train)*(mdl_standard_sgd.forward( Kern_train_pytorch ) - Variable(torch.FloatTensor(Y)) ).pow(2).sum().data.numpy() )
-    print(' J(f_sgd)_weight = ', (1/N_train)*(mdl_sgd.forward(Variable(torch.FloatTensor(X))) - Variable(torch.FloatTensor(Y)) ).pow(2).sum().data.numpy() )
-    print(' J(f_pinv) = ',(1/N_train)*(np.linalg.norm(Y-np.dot( poly_feat.fit_transform(X_train) ,c_pinv))**2) )
+    print(' J(f_sgd)_standard = ', (1/N_train)*(mdl_standard_sgd.forward( data.Kern_train ) - data.Y_train ).pow(2).sum().data.numpy() )
+    print(' J(f_sgd)_weight = ', (1/N_train)*(mdl_sgd.forward(data.X_train) - data.Y_train).pow(2).sum().data.numpy() )
+    print(' J(f_pinv) = ',(1/N_train)*(np.linalg.norm(data.Y_train.data.numpy()-np.dot( poly_feat.fit_transform(data.X_train.data.numpy()) ,c_pinv))**2) )
     #print(' J(c_rls) = ',(1/N)*(np.linalg.norm(Y-(1/N)*(np.linalg.norm(Y-np.dot( poly_kernel_matrix( x_true,D_sgd-1 ),c_rls))**2) )**2) )
     ## REPORT TIMES
     seconds = (time.time() - start_time)
@@ -658,18 +551,18 @@ def main(**kwargs):
         X_plot = poly_feat.fit_transform(x_horizontal)
         X_plot_pytorch = Variable( torch.FloatTensor(X_plot), requires_grad=False)
         #plots objs
+        f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
         Y_sgd_stand =  [ float(f_val) for f_val in mdl_standard_sgd.forward(X_plot_pytorch).data.numpy() ]
         p_sgd_stand, = plt.plot(x_horizontal, Y_sgd_stand)
         p_sgd, = plt.plot(x_horizontal, [ float(f_sgd(x_i)[0]) for x_i in x_horizontal ])
         p_pinv, = plt.plot(x_horizontal, np.dot(X_plot,c_pinv))
-        p_data, = plt.plot(X_train,Y,'ro')
+        p_data, = plt.plot(X_train,data.Y_train.data.numpy(),'ro')
         ## legend
-        #pdb.set_trace()
         plt.legend(
                 [p_sgd_stand,p_sgd,p_pinv,p_data],
-                ['SGD solution standard parametrization, number of monomials={}, batch-size={}, iterations={}, step size={}'.format(len(c_sgd),M_standard_sgd,nb_iter_standard_sgd,eta_standard_sgd),
-                'SGD solution weight parametrization, number of monomials={}, batch-size={}, iterations={}, step size={}'.format(mdl_standard_sgd[0].weight.data.numpy().shape[0],M,nb_iter,eta),
-                'min norm (pinv) Degree_mdl='.format(c_pinv.shape),
+                ['SGD solution standard parametrization, number of monomials={}, batch-size={}, iterations={}, step size={}'.format(mdl_standard_sgd[0].weight.data.numpy().shape[1],M_standard_sgd,nb_iter_standard_sgd,eta_standard_sgd),
+                'SGD solution weight parametrization, number of monomials={}, batch-size={}, iterations={}, step size={}'.format(c_pinv.shape[0],M,nb_iter,eta),
+                'min norm (pinv) number of monomials={}'.format(c_pinv.shape[0]),
                 'data points']
             )
         ##
@@ -704,15 +597,15 @@ def main(**kwargs):
             'minimum norm solution Degree model={}, number of monomials={}'.format(str(D_pinv-1),nb_monomials),
             'data points, number of data points = {}'.format(N_train)])
         ## FIG SGD weight parametrization
-        # fig2 = plt.figure()
-        # ax2 = Axes3D(fig2)
-        # data_pts = ax2.scatter(Xp_train,Yp_train,Zp_train, marker='D')
-        # surf = ax2.plot_surface(Xp,Yp,Zp_sgd,cmap=cm.coolwarm)
-        # ax2.set_xlabel('x1'),ax2.set_ylabel('x2'),ax2.set_zlabel('f(x)')
-        # surf_proxy = mpl.lines.Line2D([0],[0], linestyle="none", c='r', marker = '_')
-        # ax2.legend([surf_proxy,data_pts],[
-        #     'SGD solution weight parametrization {}, number of monomials={}, param count={}, batch-size={}, iterations={}, step size={}'.format(sgd_legend_str,nb_monomials,nb_params,M,nb_iter,eta),
-        #     'data points, number of data points = {}'.format(N_train)])
+        fig2 = plt.figure()
+        ax2 = Axes3D(fig2)
+        data_pts = ax2.scatter(Xp_train,Yp_train,Zp_train, marker='D')
+        surf = ax2.plot_surface(Xp,Yp,Zp_sgd,cmap=cm.coolwarm)
+        ax2.set_xlabel('x1'),ax2.set_ylabel('x2'),ax2.set_zlabel('f(x)')
+        surf_proxy = mpl.lines.Line2D([0],[0], linestyle="none", c='r', marker = '_')
+        ax2.legend([surf_proxy,data_pts],[
+            'SGD solution weight parametrization {}, number of monomials={}, param count={}, batch-size={}, iterations={}, step size={}'.format(sgd_legend_str,nb_monomials,nb_params,M,nb_iter,eta),
+            'data points, number of data points = {}'.format(N_train)])
         ## FIG SGD standard param
         fig = plt.figure()
         ax3 = Axes3D(fig)
@@ -752,17 +645,15 @@ def main(**kwargs):
     #plot_activation_func(act)
     ##
     #func_diff
-    func_diff = func_diff_standard_sgd
+    #loss_list_weight_sgd,grad_list_weight_sgd,func_diff_weight_sgd,nb_module_params
     fig = plt.figure()
-    p_func_diff, = plt.plot(np.arange(len(func_diff)), func_diff,color='g')
-    if collect_functional_diffs:
-        plt.legend([p_func_diff],[' L2 functional distance: SGD minus minimum norm solution'])
-        plt.title('Functional L2 difference between minimum norm and SGD functions')
-    elif collect_generalization_diffs:
-        plt.legend([p_func_diff],[' L2 generalization distance: SGD minus minimum norm solution, number test points = {}'.format(N_test)])
-        plt.title('Generalization L2 difference between minimum norm and SGD functions')
-    else:
-        raise ValueError('Plot Functional not supported.')
+    p_func_diff_standard, = plt.plot(np.arange(len(func_diff_standard_sgd)), func_diff_standard_sgd,color='g')
+    p_func_diff_weight, = plt.plot(np.arange(len(func_diff_weight_sgd)), func_diff_weight_sgd,color='g')
+    plt.legend([p_func_diff_standard,p_func_diff_weight],
+        [' L2 generalization distance: weight parametrization with SGD minus minimum norm solution, number test points = {}'.format(N_test),
+        ' L2 generalization distance: standard parametrization with SGD minus minimum norm solution, number test points = {}'.format(N_test)]
+        )
+    plt.title('Generalization L2 difference between minimum norm and SGD functions')
     ##
     plt.show()
     ## is kwargs empty? If yes then execute if statement

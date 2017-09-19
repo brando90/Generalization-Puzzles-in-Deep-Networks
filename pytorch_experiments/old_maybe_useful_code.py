@@ -83,3 +83,14 @@ if i % logging_freq == 0 or i == 0:
             #print('grad_list: ', grad_list)
             print('\a')
             sys.exit()
+
+fig = plt.figure()
+p_func_diff, = plt.plot(np.arange(len(func_diff)), func_diff,color='g')
+if collect_functional_diffs:
+    plt.legend([p_func_diff],[' L2 functional distance: SGD minus minimum norm solution'])
+    plt.title('Functional L2 difference between minimum norm and SGD functions')
+elif collect_generalization_diffs:
+    plt.legend([p_func_diff],[' L2 generalization distance: SGD minus minimum norm solution, number test points = {}'.format(N_test)])
+    plt.title('Generalization L2 difference between minimum norm and SGD functions')
+else:
+    raise ValueError('Plot Functional not supported.')

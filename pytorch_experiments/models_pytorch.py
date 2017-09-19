@@ -237,7 +237,8 @@ class NN(torch.nn.Module):
         return sum(p.numel() for p in model.parameters())
 ##
 
-def get_sequential_lifted_mdl(nb_monomials,D_out, init_config_standard_sgd, bias=False):
+def get_sequential_lifted_mdl(nb_monomials,D_out, bias=False):
+    return torch.nn.Sequential(torch.nn.Linear(nb_monomials,D_out,bias=bias))
 
 #
 
