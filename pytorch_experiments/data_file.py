@@ -107,14 +107,20 @@ def compare_first_layer(mdl_gen,mdl_sgd):
 
 ####
 
-def save_data_set(path, D_layers,act, bias=True,mu=0.0,std=5.0, lb=-1,ub=1,N_train=10,N_test=1000,msg='',visualize=False):
+def save_data_set(path, D_layers,act, biases,mu=0.0,std=5.0, lb=-1,ub=1,N_train=10,N_test=1000,msg='',visualize=False,save_data=True):
     dtype = torch.FloatTensor
     #
+    adegree = act.adegree
     D = D_layers[0]
+    nb_layers = len(D_layers)-1
+    nb_hidden_layers = nb_layers-1 #note the last "layer" is a summation layer for regression and does not increase the degree of the polynomial
+    Degree_mdl = adegree**( nb_hidden_layers ) # only hidden layers have activation functions
+    expected_nb_monomials = int(scipy.misc.comb(D+Degree_mdl,Degree_mdl))
+    print('expected_nb_monomials = {}'.format(expected_nb_monomials))
     #
-    data_generator = get_mdl(D_layers,act=act,bias=bias,mu=mu,std=std)
+    data_generator = get_mdl(D_layers,act=act,biases=biases,mu=mu,std=std)
     np_filename = 'data_numpy_D_layers_{}_nb_layers{}_bias{}_mu{}_std{}_N_train_{}_N_test_{}_lb_{}_ub_{}_act_{}_msg_{}'.format(
-        D_layers,len(D_layers),bias,mu,std,N_train,N_test,lb,ub,act.__name__,msg
+        D_layers,len(D_layers),biases,mu,std,N_train,N_test,lb,ub,act.__name__,msg
     )
     #
     if D==1:
@@ -133,11 +139,12 @@ def save_data_set(path, D_layers,act, bias=True,mu=0.0,std=5.0, lb=-1,ub=1,N_tra
     #
     Y_test = get_Y_from_new_net(data_generator=data_generator, X=X_test,dtype=dtype)
     #
-    np.savez(path.format(np_filename), X_train=X_train,Y_train=Y_train, X_test=X_test,Y_test=Y_test)
-    filename = 'data_gen_D_layers_{}_nb_layers{}_bias{}_mu{}_std{}_N_train_{}_N_test_{}_lb_{}_ub_{}_act_{}_msg_{}'.format(
-        D_layers,len(D_layers),bias,mu,std,N_train,N_test,lb,ub,act.__name__,msg
-    )
-    torch.save( data_generator.state_dict(), path.format(filename) )
+    if save_data:
+        np.savez(path.format(np_filename), X_train=X_train,Y_train=Y_train, X_test=X_test,Y_test=Y_test)
+        filename = 'data_gen_D_layers_{}_nb_layers{}_bias{}_mu{}_std{}_N_train_{}_N_test_{}_lb_{}_ub_{}_act_{}_msg_{}'.format(
+            D_layers,len(D_layers),biases,mu,std,N_train,N_test,lb,ub,act.__name__,msg
+        )
+        torch.save( data_generator.state_dict(), path.format(filename) )
     if visualize:
         if D==1:
             pass
@@ -152,10 +159,10 @@ def save_data_set(path, D_layers,act, bias=True,mu=0.0,std=5.0, lb=-1,ub=1,N_tra
             ##
             plt.show()
 
-def get_mdl(D_layers,act,bias=True,mu=0.0,std=5.0):
-    init_config_data = Maps( {'w_init':'w_init_normal','mu':mu,'std':std, 'bias_init':'b_fill','bias_value':0.1,'bias':bias ,'nb_layers':len(D_layers)} )
+def get_mdl(D_layers,act,biases,mu=0.0,std=5.0):
+    init_config_data = Maps( {'w_init':'w_init_normal','mu':mu,'std':std, 'bias_init':'b_fill','bias_value':0.1,'bias':biases ,'nb_layers':len(D_layers)} )
     w_inits_data, b_inits_data = get_initialization(init_config_data)
-    data_generator = NN(D_layers=D_layers,act=act,w_inits=w_inits_data,b_inits=b_inits_data,bias=bias)
+    data_generator = NN(D_layers=D_layers,act=act,w_inits=w_inits_data,b_inits=b_inits_data,biases=biases)
     return data_generator
 
 def save_data_gen(path,D_layers,act,bias=True,mu=0.0,std=5.0):
@@ -183,6 +190,11 @@ def generate_meshgrid_h_add(N=60000,start_val=-1,end_val=1):
     #pdb.set_trace()
     return X,Y,Z
 
+def generate_meshgrid_h_gabor(N=60000,start_val=-1,end_val=1):
+    (X,Y) = generate_meshgrid(N,start_val,end_val)
+    Z = np.exp( -(X**2 + Y**2) )*np.cos(2*np.pi*(X+Y))
+    return X,Y,Z
+
 def visualize(X,Y,Z,title_name='Test function'):
     #Xp,Yp,Zp = make_meshgrid_data_from_training_data(X_data=X_test, Y_data=Y_test)
     fig = plt.figure()
@@ -194,26 +206,35 @@ def visualize(X,Y,Z,title_name='Test function'):
 if __name__ == '__main__':
     #X,Y,Z = generate_meshgrid_h_add(N=60000,start_val=-1,end_val=1)
     #visualize(X,Y,Z)
-    #act = get_relu_poly_act(degree=2,lb=-1,ub=1,N=100)
+    adegree=3
+    act = get_relu_poly_act(degree=adegree,lb=-1,ub=1,N=100)
+    act.adegree = adegree
     #act = quadratic
-    # H1 = 2
-    # D0,D1,D2 = 1,H1,1
-    # D_layers,act = [D0,D1,D2], act
+    H1 = 10
+    D0,D1,D2 = 2,H1,1
+    D_layers,act = [D0,D1,D2], act
 
-    # H1,H2 = 3,3
+    # H1,H2 = 15,15
     # D0,D1,D2,D3 = 2,H1,H2,1
     # D_layers,act = [D0,D1,D2,D3], act
 
-    # H1,H2,H3 = 2,2,2
+    # H1,H2,H3 = 11,11,11
     # D0,D1,D2,D3,D4 = 2,H1,H2,H3,1
     # D_layers,act = [D0,D1,D2,D3,D4], act
 
     # H1,H2,H3,H4 = 2,2,2,2
     # D0,D1,D2,D3,D4,D5 = 1,H1,H2,H3,H4,1
     # D_layers,act = [D0,D1,D2,D3,D4,D5], act
-    #
-    save_data_set_mdl_sgd(path='./data/{}', run_type='h_add', lb=-1,ub=1,N_train=35,N_test=2000,msg='',visualize=False)
-    #save_data_set(path='./data/{}',D_layers=D_layers,act=act,bias=True,mu=0.0,std=1, lb=-1,ub=1,N_train=10,N_test=1000,visualize=True)
-    #save_data_gen(path='./data/{}',D_layers=D_layers,act=act,bias=True,mu=0.0,std=5.0)
+
+    nb_layers = len(D_layers)-1
+    #biases = [None] + [True] + (nb_layers-1)*[False] #bias only in first layer
+    biases = [None] + (nb_layers)*[True] # biases in every layer
+    msg = ''
+    mu,std = 0.0,5.0
+    N_train, N_test= 9,5041
+    ##
+    save_data = False
+    #save_data_set_mdl_sgd(path='./data/{}', run_type='h_add', lb=-1,ub=1,N_train=35,N_test=5041,msg='',visualize=False)
+    save_data_set(path='./data/{}',D_layers=D_layers,act=act,biases=biases,mu=mu,std=std, lb=-1,ub=1,N_train=N_train,N_test=N_test,msg=msg,visualize=True,save_data=save_data)
     #data_generator = load(path='./data/data_gen_nb_layers3_biasTrue_mu0.0_std5.0')
     print('End! \a')

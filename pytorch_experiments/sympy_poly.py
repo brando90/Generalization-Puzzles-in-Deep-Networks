@@ -45,7 +45,7 @@ def s_Poly(x,c_pinv_relu):
 
 class sNN:
 
-    def __init__(self,act,mdl=None,D_layers=None,bias=True):
+    def __init__(self,act,biases,mdl=None,D_layers=None):
         '''
         Note: bias arg is ignored if mdl is an arg.
 
@@ -54,6 +54,8 @@ class sNN:
         note: I reversed the dimension from D_in,D_out to D_out,D_in in the internal
         representation of this class to (reluctantly) match pytorch's way of storing matrices
         in its torch.nn.linear class.
+
+        biases = list indicating which layers have a bias
         '''
         # act
         self.act = act
@@ -62,14 +64,15 @@ class sNN:
         self.biases = [None]
         if mdl != None:
             self.mdl = mdl
-            self.bias = self.mdl.bias
             # init weights
             for i in range(1,len(mdl.linear_layers)):
                 #print('--i ', i)
                 l = mdl.linear_layers[i]
                 self.weights.append( Matrix( l.weight.data.numpy() ) ) # [D_out, D_in]
+                ##
+                bias = biases[i]
                 #print('l.bias ', l.bias)
-                if self.bias:
+                if bias:
                     #print('i ', i)
                     self.biases.append( Matrix( l.bias.data.numpy() ) ) # [D_out, D_in]
                 else:

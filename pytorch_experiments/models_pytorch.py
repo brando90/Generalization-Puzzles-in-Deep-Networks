@@ -174,7 +174,7 @@ def eval_feature_vec_multi_poly(x,S,C):
 class NN(torch.nn.Module):
     # http://pytorch.org/tutorials/beginner/examples_nn/two_layer_net_module.html#sphx-glr-beginner-examples-nn-two-layer-net-module-py
     # http://pytorch.org/tutorials/beginner/pytorch_with_examples.html#pytorch-nn
-    def __init__(self, D_layers,act,w_inits,b_inits,bias=True):
+    def __init__(self, D_layers,act,w_inits,b_inits,biases):
         """
         In the constructor we instantiate two nn.Linear modules and assign them as
         member variables.
@@ -188,20 +188,28 @@ class NN(torch.nn.Module):
         # if bias is false then we don't need any init for it (if we do have an init for it and bias=False throw an error)
         #if not bias and (b_inits != [] or b_inits != None):
         #    raise ValueError('bias is {} but b_inits is not empty nor None but isntead is {}'.format(bias,b_inits))
-        self.bias = bias
+        print('biases = {}'.format(biases))
+        self.biases = biases
         # actiaction func
         self.act = act
         #create linear layers
         self.linear_layers = torch.nn.ModuleList([None])
         #self.linear_layers = torch.nn.ParameterList([None])
         for d in range(1,len(D_layers)):
+            bias = biases[d]
+            print( 'D_layers[{}], D_layers[{}] = {},{} '.format(d-1,d,D_layers[d-1], D_layers[d]) )
+            print( 'biases[{}] = {}'.format(d,bias))
             linear_layer = torch.nn.Linear(D_layers[d-1], D_layers[d],bias=bias)
             self.linear_layers.append(linear_layer)
+        #pdb.set_trace()
         # initialize model
         for d in range(1,len(D_layers)):
+            ## weight params
             weight_init = w_inits[d]
             m = self.linear_layers[d]
             weight_init(m)
+            ## bias params
+            bias = biases[d]
             if bias:
                 bias_init = b_inits[d]
                 bias_init(m)

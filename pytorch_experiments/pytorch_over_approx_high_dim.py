@@ -218,32 +218,33 @@ def print_debug():
         if debug_sgd:
             print('------------- grad_norm={} delta={} ',grad_norm,delta.norm(2))
 
-def stats_logger(mdl, data, loss_list,func_diff,grad_list, i,logging_freq):
-    N_train,_ = data.X_train.shape
-    N_test,_ = data.X_test.shape
-    if i % logging_freq == 0 or i == 0:
-        # log current train loss
-        current_train_loss = (1/N_train)*(mdl.forward(data.X_train) - data.Y_train).pow(2).sum().data.numpy()
-        loss_list.append(current_train_loss)
-        ## generalization/func diff
-        y_test_sgd = mdl_sgd.forward(data.X_test)
-        y_test_pinv = Variable( torch.FloatTensor( np.dot( data.Kern_test.data.numpy(), c_pinv) ) )
-        func_diff.append( (1/N_test)*(y_test_sgd - y_test_pinv).pow(2).sum() )
-        ## collect param stats
-        for index, W in enumerate(mdl_sgd.parameters()):
-            delta = eta*W.grad.data
-            grad_list[index].append( W.grad.data.norm(2) )
-            if is_NaN(W.grad.data.norm(2)) or is_NaN(current_train_loss):
-                print('\n----------------- ERROR HAPPENED')
-                print('error happened at: i = {} current_train_loss: {}, grad_norm: {},\n ----------------- \a'.format(i,current_train_loss,W.grad.data.norm(2)))
-                sys.exit()
+def stats_logger(mdl, data, eta,loss_list,grad_list,func_diff, i,c_pinv):
+    N_train,_ = tuple(data.X_train.size())
+    N_test,_ = tuple(data.X_test.size())
+    # log current train loss
+    current_train_loss = (1/N_train)*(mdl.forward(data.X_train) - data.Y_train).pow(2).sum().data.numpy()
+    loss_list.append(current_train_loss)
+    ## generalization/func diff
+    y_test_sgd = mdl.forward(data.X_test)
+    y_test_pinv = Variable( torch.FloatTensor( np.dot( data.Kern_test.data.numpy(), c_pinv) ) )
+    func_diff.append( (1/N_test)*(y_test_sgd - y_test_pinv).pow(2).sum().data.numpy() )
+    #func_diff_stand_weight( (1/N_test)*(y_test_sgd - y_test_pinv).pow(2).sum().data.numpy() )
+    ## collect param stats
+    for index, W in enumerate(mdl.parameters()):
+        delta = eta*W.grad.data
+        grad_list[index].append( W.grad.data.norm(2) )
+        if is_NaN(W.grad.data.norm(2)) or is_NaN(current_train_loss):
+            print('\n----------------- ERROR HAPPENED \a')
+            print('error happened at: i = {} current_train_loss: {}, grad_norm: {},\n ----------------- \a'.format(i,current_train_loss,W.grad.data.norm(2)))
+            sys.exit()
 
-def train_SGD(mdl,data, M,eta,nb_iter,A ,logging_freq ,dtype):
+def train_SGD(mdl,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv):
     '''
     '''
     nb_module_params = len( list(mdl.parameters()) )
     loss_list, grad_list =  [], [ [] for i in range(nb_module_params) ]
     func_diff = []
+    #func_current_mdl_to_other_mdl = []
     ##
     N_train, _ = tuple( data.X_train.size() )
     for i in range(nb_iter):
@@ -260,14 +261,15 @@ def train_SGD(mdl,data, M,eta,nb_iter,A ,logging_freq ,dtype):
             delta = eta*W.grad.data
             W.data.copy_(W.data - delta) # W - eta*g + A*gdl_eps
         ## stats logger
-        stats_logger(mdl, data, loss_list,func_diff,grad_list, i,logging_freq)
+        if i % logging_freq == 0:
+            stats_logger(mdl, data, eta,loss_list,grad_list,func_diff, i,c_pinv)
         ## train stats
         if i % (nb_iter/10) == 0 or i == 0:
             current_train_loss = (1/N_train)*(mdl.forward(data.X_train) - data.Y_train).pow(2).sum().data.numpy()
             print('i = {}, current_loss = {}'.format(i, current_train_loss ) )
         ## Manually zero the gradients after updating weights
         mdl.zero_grad()
-    return loss_list_standard_sgd,grad_list_standard_sgd,func_diff_standard_sgd,nb_module_params
+    return loss_list,grad_list,func_diff,nb_module_params
 
 def main(**kwargs):
     '''
@@ -280,22 +282,22 @@ def main(**kwargs):
     debug_sgd = False
     #debug_sgd = True
     ## Hyper Params SGD weight parametrization
-    M = 3
-    eta = 0.02 # eta = 1e-6
-    nb_iter = int(20*10)
+    M = 6
+    eta = 0.002 # eta = 1e-6
+    nb_iter = int(100*1000)
     A = 0.0
     logging_freq = 500
     ## Hyper Params SGD standard parametrization
-    M_standard_sgd = 3
+    M_standard_sgd = 6
     eta_standard_sgd = 0.02 # eta = 1e-6
-    nb_iter_standard_sgd = int(20*10)
+    nb_iter_standard_sgd = int(200*1000)
     A_standard_sgd = 0.0
     logging_freq_standard_sgd = 100
     ##
     ## activation params
     # alb, aub = -100, 100
     # aN = 100
-    adegree = 2
+    adegree = 3
     ax = np.concatenate( (np.linspace(-20,20,100), np.linspace(-10,10,1000)) )
     aX = np.concatenate( (ax,np.linspace(-2,2,100000)) )
     ## activation funcs
@@ -312,36 +314,33 @@ def main(**kwargs):
     #### 2-layered mdl
     D0 = 2
 
-    # H1 = 10
-    # D0,D1,D2 = 1,H1,1
-    # D_layers,act = [D0,D1,D2], act
+    H1 = 15
+    D0,D1,D2 = D0,H1,1
+    D_layers,act = [D0,D1,D2], act
 
-    # H1,H2 = 5,5
+    # H1,H2 = 15,15
     # D0,D1,D2,D3 = D0,H1,H2,1
     # D_layers,act = [D0,D1,D2,D3], act
 
-    H1,H2,H3 = 5,5,5
-    D0,D1,D2,D3,D4 = D0,H1,H2,H3,1
-    D_layers,act = [D0,D1,D2,D3,D4], act
+    # H1,H2,H3 = 5,5,5
+    # D0,D1,D2,D3,D4 = D0,H1,H2,H3,1
+    # D_layers,act = [D0,D1,D2,D3,D4], act
 
-    # H1,H2,H3,H4 = 5,5,5,5
+    # H1,H2,H3,H4 = 25,25,25,25
     # D0,D1,D2,D3,D4,D5 = D0,H1,H2,H3,H4,1
     # D_layers,act = [D0,D1,D2,D3,D4,D5], act
 
-    bias = True
+    nb_layers = len(D_layers)-1 #the number of layers include the last layer (the regression layer)
+    biases = [None] + [True] + (nb_layers-1)*[False] #bias only in first layer
+    biases = [None] + (nb_layers)*[True] # biases in every layer
     #pdb.set_trace()
     start_time = time.time()
     ##
     np.set_printoptions(suppress=True)
     lb, ub = -1, 1
     ## mdl degree and D
-    Degree_mdl = adegree**( len(D_layers)-2 )
-    #Degree_mdl = 25
-    D_sgd = Degree_mdl+1
-    D_pinv = Degree_mdl+1
-    D_rls = D_pinv
-    # RLS
-    lambda_rls = 0.001
+    nb_hidden_layers = nb_layers-1 #note the last "layer" is a summation layer for regression and does not increase the degree of the polynomial
+    Degree_mdl = adegree**( nb_hidden_layers ) # only hidden layers have activation functions
     #### 1-layered mdl
     # identity_act = lambda x: x
     # D_1,D_2 = D_sgd,1 # note D^(0) is not present cuz the polyomial is explicitly constructed by me
@@ -391,7 +390,14 @@ def main(**kwargs):
         #data_filename = 'data_numpy_D_layers_[1, 2, 2, 2, 1]_nb_layers5_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1_act_quad_ax2_bx_c_msg_.npz'
         #data_filename = 'data_numpy_D_layers_[2, 3, 3, 1]_nb_layers4_biasTrue_mu0.0_std2.0_N_train_10_N_test_1000_lb_-1_ub_1_act_quadratic_msg_.npz'
         #data_filename = 'data_numpy_D_layers_[2, 5, 5, 1]_nb_layers4_N_train_16_N_test_2025_lb_-1_ub_1_act_h_add_run_type_poly_act_degree2_msg_.npz'
-        data_filename = 'data_numpy_D_layers_[2, 5, 5, 1]_nb_layers4_N_train_16_N_test_5041_lb_-1_ub_1_act_h_add_run_type_poly_act_degree2_msg_.npz'
+        #data_filename = 'data_numpy_D_layers_[2, 5, 5, 1]_nb_layers4_N_train_16_N_test_5041_lb_-1_ub_1_act_h_add_run_type_poly_act_degree2_msg_.npz'
+        #data_filename = 'data_numpy_D_layers_[2, 15, 15, 1]_nb_layers4_N_train_225_N_test_5041_lb_-1_ub_1_act_h_add_run_type_poly_act_degree2_msg_.npz'
+
+        #data_filename = 'data_numpy_D_layers_[2, 15, 15, 1]_nb_layers4_bias[None, True, True, True]_mu0.0_std1.0_N_train_16_N_test_5041_lb_-1_ub_1_act_quad_ax2_bx_c_msg_.npz'
+        #data_filename = 'data_numpy_D_layers_[2, 10, 10, 10, 1]_nb_layers5_bias[None, True, True, True, True]_mu0.0_std1.0_N_train_16_N_test_5041_lb_-1_ub_1_act_quad_ax2_bx_c_msg_.npz'
+        data_filename = 'data_numpy_D_layers_[2, 10, 1]_nb_layers3_bias[None, True, True]_mu0.0_std5.0_N_train_9_N_test_5041_lb_-1_ub_1_act_poly_act_degree3_msg_.npz'
+        ##
+        print('data_filename = {}'.format(data_filename))
         ##
         data = np.load( './data/{}'.format(data_filename) )
         X_train, Y_train = data['X_train'], data['Y_train']
@@ -413,23 +419,39 @@ def main(**kwargs):
         X,Y,Z = generate_meshgrid_h_add(N=N_test,start_val=-1,end_val=1)
         X_test,Y_test = make_mesh_grid_to_data_set(X,Y,Z)
         print('N_train = {}, N_test = {}'.format(X_train.shape[0],X_test.shape[0]))
+    elif run_type == 'h_gabor':
+        #collect_functional_diffs = True
+        collect_functional_diffs = False
+        #
+        collect_generalization_diffs = True
+        #
+        N_train=1024
+        #N_train=1024 # 32**2
+        N_test=2025 # 45**2
+        #
+        X,Y,Z = generate_meshgrid_h_gabor(N=N_train,start_val=-1,end_val=1)
+        X_train,Y_train = make_mesh_grid_to_data_set(X,Y,Z)
+        print('N_train = {}'.format(X_train.shape[0]))
+        X,Y,Z = generate_meshgrid_h_gabor(N=N_test,start_val=-1,end_val=1)
+        X_test,Y_test = make_mesh_grid_to_data_set(X,Y,Z)
+        print('N_train = {}, N_test = {}'.format(X_train.shape[0],X_test.shape[0]))
     ## get nb data points
     N_train,_ = X_train.shape
     N_test,_ = X_test.shape
     print('N_train = {}, N_test = {}'.format(N_train,N_test))
     ## Lift data/Kernelize data
-    poly_feat = PolynomialFeatures(D_pinv)
+    poly_feat = PolynomialFeatures(degree=Degree_mdl)
     Kern_train = poly_feat.fit_transform(X_train)
     Kern_test = poly_feat.fit_transform(X_test)
     ## LA models
-    c_pinv = np.dot(np.linalg.pinv( Kern_train ),Y_train) # [D_pinv,1]
+    c_pinv = np.dot(np.linalg.pinv( Kern_train ),Y_train)
     ## inits
-    init_config = Maps( {'w_init':'w_init_normal','mu':0.0,'std':1.0, 'bias_init':'b_fill','bias_value':0.01,'bias':bias ,'nb_layers':len(D_layers)} )
+    init_config = Maps( {'w_init':'w_init_normal','mu':0.0,'std':0.1, 'bias_init':'b_fill','bias_value':0.01,'biases':biases ,'nb_layers':len(D_layers)} )
     w_inits_sgd, b_inits_sgd = get_initialization(init_config)
     init_config_standard_sgd = Maps( {'mu':0.0,'std':0.001, 'bias_value':0.01} )
     mdl_stand_initializer = lambda mdl: lifted_initializer(mdl,init_config_standard_sgd)
     ## SGD models
-    mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,bias=bias)
+    mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,biases=biases)
     mdl_standard_sgd = get_sequential_lifted_mdl(nb_monomials=c_pinv.shape[0],D_out=1, bias=False)
     ## data to TORCH
     data = get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test,dtype)
@@ -439,17 +461,18 @@ def main(**kwargs):
     print('>>norm(Y): ', ((1/N_train)*torch.norm(data.Y_train)**2).data.numpy()[0] )
     print('>>l2_loss_torch: ', (1/N_train)*( data.Y_train - mdl_sgd.forward(data.X_train)).pow(2).sum().data.numpy()[0] )
     ## check number of monomials
-    nb_monomials = int(scipy.misc.comb(D0+D_pinv,D_pinv))
-    print(' c_pinv.shape[0]={} \n nb_monomials={} '.format( c_pinv.shape[0], nb_monomials ))
-    if c_pinv.shape[0] != int(scipy.misc.comb(D0+D_pinv,D_pinv)):
-       raise ValueError('nb of monomials dont match D0={},D_pinv={}, number of monimials fron pinv={}, number of monomials analyticall = {}'.format( D0,D_pinv,c_pinv.shape[0],int(scipy.misc.comb(D0+D_pinv,D_pinv)) )    )
+    nb_monomials = int(scipy.misc.comb(D0+Degree_mdl,Degree_mdl))
+    print('>>>>>>>>>>>>> nb_monomials={}, c_pinv.shape[0]={} \n '.format(nb_monomials,c_pinv.shape[0]) )
+    if c_pinv.shape[0] != int(scipy.misc.comb(D0+Degree_mdl,Degree_mdl)):
+       raise ValueError('nb of monomials dont match D0={},Degree_mdl={}, number of monimials fron pinv={}, number of monomials analyticall = {}'.format( D0,Degree_mdl,c_pinv.shape[0],int(scipy.misc.comb(D0+Degree_mdl,Degree_mdl)) )    )
     ########################################################################################################################################################
+    print('Weight Parametrization SGD training')
     loss_list_weight_sgd,grad_list_weight_sgd,func_diff_weight_sgd,nb_module_params = train_SGD(
-        mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype
+        mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv
     )
-    #print('training ended!\a')
+    print('Standard Parametrization SGD training')
     loss_list_standard_sgd,grad_list_standard_sgd,func_diff_standard_sgd,nb_module_params = train_SGD(
-        mdl_standard_sgd,data_stand, M_standard_sgd,eta_standard_sgd,nb_iter_standard_sgd,A_standard_sgd ,logging_freq ,dtype
+        mdl_standard_sgd,data_stand, M_standard_sgd,eta_standard_sgd,nb_iter_standard_sgd,A_standard_sgd ,logging_freq ,dtype,c_pinv
     )
     print('training ended!\a')
     ########################################################################################################################################################
@@ -473,14 +496,14 @@ def main(**kwargs):
             sact = sQuad
         elif act.__name__ == 'relu':
             sact = sReLU
-        smdl = sNN(sact,mdl=tmdl)
+        smdl = sNN(sact,biases,mdl=tmdl)
         ## get simplification
         expr = smdl.forward(x)
         s_expr = poly(expr,x_list)
         c_sgd = np.array( s_expr.coeffs()[::-1] )
         c_sgd = [ np.float64(num) for num in c_sgd]
     if debug:
-        print('c_sgd_standard = ', mdl_standard_sgd[0].weight)
+        print('c_sgd_standard = ', mdl_standard_sgd[0].weight.data.numpy())
         print('c_sgd_weight = ', c_sgd)
         print('c_pinv: ', c_pinv)
         print('data.X_train = ', data.X_train)
@@ -488,14 +511,21 @@ def main(**kwargs):
         print(mdl_sgd)
         if len(D_layers) > 2:
             print('\n---- structured poly: {}'.format(str(s_expr)) )
-    ## Stats of models
-    print('---- Stats of flattened to Poly models')
+    ##
+    print('number of monomials wSGD={},sSGD={},pinv={}'.format( len(c_sgd), nb_monomials, c_pinv.shape[0]) )
+    if len(c_sgd) != nb_monomials or len(c_sgd) != c_pinv.shape[0] or nb_monomials != c_pinv.shape[0]:
+        raise ValueError(' Some error in the number of monomials, these 3 numbers should match but they dont: {},{},{}'.format(len(c_sgd),nb_monomials,c_pinv.shape[0]) )
+    ## data set Stats
     print('\n----> Data set stats:\n data_filename= {}, run_type={}, init_config_data={}\n'.format(data_filename,run_type,init_config_data) )
-    print('---- Learning params')
-    print('Degree_mdl = {}, N_train = {}, M = {}, eta = {}, nb_iter = {} nb_params={},D_layers={}'.format(Degree_mdl,N_train,M,eta,nb_iter,nb_params,D_layers))
+    ## Stats of model pNN wSGD model
+    print('---- Learning params for weight param')
+    print('Degree_mdl = {}, number of monomials = {}, N_train = {}, M = {}, eta = {}, nb_iter = {} nb_params={},D_layers={}'.format(Degree_mdl,len(c_sgd),N_train,M,eta,nb_iter,nb_params,D_layers))
     print('Activations: act={}, sact={}'.format(act.__name__,sact.__name__) )
     print('init_config: ', init_config)
     print('number of layers = {}'.format(nb_module_params))
+    ## Stats of model standard param (lifted space) sSGD
+    print('Degree_mdl = {}, number of monomials = {}, N_train = {}, M_standard_sgd = {}, eta_standard_sgd = {}, nb_iter_standard_sgd = {} nb_params={}'.format(Degree_mdl,mdl_standard_sgd[0].weight.data.numpy().shape[1],N_train,M_standard_sgd,eta_standard_sgd,nb_iter_standard_sgd,mdl_standard_sgd[0].weight.data.numpy().shape[1]))
+    print('init_config_standard_sgd: ', init_config_standard_sgd)
     ## Parameter Norms
     if len(D_layers) >= 2:
         print('\n---- statistics about learned params')
@@ -515,13 +545,16 @@ def main(**kwargs):
         #print('||c_avg - c_pinv||_2 = ', np.linalg.norm(c_avg - c_pinv,2))
         pass
     ## Generalization L2 (functional) norm difference
-    print('-- Generalization L2 (functional) norm difference')
+    print('-- Generalization difference L2 (arrpox. functional difference)')
     y_test_pinv = Variable( torch.FloatTensor( np.dot( Kern_test, c_pinv) ) )
-    y_test_sgd = mdl_sgd.forward(data.X_test)
-    loss = (1/N_test)*(y_test_sgd - y_test_pinv).pow(2).sum()
-    print('J_Gen((f_sgd(x) - f_pinv(x))^2) = 1/{}sum (f_sgd(x) - f_pinv(x))^2 = {}'.format( N_test, loss.data.numpy()[0] ) )
-    ## FUNCTIONAL DIFF or GENERALIZATION DIFF
-    print('-- Generalization l2 error')
+    y_test_sgd_stand = mdl_standard_sgd.forward(data.Kern_test)
+    y_test_sgd_weight = mdl_sgd.forward(data.X_test)
+    print('J_Gen((f_sgd(x) - f_pinv(x))^2))_standard = 1/{}sum (f_sgd(x) - f_pinv(x))^2 = {}'.format( N_test, (1/N_test)*(y_test_sgd_stand - y_test_pinv).pow(2).sum().data.numpy() ) )
+    print('J_Gen((f_sgd(x) - f_pinv(x))^2)_weight = 1/{}sum (f_sgd(x) - f_pinv(x))^2 = {}'.format( N_test, (1/N_test)*(y_test_sgd_weight - y_test_pinv).pow(2).sum().data.numpy() ) )
+
+    print('|| f_WP(x) -  f_SP(x))||^2_Gen = 1/{}sum (f_WP(x) - SP(x))^2 = {}'.format( N_test, (1/N_test)*(y_test_sgd_weight - y_test_sgd_stand).pow(2).sum().data.numpy() ) )
+    ##
+    print('-- test error/Generalization l2 error')
     if f_true ==  None:
         print('J_gen(f_sgd)_standard = ', (1/N_test)*(mdl_standard_sgd.forward(data.Kern_test) - Variable(torch.FloatTensor(Y_test)) ).pow(2).sum().data.numpy() )
         print('J_gen(f_sgd)_weight = ', (1/N_test)*(mdl_sgd.forward(data.X_test) - Variable(torch.FloatTensor(Y_test)) ).pow(2).sum().data.numpy() )
@@ -572,7 +605,6 @@ def main(**kwargs):
         #
         nb_non_linear_layers = len(D_layers)-2
         degree_sgd = adegree**(len(D_layers)-2)
-        sgd_legend_str = 'Degree model={} non linear-layers={}'.format(degree_sgd,nb_non_linear_layers)
         #
         X_data, Y_data = X_test,Y_test
         Xp,Yp,Zp = make_meshgrid_data_from_training_data(X_data=X_data, Y_data=Y_data) # meshgrid for visualization
@@ -594,7 +626,7 @@ def main(**kwargs):
         ax1.set_xlabel('x1'),ax1.set_ylabel('x2'),ax1.set_zlabel('f(x)')
         surf_proxy = mpl.lines.Line2D([0],[0], linestyle="none", c='r', marker ='_')
         ax1.legend([surf_proxy,data_pts],[
-            'minimum norm solution Degree model={}, number of monomials={}'.format(str(D_pinv-1),nb_monomials),
+            'minimum norm solution Degree model={}, number of monomials={}'.format(Degree_mdl,nb_monomials),
             'data points, number of data points = {}'.format(N_train)])
         ## FIG SGD weight parametrization
         fig2 = plt.figure()
@@ -604,7 +636,7 @@ def main(**kwargs):
         ax2.set_xlabel('x1'),ax2.set_ylabel('x2'),ax2.set_zlabel('f(x)')
         surf_proxy = mpl.lines.Line2D([0],[0], linestyle="none", c='r', marker = '_')
         ax2.legend([surf_proxy,data_pts],[
-            'SGD solution weight parametrization {}, number of monomials={}, param count={}, batch-size={}, iterations={}, step size={}'.format(sgd_legend_str,nb_monomials,nb_params,M,nb_iter,eta),
+            'SGD solution weight parametrization Degree model={} non linear-layers={}, number of monomials={}, param count={}, list of units per nonlinear layer={}, batch-size={}, iterations={}, step size={}'.format(degree_sgd,nb_non_linear_layers,len(c_sgd),nb_params,D_layers[1:len(D_layers)-1], M,nb_iter,eta),
             'data points, number of data points = {}'.format(N_train)])
         ## FIG SGD standard param
         fig = plt.figure()
@@ -613,7 +645,7 @@ def main(**kwargs):
         surf = ax3.plot_surface(Xp,Yp,Zp_sgd_stand, cmap=cm.coolwarm)
         ax3.set_xlabel('x1'),ax3.set_ylabel('x2'),ax3.set_zlabel('f(x)')
         ax3.legend([surf_proxy,data_pts],[
-            'SGD solution standard parametrization {}, number of monomials={}, param count={}, batch-size={}, iterations={}, step size={}'.format(sgd_legend_str,nb_monomials,nb_monomials,M_standard_sgd,nb_iter_standard_sgd,eta_standard_sgd),
+            'SGD solution standard parametrization Degree model={}, number of monomials={}, param count={}, batch-size={}, iterations={}, step size={}'.format(degree_sgd,nb_monomials,nb_monomials,M_standard_sgd,nb_iter_standard_sgd,eta_standard_sgd),
             'data points, number of data points = {}'.format(N_train)])
         ## PLOT train surface
         # fig = plt.figure()
@@ -628,10 +660,10 @@ def main(**kwargs):
         # surf = ax.plot_surface(Xp,Yp,Zp, cmap=cm.coolwarm)
         # plt.title('Test function')
     ##
-    loss_list = loss_list_standard_sgd
     fig1 = plt.figure()
-    p_loss, = plt.plot(np.arange(len(loss_list)), loss_list,color='m')
-    plt.legend([p_loss],['plot loss'])
+    p_loss_w, = plt.plot(np.arange(len(loss_list_weight_sgd)), loss_list_weight_sgd,color='m')
+    p_loss_s, = plt.plot(np.arange(len(loss_list_standard_sgd)), loss_list_standard_sgd,color='r')
+    plt.legend([p_loss_w,p_loss_s],['plot train loss, weight parametrization','plot train loss, standard parametrization'])
     plt.title('Loss vs Iterations')
     ##
     # for i in range(len(grad_list)):
@@ -648,8 +680,8 @@ def main(**kwargs):
     #loss_list_weight_sgd,grad_list_weight_sgd,func_diff_weight_sgd,nb_module_params
     fig = plt.figure()
     p_func_diff_standard, = plt.plot(np.arange(len(func_diff_standard_sgd)), func_diff_standard_sgd,color='g')
-    p_func_diff_weight, = plt.plot(np.arange(len(func_diff_weight_sgd)), func_diff_weight_sgd,color='g')
-    plt.legend([p_func_diff_standard,p_func_diff_weight],
+    p_func_diff_weight, = plt.plot(np.arange(len(func_diff_weight_sgd)), func_diff_weight_sgd,color='b')
+    plt.legend([p_func_diff_weight,p_func_diff_standard],
         [' L2 generalization distance: weight parametrization with SGD minus minimum norm solution, number test points = {}'.format(N_test),
         ' L2 generalization distance: standard parametrization with SGD minus minimum norm solution, number test points = {}'.format(N_test)]
         )
@@ -661,11 +693,12 @@ def main(**kwargs):
         return mdl_sgd, D_layers, act
 
 if __name__ == '__main__':
-    print('main started')
+    print('__main__ started')
     main()
-    #N_train, N_test = 16, 2025 ## 4**2, 45**2
+    #run_type = 'h_add'
+    #run_type = 'h_gabor'
+    ##N_train, N_test = 16, 2025 ## 4**2, 45**2
     #N_train, N_test = 16, 5041 ## 4**2, 71**2
-    #N_train, N_test = 16, 10000 ## 4**2, 100**2
-    #save_data_set_mdl_sgd(path='./data/{}', run_type='h_add', lb=-1,ub=1,N_train=N_train,N_test=N_test,msg='',visualize=True)
+    #save_data_set_mdl_sgd(path='./data/{}', run_type=run_type, lb=-1,ub=1,N_train=N_train,N_test=N_test,msg='',visualize=True)
     #print('End')
     print('\a')
