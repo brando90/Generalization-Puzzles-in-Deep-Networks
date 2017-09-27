@@ -229,11 +229,11 @@ class NN(torch.nn.Module):
         y_pred = self.linear_layers[d](a)
         return y_pred
 
-    def numpy_forward(self,x,dtype):
-        if type(x) == np.ndarray:
-            X = Variable(torch.FloatTensor(X).type(dtype), requires_grad=False)
-        y_pred = self.forward(x)
-        return y_pred.data.numpy()
+    # def numpy_forward(self,x,dtype):
+    #     if type(x) == np.ndarray:
+    #         X = Variable(torch.FloatTensor(X).type(dtype), requires_grad=False)
+    #     y_pred = self.forward(x)
+    #     return y_pred.data.numpy()
 
     def to_gpu(self,device_id=None):
         torch.nn.Module.cuda(device_id=device_id)
@@ -263,55 +263,55 @@ def get_all_params(var, all_params):
 
 ##
 
-class TestStringMethods(unittest.TestCase):
+# class TestStringMethods(unittest.TestCase):
+#
+#     def test_degree_zero(self):
+#         S_0 = generate_all_tuples_for_monomials(N=1,D=0)
+#         self.assertEqual(S_0,{0:[ [0] ]})
+#         S_0 = generate_all_tuples_for_monomials(N=2,D=0)
+#         self.assertEqual(S_0,{0:[ [0,0] ]})
+#         S_0 = generate_all_tuples_for_monomials(N=3,D=0)
+#         self.assertEqual(S_0,{0:[ [0,0,0] ]})
+#
+#     def test_degree_one(self):
+#         S_0 = generate_all_tuples_for_monomials(N=1,D=1)
+#         self.assertEqual(S_0,{0:[ [0] ], 1:[ [1] ]})
+#         S_0 = generate_all_tuples_for_monomials(N=2,D=1)
+#         self.assertEqual(S_0,{0:[ [0,0] ], 1:[ [1,0], [0,1] ]})
+#         S_0 = generate_all_tuples_for_monomials(N=3,D=1)
+#         self.assertEqual(S_0,{0:[ [0,0,0] ], 1:[ [1,0,0], [0,1,0], [0,0,1] ]})
+#
+#     def test_degree_two(self):
+#         print('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+#         S_0 = generate_all_tuples_for_monomials(N=1,D=2)
+#         self.assertEqual(S_0,{0:[ [0] ], 1:[ [1] ], 2:[ [2] ]})
+#         S_0 = generate_all_tuples_for_monomials(N=2,D=2)
+#         print(S_0)
+#         self.assertEqual(S_0,{0:[ [0,0] ], 1:[ [1,0], [0,1] ], 2:[ [2,0], [1,1], [0,2] ]})
+#         #S_0 = generate_all_tuples_for_monomials(N=3,D=2)
+#         #self.assertEqual(S_0,{0:[ [0,0,0,0] ], 1:[ [1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1] ],2:[ [2,0,0,0], [1,1,0,0] ]})
+#
+#     def test_poly_feature_eval(self):
+#         N,D = 3,2 # N is the number of features, D is the degree
+#         N_data = 2 # number of data points
+#         amount_of_numbers = 6
+#         x = np.arange(amount_of_numbers).reshape(N_data,N) # map to raw data set of size [N_data, D]
+#         ##
+#         #S = generate_all_tuples_for_monomials(N,D)
+#         #nb_monomial_terms = sum( [len(list_monomial_tuples) for _,list_monomial_tuples in S.items()] )
+#         #C = np.arange(1,nb_monomial_terms)
+#         # f1 = eval_feature_vec_multi_poly(x,S,C)
+#         ## get polynomial stuff
+#         poly = PolynomialFeatures(2)
+#         x_poly = poly.fit_transform(x) # [N_data, nb_monomial_terms]
+#         ##
+#         self.assertEqual( int(scipy.misc.comb(5,2)), x_poly.shape[1])
+#         ## compute f
+#         nb_monomial_terms = x_poly.shape[1]
+#         C = np.arange(nb_monomial_terms) # [nb_monomial_terms, 1]
+#         #pdb.set_trace()
+#         f2 = np.dot(x_poly,C)
 
-    def test_degree_zero(self):
-        S_0 = generate_all_tuples_for_monomials(N=1,D=0)
-        self.assertEqual(S_0,{0:[ [0] ]})
-        S_0 = generate_all_tuples_for_monomials(N=2,D=0)
-        self.assertEqual(S_0,{0:[ [0,0] ]})
-        S_0 = generate_all_tuples_for_monomials(N=3,D=0)
-        self.assertEqual(S_0,{0:[ [0,0,0] ]})
 
-    def test_degree_one(self):
-        S_0 = generate_all_tuples_for_monomials(N=1,D=1)
-        self.assertEqual(S_0,{0:[ [0] ], 1:[ [1] ]})
-        S_0 = generate_all_tuples_for_monomials(N=2,D=1)
-        self.assertEqual(S_0,{0:[ [0,0] ], 1:[ [1,0], [0,1] ]})
-        S_0 = generate_all_tuples_for_monomials(N=3,D=1)
-        self.assertEqual(S_0,{0:[ [0,0,0] ], 1:[ [1,0,0], [0,1,0], [0,0,1] ]})
-
-    def test_degree_two(self):
-        print('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        S_0 = generate_all_tuples_for_monomials(N=1,D=2)
-        self.assertEqual(S_0,{0:[ [0] ], 1:[ [1] ], 2:[ [2] ]})
-        S_0 = generate_all_tuples_for_monomials(N=2,D=2)
-        print(S_0)
-        self.assertEqual(S_0,{0:[ [0,0] ], 1:[ [1,0], [0,1] ], 2:[ [2,0], [1,1], [0,2] ]})
-        #S_0 = generate_all_tuples_for_monomials(N=3,D=2)
-        #self.assertEqual(S_0,{0:[ [0,0,0,0] ], 1:[ [1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1] ],2:[ [2,0,0,0], [1,1,0,0] ]})
-
-    def test_poly_feature_eval(self):
-        N,D = 3,2 # N is the number of features, D is the degree
-        N_data = 2 # number of data points
-        amount_of_numbers = 6
-        x = np.arange(amount_of_numbers).reshape(N_data,N) # map to raw data set of size [N_data, D]
-        ##
-        #S = generate_all_tuples_for_monomials(N,D)
-        #nb_monomial_terms = sum( [len(list_monomial_tuples) for _,list_monomial_tuples in S.items()] )
-        #C = np.arange(1,nb_monomial_terms)
-        # f1 = eval_feature_vec_multi_poly(x,S,C)
-        ## get polynomial stuff
-        poly = PolynomialFeatures(2)
-        x_poly = poly.fit_transform(x) # [N_data, nb_monomial_terms]
-        ##
-        self.assertEqual( int(scipy.misc.comb(5,2)), x_poly.shape[1])
-        ## compute f
-        nb_monomial_terms = x_poly.shape[1]
-        C = np.arange(nb_monomial_terms) # [nb_monomial_terms, 1]
-        #pdb.set_trace()
-        f2 = np.dot(x_poly,C)
-
-
-if __name__ == '__main__':
-    unittest.main()
+# if __name__ == '__main__':
+#     unittest.main()

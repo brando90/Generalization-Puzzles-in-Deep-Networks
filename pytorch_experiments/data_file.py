@@ -17,6 +17,20 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import axes3d, Axes3D
 from matplotlib import cm
 
+def count_params(mdl):
+    '''
+    count the number of parameters of a pytorch model
+    '''
+    tot = 0
+    #params = []
+    for m in mdl.parameters():
+        #print('m: ',m)
+        #params.append(m)
+        tot += m.nelement() # returns Number of elements = nelement
+    #print('\nparams: ',params)
+    #pdb.set_trace()
+    return tot # sum([m.nelement() for m in mdl.parameters()])
+
 def generate_meshgrid(N,start_val,end_val):
     sqrtN = int(np.ceil(N**0.5)) #N = sqrtN*sqrtN
     if N**0.5 != int(N**0.5): # check if N_sqrt has a fractional part
@@ -95,8 +109,9 @@ def get_Y_from_new_net(data_generator, X,dtype):
     meaningful to see if the model can learn exactly itself.
     '''
     X = Variable(torch.FloatTensor(X).type(dtype), requires_grad=False)
-    Y = data_generator.numpy_forward(X,dtype)
-    return Y
+    #Y = data_generator.numpy_forward(X,dtype)
+    Y = data_generator.forward(X)
+    return Y.data.numpy()
 
 def compare_first_layer(mdl_gen,mdl_sgd):
     W1_g = mdl_gen.linear_layers[1].weight
@@ -107,7 +122,29 @@ def compare_first_layer(mdl_gen,mdl_sgd):
 
 ####
 
-def save_data_set(path, D_layers,act, biases,mu=0.0,std=5.0, lb=-1,ub=1,N_train=10,N_test=1000,msg='',visualize=False,save_data=True):
+def get_stand_param(D_layers,mu,std):
+    ## set up dimensions and degree
+    D = D_layers[0]
+    D_out = D_layers[-1]
+    nb_layers = len(D_layers)-1
+    nb_hidden_layers = nb_layers-1 #note the last "layer" is a summation layer for regression and does not increase the degree of the polynomial
+    Degree_mdl = adegree**( nb_hidden_layers ) # only hidden layers have activation functions
+    ##
+    poly_feat = PolynomialFeatures(degree=Degree_mdl)
+    nb_monomials = int(scipy.misc.comb(D+Degree_mdl,Degree_mdl))
+    ## get generator model
+    c_generator = np.random.normal(loc=mu,scale=std,size=nb_monomials).reshape(D_out,nb_monomials)
+    ##
+    x = np.random.rand(3,D)
+    X = poly_feat.fit_transform(x)
+    #pdb.set_trace()
+    if X.shape[1] != c_generator.shape[1]:
+        raise ValueError( 'Dimension of PolynomialFeatures {} does not match that of c_generator {}'.format(X.shape[1],c_generator.shape[0]) )
+    data_generator = torch.nn.Sequential(torch.nn.Linear(nb_monomials,D_out,bias=False))
+    data_generator[0].weight.data.copy_( torch.FloatTensor(c_generator) )
+    return data_generator
+
+def save_data_set(path, type_mdl, D_layers,act, biases,mu=0.0,std=5.0, lb=-1,ub=1,N_train=10,N_test=1000,msg='',visualize=False,save_data=True):
     dtype = torch.FloatTensor
     #
     adegree = act.adegree
@@ -118,9 +155,23 @@ def save_data_set(path, D_layers,act, biases,mu=0.0,std=5.0, lb=-1,ub=1,N_train=
     expected_nb_monomials = int(scipy.misc.comb(D+Degree_mdl,Degree_mdl))
     print('expected_nb_monomials = {}'.format(expected_nb_monomials))
     #
-    data_generator = get_mdl(D_layers,act=act,biases=biases,mu=mu,std=std)
-    np_filename = 'data_numpy_D_layers_{}_nb_layers{}_bias{}_mu{}_std{}_N_train_{}_N_test_{}_lb_{}_ub_{}_act_{}_msg_{}'.format(
-        D_layers,len(D_layers),biases,mu,std,N_train,N_test,lb,ub,act.__name__,msg
+    if type_mdl == 'WP':
+        data_generator = get_mdl(D_layers,act=act,biases=biases,mu=mu,std=std)
+        #data_generator.linear_layers[2].weight.data[0][0] = 0
+        #data_generator.linear_layers[2].weight.data[0][1] = 0
+        #print(data_generator.linear_layers[2].weight.data)
+        #pdb.set_trace()
+    elif type_mdl == 'SP':
+        data_generator = get_stand_param(D_layers,mu,std)
+        coefficients = data_generator[0].weight.data.numpy()
+        print('coefficients = {}'.format(coefficients))
+    else:
+        raise ValueError( 'type_mdl {} doesn not exists'.format(type_mdl) )
+    #
+    nb_params = count_params(data_generator)
+    print( 'nb_params = {}'.format(nb_params) )
+    np_filename = 'data_numpy_type_mdl={}_D_layers_{}_nb_layers{}_bias{}_mu{}_std{}_N_train_{}_N_test_{}_lb_{}_ub_{}_act_{}_nb_params_{}_msg_{}'.format(
+        type_mdl,D_layers,len(D_layers),biases,mu,std,N_train,N_test,lb,ub,act.__name__,nb_params,msg
     )
     #
     if D==1:
@@ -135,16 +186,29 @@ def save_data_set(path, D_layers,act, biases,mu=0.0,std=5.0, lb=-1,ub=1,N_train=
     else:
         pass
     #
-    Y_train = get_Y_from_new_net(data_generator=data_generator, X=X_train,dtype=dtype)
+    if type_mdl == 'WP':
+        K_X_train = X_train
+        K_X_test = X_test
+    elif type_mdl == 'SP':
+        poly_feat = PolynomialFeatures(degree=Degree_mdl)
+        K_X_train = poly_feat.fit_transform(X_train)
+        K_X_test = poly_feat.fit_transform(X_test)
     #
-    Y_test = get_Y_from_new_net(data_generator=data_generator, X=X_test,dtype=dtype)
+    print('before y train')
+    Y_train = get_Y_from_new_net(data_generator=data_generator, X=K_X_train,dtype=dtype)
+    print('after y train')
+    #
+    print('before y test')
+    Y_test = get_Y_from_new_net(data_generator=data_generator, X=K_X_test,dtype=dtype)
+    print('after y test')
     #
     if save_data:
         np.savez(path.format(np_filename), X_train=X_train,Y_train=Y_train, X_test=X_test,Y_test=Y_test)
-        filename = 'data_gen_D_layers_{}_nb_layers{}_bias{}_mu{}_std{}_N_train_{}_N_test_{}_lb_{}_ub_{}_act_{}_msg_{}'.format(
-            D_layers,len(D_layers),biases,mu,std,N_train,N_test,lb,ub,act.__name__,msg
+        filename = 'data_gen_type_mdl={}_D_layers_{}_nb_layers{}_bias{}_mu{}_std{}_N_train_{}_N_test_{}_lb_{}_ub_{}_act_{}_nb_params_{}_msg_{}'.format(
+            type_mdl,D_layers,len(D_layers),biases,mu,std,N_train,N_test,lb,ub,act.__name__,nb_params,msg
         )
         torch.save( data_generator.state_dict(), path.format(filename) )
+    #
     if visualize:
         if D==1:
             pass
@@ -227,14 +291,17 @@ if __name__ == '__main__':
     # D_layers,act = [D0,D1,D2,D3,D4,D5], act
 
     nb_layers = len(D_layers)-1
-    #biases = [None] + [True] + (nb_layers-1)*[False] #bias only in first layer
-    biases = [None] + (nb_layers)*[True] # biases in every layer
+    biases = [None] + [True] + (nb_layers-1)*[False] #bias only in first layer
+    #biases = [None] + (nb_layers)*[True] # biases in every layer
+    msg = '1st_2nd_units_are_zero'
     msg = ''
     mu,std = 0.0,5.0
     N_train, N_test= 9,5041
     ##
     save_data = False
+    type_mdl = 'WP'
+    #type_mdl = 'SP'
     #save_data_set_mdl_sgd(path='./data/{}', run_type='h_add', lb=-1,ub=1,N_train=35,N_test=5041,msg='',visualize=False)
-    save_data_set(path='./data/{}',D_layers=D_layers,act=act,biases=biases,mu=mu,std=std, lb=-1,ub=1,N_train=N_train,N_test=N_test,msg=msg,visualize=True,save_data=save_data)
+    save_data_set(path='./data/{}',type_mdl=type_mdl,D_layers=D_layers,act=act,biases=biases,mu=mu,std=std, lb=-1,ub=1,N_train=N_train,N_test=N_test,msg=msg,visualize=True,save_data=save_data)
     #data_generator = load(path='./data/data_gen_nb_layers3_biasTrue_mu0.0_std5.0')
     print('End! \a')

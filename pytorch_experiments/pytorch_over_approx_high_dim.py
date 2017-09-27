@@ -22,6 +22,16 @@ import scipy
 
 #TODO make dtype, DTYPE accross all script
 
+def get_norm_layer(mdl,l=2):
+    #print('mdl_truth.W.norm(1) = ', mdl_truth.linear_layers[1].weight.norm(1) + mdl_truth.linear_layers[1].bias.norm(1) )
+    pass
+
+def norm_params_WP(mdl,l=2):
+    norm = 0
+    for W in mdl.parameters():
+        norm += W.norm(l)
+    return norm
+
 def get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test, dtype):
     X_train_pytorch = Variable(torch.FloatTensor(X_train).type(dtype), requires_grad=False)
     Y_train_pytorch = Variable(torch.FloatTensor(Y_train).type(dtype), requires_grad=False)
@@ -284,13 +294,13 @@ def main(**kwargs):
     ## Hyper Params SGD weight parametrization
     M = 6
     eta = 0.002 # eta = 1e-6
-    nb_iter = int(100*1000)
+    nb_iter = int(2*1000)
     A = 0.0
     logging_freq = 500
     ## Hyper Params SGD standard parametrization
     M_standard_sgd = 6
     eta_standard_sgd = 0.02 # eta = 1e-6
-    nb_iter_standard_sgd = int(200*1000)
+    nb_iter_standard_sgd = int(20*1000)
     A_standard_sgd = 0.0
     logging_freq_standard_sgd = 100
     ##
@@ -314,7 +324,7 @@ def main(**kwargs):
     #### 2-layered mdl
     D0 = 2
 
-    H1 = 15
+    H1 = 10
     D0,D1,D2 = D0,H1,1
     D_layers,act = [D0,D1,D2], act
 
@@ -332,7 +342,7 @@ def main(**kwargs):
 
     nb_layers = len(D_layers)-1 #the number of layers include the last layer (the regression layer)
     biases = [None] + [True] + (nb_layers-1)*[False] #bias only in first layer
-    biases = [None] + (nb_layers)*[True] # biases in every layer
+    #biases = [None] + (nb_layers)*[True] # biases in every layer
     #pdb.set_trace()
     start_time = time.time()
     ##
@@ -395,12 +405,24 @@ def main(**kwargs):
 
         #data_filename = 'data_numpy_D_layers_[2, 15, 15, 1]_nb_layers4_bias[None, True, True, True]_mu0.0_std1.0_N_train_16_N_test_5041_lb_-1_ub_1_act_quad_ax2_bx_c_msg_.npz'
         #data_filename = 'data_numpy_D_layers_[2, 10, 10, 10, 1]_nb_layers5_bias[None, True, True, True, True]_mu0.0_std1.0_N_train_16_N_test_5041_lb_-1_ub_1_act_quad_ax2_bx_c_msg_.npz'
-        data_filename = 'data_numpy_D_layers_[2, 10, 1]_nb_layers3_bias[None, True, True]_mu0.0_std5.0_N_train_9_N_test_5041_lb_-1_ub_1_act_poly_act_degree3_msg_.npz'
+        #data_filename = 'data_numpy_D_layers_[2, 10, 1]_nb_layers3_bias[None, True, True]_mu0.0_std5.0_N_train_9_N_test_5041_lb_-1_ub_1_act_poly_act_degree3_msg_.npz'
+        #data_filename = 'data_numpy_type_mdl=SP_D_layers_[2, 10, 1]_nb_layers3_bias[None, True, True]_mu0.0_std5.0_N_train_9_N_test_5041_lb_-1_ub_1_act_poly_act_degree3_msg_.npz'
         ##
-        print('data_filename = {}'.format(data_filename))
+        #data_filename = 'data_numpy_type_mdl=WP_D_layers_[2, 10, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_9_N_test_5041_lb_-1_ub_1_act_poly_act_degree3_nb_params_40_msg_.npz'
+        #data_filename = 'data_numpy_type_mdl=SP_D_layers_[2, 10, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_9_N_test_5041_lb_-1_ub_1_act_poly_act_degree3_nb_params_10_msg_.npz'
+        data_filename = 'data_numpy_type_mdl=WP_D_layers_[2, 10, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_9_N_test_5041_lb_-1_ub_1_act_poly_act_degree3_nb_params_40_msg_1st_2nd_units_are_zero.npz'
+        #
+        truth_filename ='data_gen_type_mdl=WP_D_layers_[2, 10, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_9_N_test_5041_lb_-1_ub_1_act_poly_act_degree3_nb_params_40_msg_1st_2nd_units_are_zero'
+        ##
+        mdl_truth_dict = torch.load('./data/'+truth_filename)
+        print('mdl_truth_dict: ',mdl_truth_dict)
+        print('data_filename = {} \n truth_filename = {}'.format(data_filename,truth_filename))
+        ##
+        D_layers_truth=[2,10,1]
         ##
         data = np.load( './data/{}'.format(data_filename) )
         X_train, Y_train = data['X_train'], data['Y_train']
+        #X_train, Y_train = X_train[0:6], Y_train[0:6]
         X_test, Y_test = data['X_test'], data['Y_test']
         D_data = D0
     elif run_type == 'h_add':
@@ -446,11 +468,14 @@ def main(**kwargs):
     ## LA models
     c_pinv = np.dot(np.linalg.pinv( Kern_train ),Y_train)
     ## inits
-    init_config = Maps( {'w_init':'w_init_normal','mu':0.0,'std':0.1, 'bias_init':'b_fill','bias_value':0.01,'biases':biases ,'nb_layers':len(D_layers)} )
+    init_config = Maps( {'w_init':'w_init_normal','mu':0.0,'std':0.01, 'bias_init':'b_fill','bias_value':0.01,'biases':biases ,'nb_layers':len(D_layers)} )
     w_inits_sgd, b_inits_sgd = get_initialization(init_config)
     init_config_standard_sgd = Maps( {'mu':0.0,'std':0.001, 'bias_value':0.01} )
     mdl_stand_initializer = lambda mdl: lifted_initializer(mdl,init_config_standard_sgd)
     ## SGD models
+    mdl_truth = NN(D_layers=D_layers_truth,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,biases=biases)
+    mdl_truth.load_state_dict(mdl_truth_dict)
+
     mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,biases=biases)
     mdl_standard_sgd = get_sequential_lifted_mdl(nb_monomials=c_pinv.shape[0],D_out=1, bias=False)
     ## data to TORCH
@@ -475,6 +500,48 @@ def main(**kwargs):
         mdl_standard_sgd,data_stand, M_standard_sgd,eta_standard_sgd,nb_iter_standard_sgd,A_standard_sgd ,logging_freq ,dtype,c_pinv
     )
     print('training ended!\a')
+    ####
+    print('--------- mdl_truth')
+    for W in mdl_truth.parameters():
+        print(W)
+    print('--------- mdl_sgd')
+    for W in mdl_sgd.parameters():
+        print(W)
+    ##
+    print(' ---------- W and V norms')
+    print(' --> W.norm(1)')
+    print('mdl_truth.W.norm(1) = ', mdl_truth.linear_layers[1].weight.norm(1) + mdl_truth.linear_layers[1].bias.norm(1) )
+    print('mdl_sgd.W.norm(1) = ', mdl_sgd.linear_layers[1].weight.norm(1) + mdl_sgd.linear_layers[1].bias.norm(1) )
+
+    print(' --> W.norm(2)')
+    print('mdl_truth.W.norm(2) = ', mdl_truth.linear_layers[1].weight.norm(2) + mdl_truth.linear_layers[1].bias.norm(2) )
+    print('mdl_sgd.W.norm(2) = ', mdl_sgd.linear_layers[1].weight.norm(2) + mdl_sgd.linear_layers[1].bias.norm(2) )
+
+    print(' --> V.norm(1)')
+    print('mdl_truth.V.norm(1) = ', mdl_truth.linear_layers[2].weight.norm(1) )
+    print('mdl_sgd.V.norm(1) = ', mdl_sgd.linear_layers[2].weight.norm(1) )
+
+    print(' --> V.norm(2)')
+    print('mdl_truth.V.norm(2) = ', mdl_truth.linear_layers[2].weight.norm(2) )
+    print('mdl_sgd.V.norm(2) = ', mdl_sgd.linear_layers[2].weight.norm(2) )
+    ##
+    print(' ---------- all params norms')
+    print( ' --> all_parms.norm(1)')
+    print('mdl_truth.all_Params.norm(1) = {}'.format( norm_params_WP(mdl_truth,l=1) ) )
+    print('mdl_sgd.all_Params.norm(1) = {}'.format( norm_params_WP(mdl_sgd,l=1) ) )
+
+    print( ' --> all_parms.norm(2)')
+    print('mdl_truth.all_Params.norm(2) = {}'.format( norm_params_WP(mdl_truth,l=2) ) )
+    print('mdl_sgd.all_Params.norm(2) = {}'.format( norm_params_WP(mdl_sgd,l=2) ) )
+    ##print( type(mdl_sgd.linear_layers) )
+    # for i in range( 1,len(mdl_sgd.linear_layers) ):
+    #     print()
+    #     W = mdl_sgd.linear_layers[i].weight
+    #     print(W)
+    #     if type(mdl_sgd.linear_layers[i].bias) != type(None):
+    #         b =  mdl_sgd.linear_layers[i].bias
+    #         print(b)
+    pdb.set_trace()
     ########################################################################################################################################################
     ## SGD pNN
     nb_params = count_params(mdl_sgd)
@@ -484,7 +551,7 @@ def main(**kwargs):
         c_sgd = c_sgd.transpose()
     else:
         # e.g. x = Matrix(2,1,[a,a])
-        x_list = [ symbols('x'+str(i)) for i in range(D0) ]
+        x_list = [ symbols('x'+str(i)) for i in range(1,D0+1) ]
         x = Matrix(D0,1,x_list)
         tmdl = mdl_sgd
         if act.__name__ == 'poly_act_degree{}'.format(adegree):
@@ -500,8 +567,12 @@ def main(**kwargs):
         ## get simplification
         expr = smdl.forward(x)
         s_expr = poly(expr,x_list)
-        c_sgd = np.array( s_expr.coeffs()[::-1] )
+        # coeffs(order=grlex,grevlex) # for order https://stackoverflow.com/questions/46385303/how-does-one-organize-the-coefficients-of-polynomialfeatures-in-lexicographical
+        order='grevlex'
+        print('order  = {}'.format(order))
+        c_sgd = np.array( s_expr.coeffs(order=order)[::-1] )
         c_sgd = [ np.float64(num) for num in c_sgd]
+        #pdb.set_trace()
     if debug:
         print('c_sgd_standard = ', mdl_standard_sgd[0].weight.data.numpy())
         print('c_sgd_weight = ', c_sgd)

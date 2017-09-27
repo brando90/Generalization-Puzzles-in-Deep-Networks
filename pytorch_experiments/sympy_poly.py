@@ -11,7 +11,24 @@ import numpy as np
 
 from maps import NamedDict as Maps
 
+import unittest
+
 import pdb
+
+class TestForSNN(unittest.TestCase):
+    # https://stackoverflow.com/questions/46385303/how-does-one-organize-the-coefficients-of-polynomialfeatures-in-lexicographical/46385635?noredirect=1#comment79784833_46385635
+
+    def test_1D(self):
+        pass
+
+    def test_2D(self):
+        x2, x1 = symbols('x2 x1')
+        q = Poly(1 + 2*x1 + 3*x2 + 4*x1**2 + 5*x1*x2 + 6*x2**2 + 7*x1**3 + 8*x1**2*x2 + 9*x1*x2**2 + 10*x2**3, (x2, x1))
+        c = q.coeffs(order='grevlex')[::-1]
+        print(c)
+
+
+##
 
 '''
 -do sNN = implement NN in sympy (with quadratic act func) call it sNN
@@ -221,8 +238,11 @@ def test_purely_symbolic_sNN():
 def main():
     print('--main')
     #test_tNN_2_sNN()
-    test_purely_symbolic_sNN()
+    #test_purely_symbolic_sNN()
+
 
 
 if __name__ == '__main__':
-    main()
+    #main()
+    unittest.main()
+    print('\a')
