@@ -360,17 +360,17 @@ def main(**kwargs):
     ## Hyper Params SGD weight parametrization
     M = 3
     eta = 0.002 # eta = 1e-6
-    nb_iter = int(50)
+    nb_iter = int(5000)
     A = 0.0
     reg_lambda_WP = 10.0
     ## Hyper Params SGD standard parametrization
     M_standard_sgd = 3
     eta_standard_sgd = 0.002 # eta = 1e-6
-    nb_iter_standard_sgd = int(50)
+    nb_iter_standard_sgd = int(5000)
     A_standard_sgd = 0.0
     reg_lambda_SP = 0.0
     ##
-    logging_freq = 10
+    logging_freq = 50
     logging_freq_standard_sgd = 10
     ##
     ## activation params
@@ -568,11 +568,11 @@ def main(**kwargs):
        raise ValueError('nb of monomials dont match D0={},Degree_mdl={}, number of monimials fron pinv={}, number of monomials analyticall = {}'.format( D0,Degree_mdl,c_pinv.shape[0],int(scipy.misc.comb(D0+Degree_mdl,Degree_mdl)) )    )
     ########################################################################################################################################################
     print('Weight Parametrization SGD training')
-    train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas,nb_module_params = train_SGD(
+    train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params = train_SGD(
         mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv, reg_lambda_WP
     )
     print('Standard Parametrization SGD training')
-    test_loss_list_SP,test_loss_list_SP,grad_list_standard_sgd,func_diff_standard_sgd,erm_lamdas,nb_module_params = train_SGD(
+    test_loss_list_SP,test_loss_list_SP,grad_list_standard_sgd,func_diff_standard_sgd,erm_lamdas_SP,nb_module_params = train_SGD(
         mdl_standard_sgd,data_stand, M_standard_sgd,eta_standard_sgd,nb_iter_standard_sgd,A_standard_sgd ,logging_freq ,dtype,c_pinv, reg_lambda_SP
     )
     print('training ended!\a')
@@ -789,31 +789,33 @@ def main(**kwargs):
     #iterations_axis = np.arange(1,len(train_loss_list_WP),step=logging_freq)
     iterations_axis = np.arange(1,nb_iter,step=logging_freq)
     #iterations_axis = np.arange(0,len(train_loss_list_WP))
-    train_loss_list_WP, test_loss_list_WP, reg_lambda_WP = np.array(train_loss_list_WP), np.array(test_loss_list_WP), np.array(reg_lambda_WP)
-    pdb.set_trace()
-    p_train_WP, = plt.plot(iterations_axis, train_loss_list_WP,color='m')
-    p_test_WP, = plt.plot(iterations_axis, test_loss_list_WP,color='r')
-    p_erm_reg_WP, = plt.plot(iterations_axis, reg_lambda_WP,color='g')
+    train_loss_list_WP, test_loss_list_WP, erm_lamdas_WP = np.array(train_loss_list_WP), np.array(test_loss_list_WP), np.array(erm_lamdas_WP)
     p_train_WP_legend = 'Train error, Weight Parametrization (WP)'
     p_test_WP_legend = 'Test error, Weight Parametrization (WP)'
     p_erm_reg_WP_legend = 'Error+Regularization, Weight Parametrization (WP)'
     ##plots
     fig1 = plt.figure()
+    p_erm_reg_WP, = plt.plot(iterations_axis, erm_lamdas_WP,color='g')
     plt.legend([p_erm_reg_WP],[p_erm_reg_WP_legend])
-    fig1.xlabel('iterations' )
-    fig1.ylabel('Error/loss')
+    plt.xlabel('iterations' )
+    plt.ylabel('Error/loss')
     plt.title('Loss+Regularization vs Iterations')
 
     fig1 = plt.figure()
-    fig1.xlabel('iterations' )
-    fig1.ylabel('Error/loss')
+    p_train_WP, = plt.plot(iterations_axis, train_loss_list_WP,color='m')
+    p_test_WP, = plt.plot(iterations_axis, test_loss_list_WP,color='r')
+    plt.xlabel('iterations' )
+    plt.ylabel('Error/loss')
     plt.legend([p_train_WP,p_test_WP_legend],[p_train_WP_legend,p_test_WP_legend])
     plt.title('Train,Test vs Iterations')
-
+    #
     fig1 = plt.figure()
-    fig1.xlabel('iterations' )
-    fig1.ylabel('Error/loss')
-    plt.legend([p_erm_reg_WP,p_train_WP,p_test_WP_legend],[p_erm_reg_WP_legend,p_train_WP_legend,p_test_WP_legend])
+    p_train_WP, = plt.plot(iterations_axis, train_loss_list_WP,color='m')
+    p_test_WP, = plt.plot(iterations_axis, test_loss_list_WP,color='r')
+    p_erm_reg_WP, = plt.plot(iterations_axis, erm_lamdas_WP,color='g')
+    plt.xlabel('iterations' )
+    plt.ylabel('Error/loss')
+    plt.legend([p_erm_reg_WP,p_train_WP,p_test_WP],[p_erm_reg_WP_legend,p_train_WP_legend,p_test_WP_legend])
     plt.title('Loss+Regularization,Train,Test vs Iterations')
 
     ##
