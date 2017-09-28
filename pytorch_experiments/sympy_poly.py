@@ -27,7 +27,6 @@ class TestForSNN(unittest.TestCase):
         c = q.coeffs(order='grevlex')[::-1]
         print(c)
 
-
 ##
 
 '''

@@ -270,11 +270,11 @@ def visualize(X,Y,Z,title_name='Test function'):
 if __name__ == '__main__':
     #X,Y,Z = generate_meshgrid_h_add(N=60000,start_val=-1,end_val=1)
     #visualize(X,Y,Z)
-    adegree=3
+    adegree=2
     act = get_relu_poly_act(degree=adegree,lb=-1,ub=1,N=100)
     act.adegree = adegree
     #act = quadratic
-    H1 = 10
+    H1 = 1
     D0,D1,D2 = 2,H1,1
     D_layers,act = [D0,D1,D2], act
 
@@ -293,10 +293,10 @@ if __name__ == '__main__':
     nb_layers = len(D_layers)-1
     biases = [None] + [True] + (nb_layers-1)*[False] #bias only in first layer
     #biases = [None] + (nb_layers)*[True] # biases in every layer
-    msg = '1st_2nd_units_are_zero'
+    #msg = '1st_2nd_units_are_zero'
     msg = ''
     mu,std = 0.0,5.0
-    N_train, N_test= 9,5041
+    N_train, N_test= 4,5041
     ##
     save_data = False
     type_mdl = 'WP'
