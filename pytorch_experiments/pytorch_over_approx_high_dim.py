@@ -265,20 +265,6 @@ def print_debug():
         if debug_sgd:
             print('------------- grad_norm={} delta={} ',grad_norm,delta.norm(2))
 
-def get_ERM_lambda(mdl,reg_lambda,X,Y,l=2):
-    M, _ = tuple( X.size() )
-    ## compute regularization
-    l2_reg = None
-    for W in mdl.parameters():
-        if l2_reg is None:
-            l2_reg = W.norm(l)
-        else:
-            l2_reg = l2_reg + W.norm(l)
-    ##
-    y_pred = mdl.forward(X)
-    batch_loss = (1/M)*(y_pred - Y).pow(2).sum() + l2_reg*reg_lambda
-    return batch_loss
-
 def stats_logger(mdl, data, eta,loss_list,test_loss_list,grad_list,func_diff,erm_lamdas, i,c_pinv, reg_lambda):
     N_train,_ = tuple(data.X_train.size())
     N_test,_ = tuple(data.X_test.size())
@@ -308,6 +294,38 @@ def stats_logger(mdl, data, eta,loss_list,test_loss_list,grad_list,func_diff,erm
             print('\n----------------- ERROR HAPPENED \a')
             print('error happened at: i = {} current_train_loss: {}, grad_norm: {},\n ----------------- \a'.format(i,current_train_loss,W.grad.data.norm(2)))
             sys.exit()
+
+def standard_tickhonov_reg(mdl,l):
+    lp_reg = None
+    for W in mdl.parameters():
+        if lp_reg is None:
+            lp_reg = W.norm(l)
+        else:
+            lp_reg = lp_reg + W.norm(l)
+    return lp_reg
+
+def VW_reg(mdl,l):
+    ##
+    b_w = mdl.linear_layers[1].bias
+    W_p = mdl.linear_layers[1].weight
+    V = mdl.linear_layers[2].weight
+    ##
+    VW = torch.matmul(V,W_p) + torch.matmul(V,b_w)
+    reg = VW.norm(l)
+    return reg
+
+def get_ERM_lambda(mdl,reg_lambda,X,Y,l=2):
+    M, _ = tuple( X.size() )
+    ## compute regularization
+    #reg = standard_tickhonov_reg(mdl,l)
+    if type(mdl) ==  NN: # WP
+        reg = VW_reg(mdl,l)
+    else: # SP
+        reg = standard_tickhonov_reg(mdl,l)
+    ##
+    y_pred = mdl.forward(X)
+    batch_loss = (1/M)*(y_pred - Y).pow(2).sum() + reg*reg_lambda
+    return batch_loss
 
 def train_SGD(mdl,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv,reg_lambda):
     '''
@@ -360,40 +378,43 @@ def main(**kwargs):
     ## Hyper Params SGD weight parametrization
     M = 3
     eta = 0.002 # eta = 1e-6
-    nb_iter = int(5000)
+    nb_iter = int(1400)
     A = 0.0
-    reg_lambda_WP = 10.0
+    reg_lambda_WP = 0
     ## Hyper Params SGD standard parametrization
     M_standard_sgd = 3
-    eta_standard_sgd = 0.002 # eta = 1e-6
-    nb_iter_standard_sgd = int(5000)
+    eta_standard_sgd = 0.1 # eta = 1e-6
+    #nb_iter_standard_sgd = int(1000)
+    nb_iter_standard_sgd = nb_iter
     A_standard_sgd = 0.0
-    reg_lambda_SP = 0.0
+    #reg_lambda_SP = 0.0
+    reg_lambda_SP = reg_lambda_WP
     ##
-    logging_freq = 50
+    logging_freq = 10
     logging_freq_standard_sgd = 10
     ##
     ## activation params
     # alb, aub = -100, 100
     # aN = 100
-    adegree = 2
     ax = np.concatenate( (np.linspace(-20,20,100), np.linspace(-10,10,1000)) )
     aX = np.concatenate( (ax,np.linspace(-2,2,100000)) )
     ## activation funcs
-    #act = quadratic
+    adegree = 1
     act, c_pinv_relu = get_relu_poly_act2(aX,degree=adegree) # ax**2+bx+c, #[1, x^1, ..., x^D]
     #act = get_relu_poly_act(degree=adegree,lb=alb,ub=aub,N=aN) # ax**2+bx+c
     #act = relu
+    act = lambda x: x
+    act.__name__ = 'linear'
     ## plot activation
-    palb, paub = -20, 20
-    paN = 1000
-    #print('Plotting activation function')
-    #plot_activation_func(act,lb=palb,ub=paub,N=paN)
-    #plt.show()
+    # palb, paub = -20, 20
+    # paN = 1000
+    # print('Plotting activation function')
+    # plot_activation_func(act,lb=palb,ub=paub,N=paN)
+    # plt.show()
     #### 2-layered mdl
-    D0 = 2
+    D0 = 30
 
-    H1 = 12
+    H1 = 2
     D0,D1,D2 = D0,H1,1
     D_layers,act = [D0,D1,D2], act
 
@@ -484,9 +505,18 @@ def main(**kwargs):
         #truth_filename='data_gen_type_mdl=WP_D_layers_[2, 2, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_4_N_test_5041_lb_-1_ub_1_act_quad_ax2_bx_c_nb_params_8_msg_'
         #data_filename='data_numpy_type_mdl=WP_D_layers_[2, 2, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_4_N_test_5041_lb_-1_ub_1_act_quad_ax2_bx_c_nb_params_8_msg_.npz'
         #
-        truth_filename='data_gen_type_mdl=WP_D_layers_[2, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_4_N_test_5041_lb_-1_ub_1_act_quad_ax2_bx_c_nb_params_4_msg_'
-        data_filename='data_numpy_type_mdl=WP_D_layers_[2, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_4_N_test_5041_lb_-1_ub_1_act_quad_ax2_bx_c_nb_params_4_msg_.npz'
+        #truth_filename='data_gen_type_mdl=WP_D_layers_[2, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_4_N_test_5041_lb_-1_ub_1_act_quad_ax2_bx_c_nb_params_4_msg_'
+        #data_filename='data_numpy_type_mdl=WP_D_layers_[2, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_4_N_test_5041_lb_-1_ub_1_act_quad_ax2_bx_c_nb_params_4_msg_.npz'
         #
+        #truth_filename='data_gen_type_mdl=WP_D_layers_[2, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_4_N_test_5041_lb_-1_ub_1_act_linear_nb_params_4_msg_'
+        #data_filename='data_numpy_type_mdl=WP_D_layers_[2, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_4_N_test_5041_lb_-1_ub_1_act_linear_nb_params_4_msg_.npz'
+        ## n=9,D=12, linear!
+        #truth_filename='data_gen_type_mdl=WP_D_layers_[12, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_9_N_test_529_lb_-1_ub_1_act_linear_nb_params_14_msg_'
+        #data_filename='data_numpy_type_mdl=WP_D_layers_[12, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_9_N_test_529_lb_-1_ub_1_act_linear_nb_params_14_msg_.npz'
+        #truth_filename='data_gen_type_mdl=WP_D_layers_[12, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_9_N_test_16_lb_-1_ub_1_act_linear_nb_params_14_msg_'
+        #data_filename='data_numpy_type_mdl=WP_D_layers_[12, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_9_N_test_16_lb_-1_ub_1_act_linear_nb_params_14_msg_.npz'
+        truth_filename='data_gen_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_'
+        data_filename='data_numpy_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_.npz'
         #truth_filename ='data_gen_type_mdl=WP_D_layers_[2, 10, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_9_N_test_5041_lb_-1_ub_1_act_poly_act_degree3_nb_params_40_msg_1st_2nd_units_are_zero'
         ##
         if truth_filename is not None:
@@ -494,7 +524,7 @@ def main(**kwargs):
             print('mdl_truth_dict: ',mdl_truth_dict)
             print('data_filename = {} \n truth_filename = {}'.format(data_filename,truth_filename))
             ##
-            D_layers_truth=[2,10,1]
+            D_layers_truth=[30,1,1]
         ##
         data = np.load( './data/{}'.format(data_filename) )
         X_train, Y_train = data['X_train'], data['Y_train']
@@ -606,10 +636,12 @@ def main(**kwargs):
             sact.__name__ = 'spoly_act_degree{}'.format(adegree)
             if adegree >= 10:
                 sact = sQuad
-        elif act__name__ == 'quadratic':
+        elif act.__name__ == 'quadratic':
             sact = sQuad
         elif act.__name__ == 'relu':
             sact = sReLU
+        elif act.__name__ == 'linear':
+            sact = sLinear
         smdl = sNN(sact,biases,mdl=tmdl)
         ## get simplification
         expr = smdl.forward(x)
@@ -618,7 +650,8 @@ def main(**kwargs):
         order='grevlex'
         print('order  = {}'.format(order))
         c_WP = np.array( s_expr.coeffs(order=order)[::-1] )
-        c_WP = np.array( [ np.float64(num) for num in c_WP] ).reshape(nb_monomials,1)
+        nb_terms = len(c_WP)
+        c_WP = np.array( [ np.float64(num) for num in c_WP] ).reshape(nb_terms,1)
         c_SP = mdl_standard_sgd[0].weight.data.numpy().reshape(nb_monomials,1)
         #pdb.set_trace()
     if debug:
@@ -633,8 +666,9 @@ def main(**kwargs):
             print('\n---- structured poly: {}'.format(str(s_expr)) )
     ##
     print('number of monomials wSGD={},sSGD={},pinv={}'.format( len(c_WP), nb_monomials, c_pinv.shape[0]) )
-    if len(c_WP) != nb_monomials or len(c_WP) != c_pinv.shape[0] or nb_monomials != c_pinv.shape[0]:
-        raise ValueError(' Some error in the number of monomials, these 3 numbers should match but they dont: {},{},{}'.format(len(c_WP),nb_monomials,c_pinv.shape[0]) )
+    if act.__name__ != 'linear':
+        if len(c_WP) != nb_monomials or len(c_WP) != c_pinv.shape[0] or nb_monomials != c_pinv.shape[0]:
+            raise ValueError(' Some error in the number of monomials, these 3 numbers should match but they dont: {},{},{}'.format(len(c_WP),nb_monomials,c_pinv.shape[0]) )
     ## data set Stats
     print('\n----> Data set stats:\n data_filename= {}, run_type={}, init_config_data={}\n'.format(data_filename,run_type,init_config_data) )
     ## Stats of model pNN wSGD model
@@ -647,8 +681,10 @@ def main(**kwargs):
     print('Degree_mdl = {}, number of monomials = {}, N_train = {}, M_standard_sgd = {}, eta_standard_sgd = {}, nb_iter_standard_sgd = {} nb_params={}'.format(Degree_mdl,c_SP.shape[0],N_train,M_standard_sgd,eta_standard_sgd,nb_iter_standard_sgd,c_SP.shape[0]))
     print('init_config_standard_sgd: ', init_config_standard_sgd)
     ## Parameter Norms
+    print('\n---- statistics about learned params')
+    print('nb_iter = {}, nb_iter_standard_sgd = {}'.format(nb_iter,nb_iter_standard_sgd))
+    print('reg_lambda_WP = {}, reg_lambda_SP = {}'.format(reg_lambda_WP,reg_lambda_SP))
     if len(D_layers) >= 2:
-        print('\n---- statistics about learned params')
         print('--L1')
         print('||c_pinv||_1 = {} '.format(np.linalg.norm(c_pinv,1)) )
         print('||c_WP_weight||_1 = {} '.format(np.linalg.norm(c_WP,1)) )
@@ -659,8 +695,9 @@ def main(**kwargs):
         print('||c_SP_stand||_2 = {} '.format(np.linalg.norm(c_SP,2)) )
     ## Parameter Difference
     print('---- parameters comparison stats')
-    print('||c_WP - c_pinv||^2_2 = ', np.linalg.norm(c_WP - c_pinv,2))
-    print('||c_WP - c_SP||^2_2 = ', np.linalg.norm(c_WP - c_SP,2))
+    if act.__name__ != 'linear':
+        print('||c_WP - c_pinv||^2_2 = ', np.linalg.norm(c_WP - c_pinv,2))
+        print('||c_WP - c_SP||^2_2 = ', np.linalg.norm(c_WP - c_SP,2))
     print('||c_SP - c_pinv||^2_2 = ', np.linalg.norm(c_SP - c_pinv,2))
     ## Generalization L2 (functional) norm difference
     print('-- Generalization difference L2 (arrpox. functional difference)')
@@ -721,7 +758,7 @@ def main(**kwargs):
         ##
         plt.xlabel('x'), plt.ylabel('f(x)')
         plt.title('SGD vs minimum norm solution curves')
-    else:
+    elif D0 == 2:
         #
         nb_non_linear_layers = len(D_layers)-2
         degree_sgd = adegree**(len(D_layers)-2)
@@ -787,27 +824,28 @@ def main(**kwargs):
     # plt.title('Loss vs Iterations')
     ## PLOT info
     #iterations_axis = np.arange(1,len(train_loss_list_WP),step=logging_freq)
-    iterations_axis = np.arange(1,nb_iter,step=logging_freq)
+    start = 1
+    iterations_axis = np.arange(1,nb_iter,step=logging_freq)[start:]
     #iterations_axis = np.arange(0,len(train_loss_list_WP))
-    train_loss_list_WP, test_loss_list_WP, erm_lamdas_WP = np.array(train_loss_list_WP), np.array(test_loss_list_WP), np.array(erm_lamdas_WP)
-    p_train_WP_legend = 'Train error, Weight Parametrization (WP)'
-    p_test_WP_legend = 'Test error, Weight Parametrization (WP)'
-    p_erm_reg_WP_legend = 'Error+Regularization, Weight Parametrization (WP)'
+    train_loss_list_WP, test_loss_list_WP, erm_lamdas_WP = np.array(train_loss_list_WP)[start:], np.array(test_loss_list_WP)[start:], np.array(erm_lamdas_WP)[start:]
+    p_train_WP_legend = 'Train error, Weight Parametrization (WP), reg_lambda_WP = {}'.format(reg_lambda_WP)
+    p_test_WP_legend = 'Test error, Weight Parametrization (WP) reg_lambda_WP = {}'.format(reg_lambda_WP)
+    p_erm_reg_WP_legend = 'Error+Regularization, Weight Parametrization (WP) reg_lambda_WP = {}'.format(reg_lambda_WP)
     ##plots
     fig1 = plt.figure()
     p_erm_reg_WP, = plt.plot(iterations_axis, erm_lamdas_WP,color='g')
     plt.legend([p_erm_reg_WP],[p_erm_reg_WP_legend])
     plt.xlabel('iterations' )
     plt.ylabel('Error/loss')
-    plt.title('Loss+Regularization vs Iterations')
+    plt.title('Loss+Regularization vs Iterations, reg_lambda_WP = {}'.format(reg_lambda_WP))
 
     fig1 = plt.figure()
     p_train_WP, = plt.plot(iterations_axis, train_loss_list_WP,color='m')
     p_test_WP, = plt.plot(iterations_axis, test_loss_list_WP,color='r')
     plt.xlabel('iterations' )
     plt.ylabel('Error/loss')
-    plt.legend([p_train_WP,p_test_WP_legend],[p_train_WP_legend,p_test_WP_legend])
-    plt.title('Train,Test vs Iterations')
+    plt.legend([p_train_WP,p_test_WP],[p_train_WP_legend,p_test_WP_legend])
+    plt.title('Train,Test vs Iterations, reg_lambda_WP = {}'.format(reg_lambda_WP))
     #
     fig1 = plt.figure()
     p_train_WP, = plt.plot(iterations_axis, train_loss_list_WP,color='m')
@@ -816,7 +854,7 @@ def main(**kwargs):
     plt.xlabel('iterations' )
     plt.ylabel('Error/loss')
     plt.legend([p_erm_reg_WP,p_train_WP,p_test_WP],[p_erm_reg_WP_legend,p_train_WP_legend,p_test_WP_legend])
-    plt.title('Loss+Regularization,Train,Test vs Iterations')
+    plt.title('Loss+Regularization,Train,Test vs Iterations, reg_lambda_WP = {}'.format(reg_lambda_WP))
 
     ##
     # for i in range(len(grad_list)):

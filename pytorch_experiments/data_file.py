@@ -184,7 +184,8 @@ def save_data_set(path, type_mdl, D_layers,act, biases,mu=0.0,std=5.0, lb=-1,ub=
         Xm_test,Ym_test = generate_meshgrid(N_test,lb,ub)
         X_test,_ = make_mesh_grid_to_data_set(Xm_test,Ym_test)
     else:
-        pass
+        X_train = np.random.uniform(low=lb,high=ub,size=(N_train,D))
+        X_test = np.random.uniform(low=lb,high=ub,size=(N_test,D))
     #
     if type_mdl == 'WP':
         K_X_train = X_train
@@ -270,12 +271,17 @@ def visualize(X,Y,Z,title_name='Test function'):
 if __name__ == '__main__':
     #X,Y,Z = generate_meshgrid_h_add(N=60000,start_val=-1,end_val=1)
     #visualize(X,Y,Z)
-    adegree=2
-    act = get_relu_poly_act(degree=adegree,lb=-1,ub=1,N=100)
-    act.adegree = adegree
+    adegree=1
+    # act = get_relu_poly_act(degree=adegree,lb=-1,ub=1,N=100)
     #act = quadratic
+    act = lambda x: x
+    act.__name__ = 'linear'
+    act.adegree = adegree
+
+    ##
+    D0 = 30
     H1 = 1
-    D0,D1,D2 = 2,H1,1
+    D0,D1,D2 = D0,H1,1
     D_layers,act = [D0,D1,D2], act
 
     # H1,H2 = 15,15
@@ -296,12 +302,14 @@ if __name__ == '__main__':
     #msg = '1st_2nd_units_are_zero'
     msg = ''
     mu,std = 0.0,5.0
-    N_train, N_test= 4,5041
+    #N_train, N_test= 4,5041
+    N_train, N_test= 30,32
     ##
-    save_data = False
+    visualize=False
+    save_data = True
     type_mdl = 'WP'
     #type_mdl = 'SP'
     #save_data_set_mdl_sgd(path='./data/{}', run_type='h_add', lb=-1,ub=1,N_train=35,N_test=5041,msg='',visualize=False)
-    save_data_set(path='./data/{}',type_mdl=type_mdl,D_layers=D_layers,act=act,biases=biases,mu=mu,std=std, lb=-1,ub=1,N_train=N_train,N_test=N_test,msg=msg,visualize=True,save_data=save_data)
+    save_data_set(path='./data/{}',type_mdl=type_mdl,D_layers=D_layers,act=act,biases=biases,mu=mu,std=std, lb=-1,ub=1,N_train=N_train,N_test=N_test,msg=msg,visualize=visualize,save_data=save_data)
     #data_generator = load(path='./data/data_gen_nb_layers3_biasTrue_mu0.0_std5.0')
     print('End! \a')

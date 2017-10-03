@@ -47,6 +47,9 @@ def sQuad(x):
 def sPow(x,p):
     return Pow(x,p)
 
+def sLinear(x):
+    return x
+
 def s_Poly(x,c_pinv_relu):
     '''
     Give lowest power fist.
