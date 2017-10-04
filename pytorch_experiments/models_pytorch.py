@@ -243,6 +243,10 @@ class NN(torch.nn.Module):
 
     def get_nb_params(self):
         return sum(p.numel() for p in model.parameters())
+
+    def __getitem__(self, key):
+        return self.linear_layers[key]
+
 ##
 
 def get_sequential_lifted_mdl(nb_monomials,D_out, bias=False):

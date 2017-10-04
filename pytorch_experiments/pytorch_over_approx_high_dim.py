@@ -2,6 +2,8 @@ import time
 import numpy as np
 import sys
 
+import ast
+
 import torch
 from torch.autograd import Variable
 import torch.nn.functional as F
@@ -21,6 +23,11 @@ import scipy.integrate as integrate
 import scipy
 
 #TODO make dtype, DTYPE accross all script
+
+def extract_list_filename(str):
+    lbsplit = str.split('[')
+    rbsplit = lbsplit[1].split(']')
+    return ast.literal_eval("[" + rbsplit[0] + "]")
 
 def print_all_params(mdl_nn):
     for i in range( 1,len(mdl_nn.linear_layers) ):
@@ -217,7 +224,7 @@ def save_data_set_mdl_sgd(path, run_type, lb=-1,ub=1,N_train=36,N_test=2025,msg=
     '''
     dtype = torch.FloatTensor
     #
-    data_generator, D_layers, act = main(run_type=run_type)
+    data_generator, D_layers, act = main(experiment_type='data_generation',run_type=run_type)
     #
     D = D_layers[0]
     if D==1:
@@ -306,9 +313,9 @@ def standard_tickhonov_reg(mdl,l):
 
 def VW_reg(mdl,l):
     ##
-    b_w = mdl.linear_layers[1].bias
-    W_p = mdl.linear_layers[1].weight
-    V = mdl.linear_layers[2].weight
+    b_w = mdl[1].bias
+    W_p = mdl[1].weight
+    V = mdl[2].weight
     ##
     VW = torch.matmul(V,W_p) + torch.matmul(V,b_w)
     reg = VW.norm(l)
@@ -369,6 +376,10 @@ def main(**kwargs):
     '''
     main code, where experiments for over parametrization are made
     '''
+    if 'experiment_type' not in kwargs:
+        raise ValueError( 'experiment_type must be present for main to run. Its value was {}'.format(experiment_type) )
+    if 'plotting' not in kwargs:
+        kwargs['plotting'] = False
     ##dtype = torch.cuda.FloatTensor # Uncomment this to run on GPU
     dtype = torch.FloatTensor
     #
@@ -378,17 +389,23 @@ def main(**kwargs):
     ## Hyper Params SGD weight parametrization
     M = 3
     eta = 0.002 # eta = 1e-6
-    nb_iter = int(1400)
+    nb_iter = int(100*1000)
     A = 0.0
-    reg_lambda_WP = 0
+    if 'reg_lambda_WP' in kwargs:
+        reg_lambda_WP = kwargs['reg_lambda_WP']
+    else:
+        reg_lambda_WP = 0
     ## Hyper Params SGD standard parametrization
     M_standard_sgd = 3
     eta_standard_sgd = 0.1 # eta = 1e-6
     #nb_iter_standard_sgd = int(1000)
-    nb_iter_standard_sgd = nb_iter
+    nb_iter_standard_sgd = 1000
     A_standard_sgd = 0.0
     #reg_lambda_SP = 0.0
-    reg_lambda_SP = reg_lambda_WP
+    if 'reg_lambda_SP' in kwargs:
+        reg_lambda_WP = kwargs['reg_lambda_WP']
+    else:
+        reg_lambda_SP = reg_lambda_WP
     ##
     logging_freq = 10
     logging_freq_standard_sgd = 10
@@ -414,7 +431,7 @@ def main(**kwargs):
     #### 2-layered mdl
     D0 = 30
 
-    H1 = 2
+    H1 = 40
     D0,D1,D2 = D0,H1,1
     D_layers,act = [D0,D1,D2], act
 
@@ -455,7 +472,8 @@ def main(**kwargs):
     # b_inits = []
     # bias = False
     #### Get Data set
-    if kwargs: # empty dictionaries evluate to false
+    if kwargs['experiment_type'] == 'data_generation': # empty dictionaries evluate to false
+    #experiment_type='data_generation'
         # only executes this if kwargs dict is NOT empty
         run_type = kwargs['run_type']
         #collect_functional_diffs = kwargs['collect_functional_diffs']
@@ -501,20 +519,14 @@ def main(**kwargs):
         #data_filename = 'data_numpy_type_mdl=WP_D_layers_[2, 10, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_9_N_test_5041_lb_-1_ub_1_act_poly_act_degree3_nb_params_40_msg_.npz'
         #data_filename = 'data_numpy_type_mdl=SP_D_layers_[2, 10, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_9_N_test_5041_lb_-1_ub_1_act_poly_act_degree3_nb_params_10_msg_.npz'
         #data_filename = 'data_numpy_type_mdl=WP_D_layers_[2, 10, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_9_N_test_5041_lb_-1_ub_1_act_poly_act_degree3_nb_params_40_msg_1st_2nd_units_are_zero.npz'
-
+        ##
         #truth_filename='data_gen_type_mdl=WP_D_layers_[2, 2, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_4_N_test_5041_lb_-1_ub_1_act_quad_ax2_bx_c_nb_params_8_msg_'
         #data_filename='data_numpy_type_mdl=WP_D_layers_[2, 2, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_4_N_test_5041_lb_-1_ub_1_act_quad_ax2_bx_c_nb_params_8_msg_.npz'
         #
         #truth_filename='data_gen_type_mdl=WP_D_layers_[2, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_4_N_test_5041_lb_-1_ub_1_act_quad_ax2_bx_c_nb_params_4_msg_'
         #data_filename='data_numpy_type_mdl=WP_D_layers_[2, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_4_N_test_5041_lb_-1_ub_1_act_quad_ax2_bx_c_nb_params_4_msg_.npz'
         #
-        #truth_filename='data_gen_type_mdl=WP_D_layers_[2, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_4_N_test_5041_lb_-1_ub_1_act_linear_nb_params_4_msg_'
-        #data_filename='data_numpy_type_mdl=WP_D_layers_[2, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_4_N_test_5041_lb_-1_ub_1_act_linear_nb_params_4_msg_.npz'
         ## n=9,D=12, linear!
-        #truth_filename='data_gen_type_mdl=WP_D_layers_[12, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_9_N_test_529_lb_-1_ub_1_act_linear_nb_params_14_msg_'
-        #data_filename='data_numpy_type_mdl=WP_D_layers_[12, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_9_N_test_529_lb_-1_ub_1_act_linear_nb_params_14_msg_.npz'
-        #truth_filename='data_gen_type_mdl=WP_D_layers_[12, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_9_N_test_16_lb_-1_ub_1_act_linear_nb_params_14_msg_'
-        #data_filename='data_numpy_type_mdl=WP_D_layers_[12, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_9_N_test_16_lb_-1_ub_1_act_linear_nb_params_14_msg_.npz'
         truth_filename='data_gen_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_'
         data_filename='data_numpy_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_.npz'
         #truth_filename ='data_gen_type_mdl=WP_D_layers_[2, 10, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_9_N_test_5041_lb_-1_ub_1_act_poly_act_degree3_nb_params_40_msg_1st_2nd_units_are_zero'
@@ -524,7 +536,7 @@ def main(**kwargs):
             print('mdl_truth_dict: ',mdl_truth_dict)
             print('data_filename = {} \n truth_filename = {}'.format(data_filename,truth_filename))
             ##
-            D_layers_truth=[30,1,1]
+            D_layers_truth=extract_list_filename(truth_filename)
         ##
         data = np.load( './data/{}'.format(data_filename) )
         X_train, Y_train = data['X_train'], data['Y_train']
@@ -736,160 +748,161 @@ def main(**kwargs):
     print("--- %s hours ---" % hours )
     print('\a')
     ## plots
-    if D0 == 1:
-        x_horizontal = np.linspace(lb,ub,1000).reshape(1000,1)
-        X_plot = poly_feat.fit_transform(x_horizontal)
-        X_plot_pytorch = Variable( torch.FloatTensor(X_plot), requires_grad=False)
-        #plots objs
-        f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
-        Y_sgd_stand =  [ float(f_val) for f_val in mdl_standard_sgd.forward(X_plot_pytorch).data.numpy() ]
-        p_sgd_stand, = plt.plot(x_horizontal, Y_sgd_stand)
-        p_sgd, = plt.plot(x_horizontal, [ float(f_sgd(x_i)[0]) for x_i in x_horizontal ])
-        p_pinv, = plt.plot(x_horizontal, np.dot(X_plot,c_pinv))
-        p_data, = plt.plot(X_train,data.Y_train.data.numpy(),'ro')
-        ## legend
-        plt.legend(
-                [p_sgd_stand,p_sgd,p_pinv,p_data],
-                ['SGD solution standard parametrization, number of monomials={}, batch-size={}, iterations={}, step size={}'.format(mdl_standard_sgd[0].weight.data.numpy().shape[1],M_standard_sgd,nb_iter_standard_sgd,eta_standard_sgd),
-                'SGD solution weight parametrization, number of monomials={}, batch-size={}, iterations={}, step size={}'.format(c_pinv.shape[0],M,nb_iter,eta),
-                'min norm (pinv) number of monomials={}'.format(c_pinv.shape[0]),
-                'data points']
-            )
-        ##
-        plt.xlabel('x'), plt.ylabel('f(x)')
-        plt.title('SGD vs minimum norm solution curves')
-    elif D0 == 2:
-        #
-        nb_non_linear_layers = len(D_layers)-2
-        degree_sgd = adegree**(len(D_layers)-2)
-        #
-        X_data, Y_data = X_test,Y_test
-        Xp,Yp,Zp = make_meshgrid_data_from_training_data(X_data=X_data, Y_data=Y_data) # meshgrid for visualization
-        Xp_train,Yp_train,Zp_train = make_meshgrid_data_from_training_data(X_data=X_train, Y_data=Y_train) # meshgrid for trainign points
-        ## plot data PINV
-        Y_pinv = np.dot(poly_feat.fit_transform(X_data),c_pinv)
-        _,_,Zp_pinv = make_meshgrid_data_from_training_data(X_data=X_data, Y_data=Y_pinv)
-        ## plot data SGD
-        Y_sgd = mdl_sgd.forward(Variable(torch.FloatTensor(X_data))).data.numpy()
-        _,_,Zp_sgd = make_meshgrid_data_from_training_data(X_data=X_data, Y_data=Y_sgd)
-        ## plot data standard SGD
-        Y_sgd_stand = mdl_standard_sgd.forward(Variable(torch.FloatTensor(Kern_test)) ).data.numpy()
-        _,_,Zp_sgd_stand = make_meshgrid_data_from_training_data(X_data=X_data, Y_data=Y_sgd_stand)
-        ## FIG PINV
+    if kwargs['plotting']:
+        if D0 == 1:
+            x_horizontal = np.linspace(lb,ub,1000).reshape(1000,1)
+            X_plot = poly_feat.fit_transform(x_horizontal)
+            X_plot_pytorch = Variable( torch.FloatTensor(X_plot), requires_grad=False)
+            #plots objs
+            f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
+            Y_sgd_stand =  [ float(f_val) for f_val in mdl_standard_sgd.forward(X_plot_pytorch).data.numpy() ]
+            p_sgd_stand, = plt.plot(x_horizontal, Y_sgd_stand)
+            p_sgd, = plt.plot(x_horizontal, [ float(f_sgd(x_i)[0]) for x_i in x_horizontal ])
+            p_pinv, = plt.plot(x_horizontal, np.dot(X_plot,c_pinv))
+            p_data, = plt.plot(X_train,data.Y_train.data.numpy(),'ro')
+            ## legend
+            plt.legend(
+                    [p_sgd_stand,p_sgd,p_pinv,p_data],
+                    ['SGD solution standard parametrization, number of monomials={}, batch-size={}, iterations={}, step size={}'.format(mdl_standard_sgd[0].weight.data.numpy().shape[1],M_standard_sgd,nb_iter_standard_sgd,eta_standard_sgd),
+                    'SGD solution weight parametrization, number of monomials={}, batch-size={}, iterations={}, step size={}'.format(c_pinv.shape[0],M,nb_iter,eta),
+                    'min norm (pinv) number of monomials={}'.format(c_pinv.shape[0]),
+                    'data points']
+                )
+            ##
+            plt.xlabel('x'), plt.ylabel('f(x)')
+            plt.title('SGD vs minimum norm solution curves')
+        elif D0 == 2:
+            #
+            nb_non_linear_layers = len(D_layers)-2
+            degree_sgd = adegree**(len(D_layers)-2)
+            #
+            X_data, Y_data = X_test,Y_test
+            Xp,Yp,Zp = make_meshgrid_data_from_training_data(X_data=X_data, Y_data=Y_data) # meshgrid for visualization
+            Xp_train,Yp_train,Zp_train = make_meshgrid_data_from_training_data(X_data=X_train, Y_data=Y_train) # meshgrid for trainign points
+            ## plot data PINV
+            Y_pinv = np.dot(poly_feat.fit_transform(X_data),c_pinv)
+            _,_,Zp_pinv = make_meshgrid_data_from_training_data(X_data=X_data, Y_data=Y_pinv)
+            ## plot data SGD
+            Y_sgd = mdl_sgd.forward(Variable(torch.FloatTensor(X_data))).data.numpy()
+            _,_,Zp_sgd = make_meshgrid_data_from_training_data(X_data=X_data, Y_data=Y_sgd)
+            ## plot data standard SGD
+            Y_sgd_stand = mdl_standard_sgd.forward(Variable(torch.FloatTensor(Kern_test)) ).data.numpy()
+            _,_,Zp_sgd_stand = make_meshgrid_data_from_training_data(X_data=X_data, Y_data=Y_sgd_stand)
+            ## FIG PINV
+            fig1 = plt.figure()
+            ax1 = Axes3D(fig1)
+            data_pts = ax1.scatter(Xp_train,Yp_train,Zp_train, marker='D')
+            surf = ax1.plot_surface(Xp,Yp,Zp_pinv,color='y',cmap=cm.coolwarm)
+            ax1.set_xlabel('x1'),ax1.set_ylabel('x2'),ax1.set_zlabel('f(x)')
+            surf_proxy = mpl.lines.Line2D([0],[0], linestyle="none", c='r', marker ='_')
+            ax1.legend([surf_proxy,data_pts],[
+                'minimum norm solution Degree model={}, number of monomials={}'.format(Degree_mdl,nb_monomials),
+                'data points, number of data points = {}'.format(N_train)])
+            ## FIG SGD weight parametrization
+            fig2 = plt.figure()
+            ax2 = Axes3D(fig2)
+            data_pts = ax2.scatter(Xp_train,Yp_train,Zp_train, marker='D')
+            surf = ax2.plot_surface(Xp,Yp,Zp_sgd,cmap=cm.coolwarm)
+            ax2.set_xlabel('x1'),ax2.set_ylabel('x2'),ax2.set_zlabel('f(x)')
+            surf_proxy = mpl.lines.Line2D([0],[0], linestyle="none", c='r', marker = '_')
+            ax2.legend([surf_proxy,data_pts],[
+                'SGD solution weight parametrization Degree model={} non linear-layers={}, number of monomials={}, param count={}, list of units per nonlinear layer={}, batch-size={}, iterations={}, step size={}'.format(degree_sgd,nb_non_linear_layers,len(c_WP),nb_params,D_layers[1:len(D_layers)-1], M,nb_iter,eta),
+                'data points, number of data points = {}'.format(N_train)])
+            ## FIG SGD standard param
+            fig = plt.figure()
+            ax3 = Axes3D(fig)
+            data_pts = ax3.scatter(Xp_train,Yp_train,Zp_train, marker='D')
+            surf = ax3.plot_surface(Xp,Yp,Zp_sgd_stand, cmap=cm.coolwarm)
+            ax3.set_xlabel('x1'),ax3.set_ylabel('x2'),ax3.set_zlabel('f(x)')
+            ax3.legend([surf_proxy,data_pts],[
+                'SGD solution standard parametrization Degree model={}, number of monomials={}, param count={}, batch-size={}, iterations={}, step size={}'.format(degree_sgd,nb_monomials,nb_monomials,M_standard_sgd,nb_iter_standard_sgd,eta_standard_sgd),
+                'data points, number of data points = {}'.format(N_train)])
+            ## PLOT train surface
+            # fig = plt.figure()
+            # ax = Axes3D(fig)
+            # points_scatter = ax.scatter(Xp_train,Yp_train,Zp_train, marker='D')
+            # surf = ax.plot_surface(Xp_train,Yp_train,Zp_train, cmap=cm.coolwarm)
+            # plt.title('Train function')
+            # ## PLOT test surface
+            # fig = plt.figure()
+            # ax = Axes3D(fig)
+            # points_scatter = ax.scatter(Xp,Yp,Zp, marker='D')
+            # surf = ax.plot_surface(Xp,Yp,Zp, cmap=cm.coolwarm)
+            # plt.title('Test function')
+        ## PLOT LOSSES
+        # fig1 = plt.figure()
+        # p_loss_w, = plt.plot(np.arange(len(train_loss_list_WP)), train_loss_list_WP,color='m')
+        # p_loss_s, = plt.plot(np.arange(len(test_loss_list_SP)), test_loss_list_SP,color='r')
+        # plt.legend([p_loss_w,p_loss_s],['plot train loss, weight parametrization','plot train loss, standard parametrization'])
+        # plt.title('Loss vs Iterations')
+        ## PLOT info
+        #iterations_axis = np.arange(1,len(train_loss_list_WP),step=logging_freq)
+        start = 1
+        iterations_axis = np.arange(1,nb_iter,step=logging_freq)[start:]
+        #iterations_axis = np.arange(0,len(train_loss_list_WP))
+        train_loss_list_WP, test_loss_list_WP, erm_lamdas_WP = np.array(train_loss_list_WP)[start:], np.array(test_loss_list_WP)[start:], np.array(erm_lamdas_WP)[start:]
+        p_train_WP_legend = 'Train error, Weight Parametrization (WP), reg_lambda_WP = {}'.format(reg_lambda_WP)
+        p_test_WP_legend = 'Test error, Weight Parametrization (WP) reg_lambda_WP = {}'.format(reg_lambda_WP)
+        p_erm_reg_WP_legend = 'Error+Regularization, Weight Parametrization (WP) reg_lambda_WP = {}'.format(reg_lambda_WP)
+        ##plots
         fig1 = plt.figure()
-        ax1 = Axes3D(fig1)
-        data_pts = ax1.scatter(Xp_train,Yp_train,Zp_train, marker='D')
-        surf = ax1.plot_surface(Xp,Yp,Zp_pinv,color='y',cmap=cm.coolwarm)
-        ax1.set_xlabel('x1'),ax1.set_ylabel('x2'),ax1.set_zlabel('f(x)')
-        surf_proxy = mpl.lines.Line2D([0],[0], linestyle="none", c='r', marker ='_')
-        ax1.legend([surf_proxy,data_pts],[
-            'minimum norm solution Degree model={}, number of monomials={}'.format(Degree_mdl,nb_monomials),
-            'data points, number of data points = {}'.format(N_train)])
-        ## FIG SGD weight parametrization
-        fig2 = plt.figure()
-        ax2 = Axes3D(fig2)
-        data_pts = ax2.scatter(Xp_train,Yp_train,Zp_train, marker='D')
-        surf = ax2.plot_surface(Xp,Yp,Zp_sgd,cmap=cm.coolwarm)
-        ax2.set_xlabel('x1'),ax2.set_ylabel('x2'),ax2.set_zlabel('f(x)')
-        surf_proxy = mpl.lines.Line2D([0],[0], linestyle="none", c='r', marker = '_')
-        ax2.legend([surf_proxy,data_pts],[
-            'SGD solution weight parametrization Degree model={} non linear-layers={}, number of monomials={}, param count={}, list of units per nonlinear layer={}, batch-size={}, iterations={}, step size={}'.format(degree_sgd,nb_non_linear_layers,len(c_WP),nb_params,D_layers[1:len(D_layers)-1], M,nb_iter,eta),
-            'data points, number of data points = {}'.format(N_train)])
-        ## FIG SGD standard param
+        p_erm_reg_WP, = plt.plot(iterations_axis, erm_lamdas_WP,color='g')
+        plt.legend([p_erm_reg_WP],[p_erm_reg_WP_legend])
+        plt.xlabel('iterations' )
+        plt.ylabel('Error/loss')
+        plt.title('Loss+Regularization vs Iterations, reg_lambda_WP = {}'.format(reg_lambda_WP))
+
+        fig1 = plt.figure()
+        p_train_WP, = plt.plot(iterations_axis, train_loss_list_WP,color='m')
+        p_test_WP, = plt.plot(iterations_axis, test_loss_list_WP,color='r')
+        plt.xlabel('iterations' )
+        plt.ylabel('Error/loss')
+        plt.legend([p_train_WP,p_test_WP],[p_train_WP_legend,p_test_WP_legend])
+        plt.title('Train,Test vs Iterations, reg_lambda_WP = {}'.format(reg_lambda_WP))
+        #
+        fig1 = plt.figure()
+        p_train_WP, = plt.plot(iterations_axis, train_loss_list_WP,color='m')
+        p_test_WP, = plt.plot(iterations_axis, test_loss_list_WP,color='r')
+        p_erm_reg_WP, = plt.plot(iterations_axis, erm_lamdas_WP,color='g')
+        plt.xlabel('iterations' )
+        plt.ylabel('Error/loss')
+        plt.legend([p_erm_reg_WP,p_train_WP,p_test_WP],[p_erm_reg_WP_legend,p_train_WP_legend,p_test_WP_legend])
+        plt.title('Loss+Regularization,Train,Test vs Iterations, reg_lambda_WP = {}'.format(reg_lambda_WP))
+
+        ##
+        # for i in range(len(grad_list)):
+        #     fig2 = plt.figure()
+        #     current_grad_list = grad_list[i]
+        #     #pdb.set_trace()
+        #     p_grads, = plt.plot(np.arange(len(current_grad_list)), current_grad_list,color='g')
+        #     plt.legend([p_grads],['plot grads'])
+        #     plt.title('Gradient vs Iterations: # {}'.format(i))
+        #
+        #plot_activation_func(act)
+        ##
+        #func_diff
+        #train_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,nb_module_params
         fig = plt.figure()
-        ax3 = Axes3D(fig)
-        data_pts = ax3.scatter(Xp_train,Yp_train,Zp_train, marker='D')
-        surf = ax3.plot_surface(Xp,Yp,Zp_sgd_stand, cmap=cm.coolwarm)
-        ax3.set_xlabel('x1'),ax3.set_ylabel('x2'),ax3.set_zlabel('f(x)')
-        ax3.legend([surf_proxy,data_pts],[
-            'SGD solution standard parametrization Degree model={}, number of monomials={}, param count={}, batch-size={}, iterations={}, step size={}'.format(degree_sgd,nb_monomials,nb_monomials,M_standard_sgd,nb_iter_standard_sgd,eta_standard_sgd),
-            'data points, number of data points = {}'.format(N_train)])
-        ## PLOT train surface
-        # fig = plt.figure()
-        # ax = Axes3D(fig)
-        # points_scatter = ax.scatter(Xp_train,Yp_train,Zp_train, marker='D')
-        # surf = ax.plot_surface(Xp_train,Yp_train,Zp_train, cmap=cm.coolwarm)
-        # plt.title('Train function')
-        # ## PLOT test surface
-        # fig = plt.figure()
-        # ax = Axes3D(fig)
-        # points_scatter = ax.scatter(Xp,Yp,Zp, marker='D')
-        # surf = ax.plot_surface(Xp,Yp,Zp, cmap=cm.coolwarm)
-        # plt.title('Test function')
-    ## PLOT LOSSES
-    # fig1 = plt.figure()
-    # p_loss_w, = plt.plot(np.arange(len(train_loss_list_WP)), train_loss_list_WP,color='m')
-    # p_loss_s, = plt.plot(np.arange(len(test_loss_list_SP)), test_loss_list_SP,color='r')
-    # plt.legend([p_loss_w,p_loss_s],['plot train loss, weight parametrization','plot train loss, standard parametrization'])
-    # plt.title('Loss vs Iterations')
-    ## PLOT info
-    #iterations_axis = np.arange(1,len(train_loss_list_WP),step=logging_freq)
-    start = 1
-    iterations_axis = np.arange(1,nb_iter,step=logging_freq)[start:]
-    #iterations_axis = np.arange(0,len(train_loss_list_WP))
-    train_loss_list_WP, test_loss_list_WP, erm_lamdas_WP = np.array(train_loss_list_WP)[start:], np.array(test_loss_list_WP)[start:], np.array(erm_lamdas_WP)[start:]
-    p_train_WP_legend = 'Train error, Weight Parametrization (WP), reg_lambda_WP = {}'.format(reg_lambda_WP)
-    p_test_WP_legend = 'Test error, Weight Parametrization (WP) reg_lambda_WP = {}'.format(reg_lambda_WP)
-    p_erm_reg_WP_legend = 'Error+Regularization, Weight Parametrization (WP) reg_lambda_WP = {}'.format(reg_lambda_WP)
-    ##plots
-    fig1 = plt.figure()
-    p_erm_reg_WP, = plt.plot(iterations_axis, erm_lamdas_WP,color='g')
-    plt.legend([p_erm_reg_WP],[p_erm_reg_WP_legend])
-    plt.xlabel('iterations' )
-    plt.ylabel('Error/loss')
-    plt.title('Loss+Regularization vs Iterations, reg_lambda_WP = {}'.format(reg_lambda_WP))
-
-    fig1 = plt.figure()
-    p_train_WP, = plt.plot(iterations_axis, train_loss_list_WP,color='m')
-    p_test_WP, = plt.plot(iterations_axis, test_loss_list_WP,color='r')
-    plt.xlabel('iterations' )
-    plt.ylabel('Error/loss')
-    plt.legend([p_train_WP,p_test_WP],[p_train_WP_legend,p_test_WP_legend])
-    plt.title('Train,Test vs Iterations, reg_lambda_WP = {}'.format(reg_lambda_WP))
-    #
-    fig1 = plt.figure()
-    p_train_WP, = plt.plot(iterations_axis, train_loss_list_WP,color='m')
-    p_test_WP, = plt.plot(iterations_axis, test_loss_list_WP,color='r')
-    p_erm_reg_WP, = plt.plot(iterations_axis, erm_lamdas_WP,color='g')
-    plt.xlabel('iterations' )
-    plt.ylabel('Error/loss')
-    plt.legend([p_erm_reg_WP,p_train_WP,p_test_WP],[p_erm_reg_WP_legend,p_train_WP_legend,p_test_WP_legend])
-    plt.title('Loss+Regularization,Train,Test vs Iterations, reg_lambda_WP = {}'.format(reg_lambda_WP))
-
-    ##
-    # for i in range(len(grad_list)):
-    #     fig2 = plt.figure()
-    #     current_grad_list = grad_list[i]
-    #     #pdb.set_trace()
-    #     p_grads, = plt.plot(np.arange(len(current_grad_list)), current_grad_list,color='g')
-    #     plt.legend([p_grads],['plot grads'])
-    #     plt.title('Gradient vs Iterations: # {}'.format(i))
-    #
-    #plot_activation_func(act)
-    ##
-    #func_diff
-    #train_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,nb_module_params
-    fig = plt.figure()
-    p_func_diff_standard, = plt.plot(np.arange(len(func_diff_standard_sgd)), func_diff_standard_sgd,color='g')
-    p_func_diff_weight, = plt.plot(np.arange(len(func_diff_weight_sgd)), func_diff_weight_sgd,color='b')
-    plt.legend([p_func_diff_weight,p_func_diff_standard],
-        [' L2 generalization distance: weight parametrization with SGD minus minimum norm solution, number test points = {}'.format(N_test),
-        ' L2 generalization distance: standard parametrization with SGD minus minimum norm solution, number test points = {}'.format(N_test)]
-        )
-    plt.title('Generalization L2 difference between minimum norm and SGD functions')
-    ##
-    plt.show()
-    ## is kwargs empty? If yes then execute if statement
-    if kwargs: # if dictionary is empty, note empty dictionaries evaluate to false, so not false gives true
+        p_func_diff_standard, = plt.plot(np.arange(len(func_diff_standard_sgd)), func_diff_standard_sgd,color='g')
+        p_func_diff_weight, = plt.plot(np.arange(len(func_diff_weight_sgd)), func_diff_weight_sgd,color='b')
+        plt.legend([p_func_diff_weight,p_func_diff_standard],
+            [' L2 generalization distance: weight parametrization with SGD minus minimum norm solution, number test points = {}'.format(N_test),
+            ' L2 generalization distance: standard parametrization with SGD minus minimum norm solution, number test points = {}'.format(N_test)]
+            )
+        plt.title('Generalization L2 difference between minimum norm and SGD functions')
+        ##
+        plt.show()
+    if kwargs['experiment_type'] == 'data_generation': # empty dicts evaluate to false
         return mdl_sgd, D_layers, act
 
 if __name__ == '__main__':
     print('__main__ started')
-    main()
-    #run_type = 'h_add'
-    #run_type = 'h_gabor'
-    ##N_train, N_test = 16, 2025 ## 4**2, 45**2
-    #N_train, N_test = 16, 5041 ## 4**2, 71**2
-    #save_data_set_mdl_sgd(path='./data/{}', run_type=run_type, lb=-1,ub=1,N_train=N_train,N_test=N_test,msg='',visualize=True)
-    #print('End')
+    #main(experiment_type='quick_run',plotting=True)
+    ##
+    run_type = 'h_add'
+    run_type = 'h_gabor'
+    #N_train, N_test = 16, 2025 ## 4**2, 45**2
+    N_train, N_test = 16, 5041 ## 4**2, 71**2
+    save_data_set_mdl_sgd(path='./data/{}', run_type=run_type, lb=-1,ub=1,N_train=N_train,N_test=N_test,msg='',visualize=True)
+    print('End')
     print('\a')

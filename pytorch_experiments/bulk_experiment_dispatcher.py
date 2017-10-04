@@ -27,42 +27,40 @@ import scipy.io
 
 
 def serial_multiple_lambdas(**kwargs):
-    train_errors = { lambda_key: [] for lambda_key in kwargs['lambdas']} # maps lambda to train errors
-    test_errors = { lambda_key: [] for lambda_key in kwargs['lambdas']} # maps lambda to train errors
-    erm_regs = { lambda_key: [] for lambda_key in kwargs['lambdas']} # maps lambda to train errors
+    lambdas, repetitions = kwargs['lambdas'], kwargs['repetitions']
+    nb_lambdas = lambdas.shape[0]
+    ##
+    train_errors = np.zeros( (nb_lambdas,repetitions) ) # row lambda, trial of experiment
+    test_errors = np.zeros( (nb_lambdas,repetitions) ) # row lambda, trial of experiment
+    erm_regs = np.zeros( (nb_lambdas,repetitions) ) # row lambda, trial of experiment
     ## collect the errors for every lambda
-    for reg_lambda in kwargs['lambdas']:
-        #
-        for current_repetition for repetitions:
-            train_error, test_error, erm_reg = main(experiment_type='quick_run',reg_lambda_WP=reg_lambda_WP)
+    for lambda_index in range(nb_lambdas):
+        reg_lambda = lambdas[lambda_index]
+        for current_repetition in range(repetitions):
+            train_error, test_error, erm_reg = main(experiment_type='quick_run',reg_lambda_WP=reg_lambda,plotting=False)
             ##
-            train_errors[reg_lambda].append( train_error )
-            test_errors[reg_lambda].append( test_error )
-            erm_regs[reg_lambda].append( erm_regs )
+            train_errors[lambda_index,current_repetition] = train_error
+            test_errors[lambda_index,current_repetition] = test_error
+            erm_regs[lambda_index,current_repetition] = erm_reg
     ##
-    train_means = { lambda_key: 0 for lambda_key in kwargs['lambdas']}
-    train_stds = { lambda_key: 0 for lambda_key in kwargs['lambdas']}
-    test_means = { lambda_key: 0 for lambda_key in kwargs['lambdas']}
-    test_stds = { lambda_key: 0 for lambda_key in kwargs['lambdas']}
+    train_means, train_stds = np.zeros( nb_lambdas ), np.zeros( nb_lambdas ) # one moment per lambda
+    test_means, test_stds = np.zeros( nb_lambdas ), np.zeros( nb_lambdas ) # one moment per lambda
     ## collect the statistics for every lambda
-    for reg_lambda in kwargs['lambdas']:
-        train_means[reg_lambda] = np.mean( train_errors[reg_lambda] )
-        train_stds[reg_lambda] = np.std( train_errors[reg_lambda] )
+    for lambda_index in range(nb_lambdas):
+        train_means[lambda_index] = np.mean( train_errors[lambda_index,:] )
+        train_stds[lambda_index] = np.std( train_errors[lambda_index,:] )
         #
-        test_means[reg_lambda] = np.mean( test_errors[reg_lambda] )
-        test_stds[reg_lambda] = np.std( test_errors[reg_lambda] )
+        test_means[lambda_index] = np.mean( test_errors[reg_lambda,:] )
+        test_stds[lambda_index] = np.std( test_errors[reg_lambda,:] )
     ##
-    reg_lamdas = np.array( kwargs.keys() )
-    scipy.io.savemat('test.mat', dict(x=x, y=y))
-
-
+    scipy.io.savemat( 'test.mat', dict(train_means=train_means,train_stds=train_stds, test_means=test_means,test_stds=test_stds) )
 
 if __name__ == '__main__':
     ## real experiment
-    #lambdas = linspace(20,200,num=5)
+    #lambdas = np.linspace(20,200,num=5)
     #repetitions=5
     ## unit tests
-    lambdas = linspace(20,200,num=3)
+    lambdas = np.linspace(20,200,num=3)
     repetitions=3
     ##
     serial_multiple_lambdas(lambdas=lambdas,repetitions=repetitions)
