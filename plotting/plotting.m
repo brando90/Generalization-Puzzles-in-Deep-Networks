@@ -1,22 +1,6 @@
 clear;
 %%
-lambda = [600, 800, 1000, 1200, 1400] %big go first
-one_over_lambda = lambda
-%one_over_lambda = 1./lambda %small to big
-%%
-save_bool = 0
-%%
-lambda = [0.1, 0.05, 0.025, 0.01, 0.005] %big go first
-one_over_lambda = 1./lambda %small to big
-%%
-save_bool = 1
-%%
-test_errors = [13.79, 5.6,  2.95, 1.7, 1.1]
-train_erros = [0.11, 0.03, 0.011, 0.002, 0.0005]
-test_errors = 0.02*test_errors
-%train_erros = log(train_erros)
-%test_errors = log(test_errors)
-%erm_lambda = [0.11,0.03]
+load('experiment.mat')
 %% SUBPLOTS
 % fig = figure
 % subplot(2,1,1)
@@ -32,11 +16,11 @@ test_errors = 0.02*test_errors
 % ylabel('Error')
 % filename='one_over_lambda_vs_train_test_subplots'
 %% plot train test same plot
-plot_test_train_same_plot( one_over_lambda,train_erros,test_errors );
-if save_bool
-    saveas(fig,filename)
-    saveas(fig,filename,'pdf')
-end
+fig = plot_test_train_same_plot( one_over_lambda,train_erros,test_errors );
+% if save_bool
+%     saveas(fig,filename)
+%     saveas(fig,filename,'pdf')
+% end
 %%
 % fig = figure
 % plot(one_over_lambda,train_erros)
