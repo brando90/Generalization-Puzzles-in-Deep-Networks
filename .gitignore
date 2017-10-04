@@ -151,3 +151,5 @@ octave-workspace
 
 # pdfs
 *.pdf
+
+*.mat
