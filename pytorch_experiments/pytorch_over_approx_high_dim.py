@@ -390,12 +390,16 @@ def main(**kwargs):
     ## Hyper Params SGD weight parametrization
     M = 3
     eta = 0.002 # eta = 1e-6
-    nb_iter = int(15*1000)
+    if 'nb_iterations_WP' in kwargs:
+        nb_iter = kwargs['nb_iterations_WP']
+    else:
+        nb_iter = int(15*1000)
+    #nb_iter = int(15*1000)
     A = 0.0
     if 'reg_lambda_WP' in kwargs:
         reg_lambda_WP = kwargs['reg_lambda_WP']
     else:
-        reg_lambda_WP = 0
+        reg_lambda_WP = 0.0
     ## Hyper Params SGD standard parametrization
     M_standard_sgd = 3
     eta_standard_sgd = 0.1 # eta = 1e-6

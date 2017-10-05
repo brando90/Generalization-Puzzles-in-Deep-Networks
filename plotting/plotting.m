@@ -1,8 +1,10 @@
 clear;
 %%
-prefix_fname='experiment_lambdas';
-filename = strcat(prefix_fname,'.mat');
-load(filename)
+%prefix_fname='experiment_lambdas';
+%experiment_iter_tmp.mat
+prefix_fname='experiment_iter_tmp';
+filename = [prefix_fname '.mat'];
+load( ['./results/' filename])
 %%
 if strcmp(filename,'experiment_lambdas.mat')
     title_name_train = '1/ \lambda vs train errors';
@@ -16,12 +18,16 @@ if strcmp(filename,'experiment_lambdas.mat')
     test_errors = test_means;
     test_errors_bars = test_stds;
 else
-    disp('TODO')
+    title_name_train = 'iterations vs train errors';
+    title_name_test = 'iterations vs test errors';
+    xlabel_name = 'iterations';
+    ylabel_name = 'Error';
     %%
-%     x_axis = iterations;
-%     train_errors = train_means;
-%     train_errors_bars = train_stds;
-    %% TODO
+    x_axis = iterations;
+    train_errors = train_means;
+    train_errors_bars = train_stds;
+    test_errors = test_means;
+    test_errors_bars = test_stds;
 end
 %%
 x_axis
