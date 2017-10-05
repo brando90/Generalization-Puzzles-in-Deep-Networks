@@ -21,7 +21,5 @@ filename='one_over_lambda_vs_train_test_same_plot'
 saveas(fig,filename)
 saveas(fig,filename,'pdf')
 
-
-
 end
 

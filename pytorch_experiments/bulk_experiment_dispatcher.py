@@ -28,6 +28,7 @@ import scipy.io
 
 def serial_multiple_lambdas(**kwargs):
     lambdas, repetitions = kwargs['lambdas'], kwargs['repetitions']
+    one_over_lambdas = 1/lambdas
     nb_lambdas = lambdas.shape[0]
     ##
     train_errors = np.zeros( (nb_lambdas,repetitions) ) # row lambda, trial of experiment
@@ -36,8 +37,9 @@ def serial_multiple_lambdas(**kwargs):
     ## collect the errors for every lambda
     for lambda_index in range(nb_lambdas):
         reg_lambda = lambdas[lambda_index]
+        print('reg_lambda = ', reg_lambda)
         for current_repetition in range(repetitions):
-            train_error, test_error, erm_reg = main(experiment_type='quick_run',reg_lambda_WP=reg_lambda,plotting=False)
+            train_error, test_error, erm_reg = main(experiment_type='serial_multiple_lambdas',reg_lambda_WP=reg_lambda,plotting=False)
             ##
             train_errors[lambda_index,current_repetition] = train_error
             test_errors[lambda_index,current_repetition] = test_error
@@ -50,17 +52,30 @@ def serial_multiple_lambdas(**kwargs):
         train_means[lambda_index] = np.mean( train_errors[lambda_index,:] )
         train_stds[lambda_index] = np.std( train_errors[lambda_index,:] )
         #
-        test_means[lambda_index] = np.mean( test_errors[reg_lambda,:] )
-        test_stds[lambda_index] = np.std( test_errors[reg_lambda,:] )
+        test_means[lambda_index] = np.mean( test_errors[lambda_index,:] )
+        test_stds[lambda_index] = np.std( test_errors[lambda_index,:] )
     ##
-    scipy.io.savemat( 'test.mat', dict(train_means=train_means,train_stds=train_stds, test_means=test_means,test_stds=test_stds) )
+    if kwargs['save_bulk_experiment']:
+        scipy.io.savemat( '../plotting/experiment_lambdas.mat', dict(lambdas=lambdas,one_over_lambdas=one_over_lambdas, train_means=train_means,train_stds=train_stds, test_means=test_means,test_stds=test_stds) )
 
 if __name__ == '__main__':
+    start_time = time.time()
     ## real experiment
     #lambdas = np.linspace(20,200,num=5)
     #repetitions=5
     ## unit tests
-    lambdas = np.linspace(20,200,num=3)
-    repetitions=3
+    one_over_lambdas = np.linspace(20,400,num=10)
+    lambdas = 1/one_over_lambdas
+    repetitions=5
     ##
-    serial_multiple_lambdas(lambdas=lambdas,repetitions=repetitions)
+    save_bulk_experiment = True
+    serial_multiple_lambdas(lambdas=lambdas,repetitions=repetitions,save_bulk_experiment=save_bulk_experiment)
+    ##
+    ## REPORT TIMES
+    seconds = (time.time() - start_time)
+    minutes = seconds/ 60
+    hours = minutes/ 60
+    print()
+    print("--- %s seconds ---" % seconds )
+    print("--- %s minutes ---" % minutes )
+    print("--- %s hours ---" % hours )

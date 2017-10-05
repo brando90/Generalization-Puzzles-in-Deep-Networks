@@ -1,50 +1,48 @@
 clear;
 %%
-load('experiment.mat')
+prefix_fname='experiment_lambdas';
+filename = strcat(prefix_fname,'.mat');
+load(filename)
+%%
+if strcmp(filename,'experiment_lambdas.mat')
+    title_name_train = '1/ \lambda vs train errors';
+    title_name_test = '1/ \lambda vs test errors';
+    xlabel_name = '1/ \lambda';
+    ylabel_name = 'Error';
+    %%
+    x_axis = one_over_lambdas;
+    train_errors = train_means;
+    train_errors_bars = train_stds;
+    test_errors = test_means;
+    test_errors_bars = test_stds;
+else
+    disp('TODO')
+    %%
+%     x_axis = iterations;
+%     train_errors = train_means;
+%     train_errors_bars = train_stds;
+    %% TODO
+end
+%%
+x_axis
+train_errors
+train_errors_bars
+test_errors
+test_errors_bars
 %% SUBPLOTS
-% fig = figure
-% subplot(2,1,1)
-% plot(one_over_lambda,train_erros)
-% title('1/ \lambda vs train errors')
-% xlabel('1/ \lambda')
-% ylabel('Error')
-% 
-% subplot(2,1,2)
-% plot(one_over_lambda,test_errors)
-% title('1/ \lambda vs test errors')
-% xlabel('1/ \lambda')
-% ylabel('Error')
-% filename='one_over_lambda_vs_train_test_subplots'
-%% plot train test same plot
-fig = plot_test_train_same_plot( one_over_lambda,train_erros,test_errors );
-% if save_bool
-%     saveas(fig,filename)
-%     saveas(fig,filename,'pdf')
-% end
+fig = figure;
+subplot(2,1,1)
+errorbar(x_axis,train_errors,train_errors_bars,'-bx','MarkerEdgeColor','blue')
+title(title_name_train)
+xlabel(xlabel_name);ylabel(ylabel_name);
+legend('train');
+
+subplot(2,1,2)
+errorbar(x_axis,test_errors,test_errors_bars,'-rx','MarkerEdgeColor','red')
+title(title_name_test)
+xlabel(xlabel_name);ylabel(ylabel_name)
+legend('test');
+
 %%
-% fig = figure
-% plot(one_over_lambda,train_erros)
-% title('Regularization param vs train errors')
-% xlabel('1/ \lambda')
-% ylabel('Error')
-% filename='one_over_lambda_vs_train_errors'
-% saveas(fig,filename)
-% saveas(fig,filename,'pdf')
-% %%
-% fig = figure
-% plot(one_over_lambda,test_errors)
-% title('Regularization param vs test errors')
-% xlabel('1/ \lambda')
-% ylabel('Error')
-% filename='one_over_lambda_vs_test_errors'
-% saveas(fig,filename)
-% saveas(fig,filename,'pdf')
-%%
-% fig = figure
-% plot(one_over_lambda,erm_lambda)
-% title('Regularization param vs train+regularization errors')
-% xlabel('1/ \lambda')
-% ylabel('Error')
-% filename='one_over_lambda_vs_erm'
-% saveas(fig,filename)
-% saveas(fig,filename,'pdf')
+saveas(fig,strcat('fig_',prefix_fname))
+saveas(fig,strcat('fig_',prefix_fname),'pdf')

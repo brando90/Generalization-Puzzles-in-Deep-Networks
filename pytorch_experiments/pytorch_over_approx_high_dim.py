@@ -299,6 +299,7 @@ def stats_logger(mdl, data, eta,loss_list,test_loss_list,grad_list,func_diff,erm
         grad_list[index].append( W.grad.data.norm(2) )
         if is_NaN(W.grad.data.norm(2)) or is_NaN(current_train_loss):
             print('\n----------------- ERROR HAPPENED \a')
+            print('reg_lambda', reg_lambda)
             print('error happened at: i = {} current_train_loss: {}, grad_norm: {},\n ----------------- \a'.format(i,current_train_loss,W.grad.data.norm(2)))
             sys.exit()
 
@@ -389,7 +390,7 @@ def main(**kwargs):
     ## Hyper Params SGD weight parametrization
     M = 3
     eta = 0.002 # eta = 1e-6
-    nb_iter = int(100*1000)
+    nb_iter = int(15*1000)
     A = 0.0
     if 'reg_lambda_WP' in kwargs:
         reg_lambda_WP = kwargs['reg_lambda_WP']
@@ -399,7 +400,7 @@ def main(**kwargs):
     M_standard_sgd = 3
     eta_standard_sgd = 0.1 # eta = 1e-6
     #nb_iter_standard_sgd = int(1000)
-    nb_iter_standard_sgd = 1000
+    nb_iter_standard_sgd = 5
     A_standard_sgd = 0.0
     #reg_lambda_SP = 0.0
     if 'reg_lambda_SP' in kwargs:
@@ -408,7 +409,7 @@ def main(**kwargs):
         reg_lambda_SP = reg_lambda_WP
     ##
     logging_freq = 10
-    logging_freq_standard_sgd = 10
+    logging_freq_standard_sgd = 2
     ##
     ## activation params
     # alb, aub = -100, 100
@@ -431,7 +432,7 @@ def main(**kwargs):
     #### 2-layered mdl
     D0 = 30
 
-    H1 = 40
+    H1 = 2
     D0,D1,D2 = D0,H1,1
     D_layers,act = [D0,D1,D2], act
 
@@ -617,7 +618,7 @@ def main(**kwargs):
     test_loss_list_SP,test_loss_list_SP,grad_list_standard_sgd,func_diff_standard_sgd,erm_lamdas_SP,nb_module_params = train_SGD(
         mdl_standard_sgd,data_stand, M_standard_sgd,eta_standard_sgd,nb_iter_standard_sgd,A_standard_sgd ,logging_freq ,dtype,c_pinv, reg_lambda_SP
     )
-    print('training ended!\a')
+    print('training ended!')
     ########################################################################################################################################################
     print('--------- mdl_truth')
     for W in mdl_truth.parameters():
@@ -723,9 +724,12 @@ def main(**kwargs):
     ##
     print('-- test error/Generalization l2 error')
     if f_true ==  None:
-        print('J_gen(f_sgd)_weight = ', (1/N_test)*(mdl_sgd.forward(data.X_test) - Variable(torch.FloatTensor(Y_test)) ).pow(2).sum().data.numpy() )
-        print('J_gen(f_sgd)_standard = ', (1/N_test)*(mdl_standard_sgd.forward(data.Kern_test) - Variable(torch.FloatTensor(Y_test)) ).pow(2).sum().data.numpy() )
-        print('J_gen(f_pinv) = ', (1/N_test)*(np.linalg.norm(Y_test-np.dot( poly_feat.fit_transform(X_test),c_pinv))**2) )
+        test_error_WP = (1/N_test)*(mdl_sgd.forward(data.X_test) - Variable(torch.FloatTensor(Y_test)) ).pow(2).sum().data.numpy()
+        test_error_SP = (1/N_test)*(mdl_standard_sgd.forward(data.Kern_test) - Variable(torch.FloatTensor(Y_test)) ).pow(2).sum().data.numpy()
+        test_error_pinv = (1/N_test)*(np.linalg.norm(Y_test-np.dot( poly_feat.fit_transform(X_test),c_pinv))**2)
+        print('J_gen(f_sgd)_weight = ', test_error_WP )
+        print('J_gen(f_sgd)_standard = ', test_error_SP )
+        print('J_gen(f_pinv) = ', test_error_pinv )
     else:
         f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
         f_pinv = lambda x: f_mdl_LA(x,c_pinv)
@@ -733,11 +737,15 @@ def main(**kwargs):
         print('||f_pinv - f_true||^2_2 = ', L2_norm_2(f=f_pinv,g=f_true,lb=lb,ub=ub))
     ## TRAIN ERRORS of mdls
     print('-- Train Error')
-    print(' J(f_WP) = ', (1/N_train)*(mdl_sgd.forward(data.X_train) - data.Y_train).pow(2).sum().data.numpy() )
-    print(' J(f_SP) = ', (1/N_train)*(mdl_standard_sgd.forward( data.Kern_train ) - data.Y_train ).pow(2).sum().data.numpy() )
-    print(' J(f_pinv) = ',(1/N_train)*(np.linalg.norm(data.Y_train.data.numpy()-np.dot( poly_feat.fit_transform(data.X_train.data.numpy()) ,c_pinv))**2) )
+    train_error_WP = (1/N_train)*(mdl_sgd.forward(data.X_train) - data.Y_train).pow(2).sum().data.numpy()
+    train_error_SP = (1/N_train)*(mdl_standard_sgd.forward( data.Kern_train ) - data.Y_train ).pow(2).sum().data.numpy()
+    train_error_pinv = (1/N_train)*(np.linalg.norm(data.Y_train.data.numpy()-np.dot( poly_feat.fit_transform(data.X_train.data.numpy()) ,c_pinv))**2)
+    print(' J(f_WP) = ', train_error_WP )
+    print(' J(f_SP) = ', train_error_SP )
+    print(' J(f_pinv) = ', train_error_pinv )
     ## Errors with Regularization
-    print(' ERM_lambda(f_WP) = ', get_ERM_lambda(mdl=mdl_sgd,reg_lambda=reg_lambda_WP,X=data.X_train,Y=data.Y_train).data.numpy() )
+    erm_reg_WP = get_ERM_lambda(mdl=mdl_sgd,reg_lambda=reg_lambda_WP,X=data.X_train,Y=data.Y_train).data.numpy()
+    print(' ERM_lambda(f_WP) = ', erm_reg_WP )
     #print(' J(c_rls) = ',(1/N)*(np.linalg.norm(Y-(1/N)*(np.linalg.norm(Y-np.dot( poly_kernel_matrix( x_true,D_sgd-1 ),c_rls))**2) )**2) )
     ## REPORT TIMES
     seconds = (time.time() - start_time)
@@ -746,8 +754,11 @@ def main(**kwargs):
     print("--- %s seconds ---" % seconds )
     print("--- %s minutes ---" % minutes )
     print("--- %s hours ---" % hours )
-    print('\a')
+    ##
+    if kwargs['experiment_type'] == 'serial_multiple_lambdas':
+        return train_error_WP, test_error_WP, erm_reg_WP
     ## plots
+    print('\a')
     if kwargs['plotting']:
         if D0 == 1:
             x_horizontal = np.linspace(lb,ub,1000).reshape(1000,1)
