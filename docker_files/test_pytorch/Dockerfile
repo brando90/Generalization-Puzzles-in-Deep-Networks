@@ -20,6 +20,9 @@ RUN pip3 install scipy
 RUN pip3 install matplotlib
 RUN pip3 install maps
 RUN pip3 install sympy
+RUN pip3 install http://download.pytorch.org/whl/cu80/torch-0.2.0.post3-cp36-cp36m-manylinux1_x86_64.whl
+#RUN pip3 install pytorch
+RUN pip3 install torchvision
 
 # install my library (only when the a container is spun)
 # bash script that configures the running container
