@@ -119,9 +119,9 @@ def main_iterations():
     #lambdas = np.linspace(20,200,num=5)
     #repetitions=5
     ## unit tests
-    iterations = np.linspace(10000,40000,num=10)
+    iterations = np.linspace(10000,60000,num=50)
     iterations = np.array( [ int(iteration) for iteration in iterations ] )
-    repetitions=5
+    repetitions=15
     ##
     save_bulk_experiment = True
     serial_multiple_iterations(iterations=iterations,repetitions=repetitions,save_bulk_experiment=save_bulk_experiment)
@@ -129,8 +129,8 @@ def main_iterations():
 if __name__ == '__main__':
     start_time = time.time()
     ##
-    main_lambda()
-    #main_iterations()
+    #main_lambda()
+    main_iterations()
     ##
     ## REPORT TIMES
     seconds = (time.time() - start_time)
