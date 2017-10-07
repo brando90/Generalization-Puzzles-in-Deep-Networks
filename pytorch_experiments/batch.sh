@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+cd ~/home_simulation_research/overparametrized_experiments/pytorch_experiments
+python ~/home_simulation_research/overparametrized_experiments/pytorch_experiments/bulk_experiment_dispatcher.py
