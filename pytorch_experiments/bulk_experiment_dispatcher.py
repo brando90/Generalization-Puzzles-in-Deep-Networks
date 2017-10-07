@@ -36,6 +36,18 @@ import scipy
 import numpy as np
 import scipy.io
 
+import argparse
+
+def get_argument_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-expt_type','--experiment_type',type=str, help='save the result of the experiment')
+    parser.add_argument('-lb','--lower_bound',type=int, help='lower bound')
+    parser.add_argument('-ub','--upper_bound',type=int, help='upper bound')
+    parser.add_argument('-num','--number_values',type=int, help='number of values in between lb and ub')
+    parser.add_argument('-num_rep','--number_repetitions',type=int, help='number of repetitions per run')
+    parser.add_argument('-save','--save_bulk_experiment',type=bool, help='save the result of the experiment')
+    cmd_args = parser.parse_args()
+    return cmd_args
 
 def serial_multiple_lambdas(**kwargs):
     lambdas, repetitions = kwargs['lambdas'], kwargs['repetitions']
@@ -102,36 +114,43 @@ def serial_multiple_iterations(**kwargs):
 
 ##
 
-def main_lambda():
+def main_lambda(lb, ub, num, num_rep, save):
     ## real experiment
     #lambdas = np.linspace(20,200,num=5)
     #repetitions=5
     ## unit tests
-    one_over_lambdas = np.linspace(50,10000,num=50)
+    one_over_lambdas = np.linspace(lb,ub,num=num)
     lambdas = 1/one_over_lambdas
-    repetitions=15
+    repetitions=num_rep
     ##
-    save_bulk_experiment = True
+    save_bulk_experiment = save
     serial_multiple_lambdas(lambdas=lambdas,repetitions=repetitions,save_bulk_experiment=save_bulk_experiment)
 
-def main_iterations():
+def main_iterations(lb, ub, num, num_rep, save):
     ## real experiment
     #lambdas = np.linspace(20,200,num=5)
     #repetitions=5
     ## unit tests
-    iterations = np.linspace(10000,60000,num=50)
+    iterations = np.linspace(lb,ub,num=num)
     iterations = np.array( [ int(iteration) for iteration in iterations ] )
-    repetitions=15
+    repetitions=num_rep
     ##
-    save_bulk_experiment = True
+    save_bulk_experiment = save
     serial_multiple_iterations(iterations=iterations,repetitions=repetitions,save_bulk_experiment=save_bulk_experiment)
 
 if __name__ == '__main__':
+    cmd_args = get_argument_parser()
+    print(cmd_args)
+    experiment_type, lb,ub,num,num_rep,save = cmd_args.experiment_type, cmd_args.lower_bound, cmd_args.upper_bound, cmd_args.number_values, cmd_args.number_repetitions, cmd_args.save_bulk_experiment
+    ##
     start_time = time.time()
     ##
-    #main_lambda()
-    main_iterations()
-    ##
+    if experiment_type == 'lambda':
+        main_lambda(lb,ub,num,num_rep,save)
+    elif experiment_type == 'iterations':
+        main_iterations(lb,ub,num,num_rep,save)
+    else:
+        raise ValueError('The flag value for expt_type {} is invalid, give a valid experiment.')
     ## REPORT TIMES
     seconds = (time.time() - start_time)
     minutes = seconds/ 60
