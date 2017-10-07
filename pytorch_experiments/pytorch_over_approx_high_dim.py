@@ -393,7 +393,7 @@ def main(**kwargs):
     if 'nb_iterations_WP' in kwargs:
         nb_iter = kwargs['nb_iterations_WP']
     else:
-        nb_iter = int(15*1000)
+        nb_iter = int(25*1000)
     #nb_iter = int(15*1000)
     A = 0.0
     if 'reg_lambda_WP' in kwargs:
@@ -538,6 +538,7 @@ def main(**kwargs):
         ##
         if truth_filename is not None:
             mdl_truth_dict = torch.load('./data/'+truth_filename)
+            #mdl_truth_dict = torch.load(cwd+'/data'+truth_filename)
             print('mdl_truth_dict: ',mdl_truth_dict)
             print('data_filename = {} \n truth_filename = {}'.format(data_filename,truth_filename))
             ##

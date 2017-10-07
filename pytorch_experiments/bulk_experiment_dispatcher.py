@@ -1,3 +1,13 @@
+#!/usr/bin/env python
+#SBATCH --mem=7000
+#SBATCH --time=7-00:00
+#SBATCH --mail-type=END
+#SBATCH --mail-user=brando90@mit.com
+'''
+#SBATCH --array=1-200
+#SBATCH --gres=gpu:1
+'''
+
 import time
 import numpy as np
 import sys
@@ -56,7 +66,7 @@ def serial_multiple_lambdas(**kwargs):
         test_stds[lambda_index] = np.std( test_errors[lambda_index,:] )
     ##
     if kwargs['save_bulk_experiment']:
-        scipy.io.savemat( '../plotting/results/experiment_lambdas_tmp.mat', dict(lambdas=lambdas,one_over_lambdas=one_over_lambdas, train_means=train_means,train_stds=train_stds, test_means=test_means,test_stds=test_stds) )
+        scipy.io.savemat( '../plotting/results/experiment_lambdas_oct7_1.mat', dict(lambdas=lambdas,one_over_lambdas=one_over_lambdas, train_means=train_means,train_stds=train_stds, test_means=test_means,test_stds=test_stds) )
 
 def serial_multiple_iterations(**kwargs):
     iterations, repetitions = kwargs['iterations'], kwargs['repetitions']
@@ -87,7 +97,7 @@ def serial_multiple_iterations(**kwargs):
         test_stds[iter_index] = np.std( test_errors[iter_index,:] )
     ##
     if kwargs['save_bulk_experiment']:
-        scipy.io.savemat( '../plotting/results/experiment_iter_tmp.mat', dict(iterations=iterations, train_means=train_means,train_stds=train_stds, test_means=test_means,test_stds=test_stds) )
+        scipy.io.savemat( '../plotting/results/experiment_iter_oct7_1.mat', dict(iterations=iterations, train_means=train_means,train_stds=train_stds, test_means=test_means,test_stds=test_stds) )
 
 ##
 
@@ -96,9 +106,9 @@ def main_lambda():
     #lambdas = np.linspace(20,200,num=5)
     #repetitions=5
     ## unit tests
-    one_over_lambdas = np.linspace(20,400,num=1)
+    one_over_lambdas = np.linspace(50,10000,num=50)
     lambdas = 1/one_over_lambdas
-    repetitions=1
+    repetitions=15
     ##
     save_bulk_experiment = True
     serial_multiple_lambdas(lambdas=lambdas,repetitions=repetitions,save_bulk_experiment=save_bulk_experiment)
@@ -108,7 +118,7 @@ def main_iterations():
     #lambdas = np.linspace(20,200,num=5)
     #repetitions=5
     ## unit tests
-    iterations = np.linspace(10000,30000,num=5)
+    iterations = np.linspace(10000,40000,num=10)
     iterations = np.array( [ int(iteration) for iteration in iterations ] )
     repetitions=5
     ##
@@ -118,14 +128,14 @@ def main_iterations():
 if __name__ == '__main__':
     start_time = time.time()
     ##
-    #main_lambda()
-    main_iterations()
+    main_lambda()
+    #main_iterations()
     ##
     ## REPORT TIMES
     seconds = (time.time() - start_time)
     minutes = seconds/ 60
     hours = minutes/ 60
-    print()
+    print('\a')
     print("--- %s seconds ---" % seconds )
     print("--- %s minutes ---" % minutes )
     print("--- %s hours ---" % hours )

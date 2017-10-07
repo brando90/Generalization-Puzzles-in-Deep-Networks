@@ -1,12 +1,12 @@
 clear;
 %%
-%prefix_fname='experiment_lambdas';
+prefix_fname='experiment_lambdas_tmp';
 %experiment_iter_tmp.mat
-prefix_fname='experiment_iter_tmp';
+%prefix_fname='experiment_iter_tmp';
 filename = [prefix_fname '.mat'];
 load( ['./results/' filename])
 %%
-if strcmp(filename,'experiment_lambdas.mat')
+if strcmp(filename,'experiment_lambdas.mat') || strcmp(filename,'experiment_lambdas_tmp.mat')
     title_name_train = '1/ \lambda vs train errors';
     title_name_test = '1/ \lambda vs test errors';
     xlabel_name = '1/ \lambda';
