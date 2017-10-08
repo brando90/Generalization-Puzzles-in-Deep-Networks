@@ -46,8 +46,14 @@ def get_argument_parser():
     parser.add_argument('-num','--number_values',type=int, help='number of values in between lb and ub')
     parser.add_argument('-num_rep','--number_repetitions',type=int, help='number of repetitions per run')
     parser.add_argument('-save','--save_bulk_experiment',type=bool, help='save the result of the experiment')
+    parser.add_argument("-sj", "--SLURM_JOBID", help="SLURM_JOBID for run")
     cmd_args = parser.parse_args()
     return cmd_args
+
+cmd_args = get_argument_parser()
+SLURM_JOBID = cmd_args.SLURM_JOBID
+
+##
 
 def serial_multiple_lambdas(**kwargs):
     lambdas, repetitions = kwargs['lambdas'], kwargs['repetitions']
@@ -79,7 +85,7 @@ def serial_multiple_lambdas(**kwargs):
         test_stds[lambda_index] = np.std( test_errors[lambda_index,:] )
     ##
     if kwargs['save_bulk_experiment']:
-        scipy.io.savemat( '../plotting/results/experiment_lambdas_oct7_1.mat', dict(lambdas=lambdas,one_over_lambdas=one_over_lambdas, train_means=train_means,train_stds=train_stds, test_means=test_means,test_stds=test_stds) )
+        scipy.io.savemat( '../plotting/results/experiment_lambdas_oct7_{}.mat'.format(SLURM_JOBID), dict(lambdas=lambdas,one_over_lambdas=one_over_lambdas, train_means=train_means,train_stds=train_stds, test_means=test_means,test_stds=test_stds) )
 
 def serial_multiple_iterations(**kwargs):
     iterations, repetitions = kwargs['iterations'], kwargs['repetitions']
@@ -110,7 +116,7 @@ def serial_multiple_iterations(**kwargs):
         test_stds[iter_index] = np.std( test_errors[iter_index,:] )
     ##
     if kwargs['save_bulk_experiment']:
-        scipy.io.savemat( '../plotting/results/experiment_iter_oct7_1.mat', dict(iterations=iterations, train_means=train_means,train_stds=train_stds, test_means=test_means,test_stds=test_stds) )
+        scipy.io.savemat( '../plotting/results/experiment_iter_oct7_{}.mat'.format(SLURM_JOBID), dict(iterations=iterations, train_means=train_means,train_stds=train_stds, test_means=test_means,test_stds=test_stds) )
 
 ##
 
@@ -139,7 +145,6 @@ def main_iterations(lb, ub, num, num_rep, save):
     serial_multiple_iterations(iterations=iterations,repetitions=repetitions,save_bulk_experiment=save_bulk_experiment)
 
 if __name__ == '__main__':
-    cmd_args = get_argument_parser()
     print(cmd_args)
     experiment_type, lb,ub,num,num_rep,save = cmd_args.experiment_type, cmd_args.lower_bound, cmd_args.upper_bound, cmd_args.number_values, cmd_args.number_repetitions, cmd_args.save_bulk_experiment
     ##
