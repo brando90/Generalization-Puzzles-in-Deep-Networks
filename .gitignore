@@ -154,3 +154,7 @@ octave-workspace
 
 *.mat
 *.fig
+
+
+.autorelabel
+.readahead
