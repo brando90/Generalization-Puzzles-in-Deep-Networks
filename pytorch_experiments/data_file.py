@@ -279,7 +279,7 @@ if __name__ == '__main__':
     act.adegree = adegree
 
     ##
-    D0 = 30
+    D0 = 15
     H1 = 1
     D0,D1,D2 = D0,H1,1
     D_layers,act = [D0,D1,D2], act
@@ -303,7 +303,7 @@ if __name__ == '__main__':
     msg = ''
     mu,std = 0.0,5.0
     #N_train, N_test= 4,5041
-    N_train, N_test= 30,32
+    N_train, N_test= 13,25
     ##
     visualize=False
     save_data = True

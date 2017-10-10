@@ -434,7 +434,7 @@ def main(**kwargs):
     # plot_activation_func(act,lb=palb,ub=paub,N=paN)
     # plt.show()
     #### 2-layered mdl
-    D0 = 30
+    D0 = 15
 
     H1 = 2
     D0,D1,D2 = D0,H1,1
@@ -490,6 +490,7 @@ def main(**kwargs):
     data_filename, truth_filename = None, None
     init_config_data = Maps({})
     f_true = None
+    print('run_type = ', run_type)
     if run_type == 'sine':
         collect_functional_diffs = False
         collect_generalization_diffs = True
@@ -532,10 +533,12 @@ def main(**kwargs):
         #data_filename='data_numpy_type_mdl=WP_D_layers_[2, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_4_N_test_5041_lb_-1_ub_1_act_quad_ax2_bx_c_nb_params_4_msg_.npz'
         #
         ## n=9,D=12, linear!
-        truth_filename='data_gen_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_'
-        data_filename='data_numpy_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_.npz'
+        #truth_filename='data_gen_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_'
+        #data_filename='data_numpy_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_.npz'
         #truth_filename ='data_gen_type_mdl=WP_D_layers_[2, 10, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_9_N_test_5041_lb_-1_ub_1_act_poly_act_degree3_nb_params_40_msg_1st_2nd_units_are_zero'
         ##
+        truth_filename='data_gen_type_mdl=WP_D_layers_[15, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_13_N_test_25_lb_-1_ub_1_act_linear_nb_params_17_msg_'
+        data_filename='data_numpy_type_mdl=WP_D_layers_[15, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_13_N_test_25_lb_-1_ub_1_act_linear_nb_params_17_msg_.npz'
         if truth_filename is not None:
             mdl_truth_dict = torch.load('./data/'+truth_filename)
             #mdl_truth_dict = torch.load(cwd+'/data'+truth_filename)
@@ -913,12 +916,12 @@ def main(**kwargs):
 
 if __name__ == '__main__':
     print('__main__ started')
-    #main(experiment_type='quick_run',plotting=True)
+    main(experiment_type='quick_run',plotting=True)
     ##
-    run_type = 'h_add'
-    run_type = 'h_gabor'
+    #run_type = 'h_add'
+    #run_type = 'h_gabor'
     #N_train, N_test = 16, 2025 ## 4**2, 45**2
-    N_train, N_test = 16, 5041 ## 4**2, 71**2
-    save_data_set_mdl_sgd(path='./data/{}', run_type=run_type, lb=-1,ub=1,N_train=N_train,N_test=N_test,msg='',visualize=True)
+    #N_train, N_test = 16, 5041 ## 4**2, 71**2
+    #save_data_set_mdl_sgd(path='./data/{}', run_type=run_type, lb=-1,ub=1,N_train=N_train,N_test=N_test,msg='',visualize=True)
     print('End')
     print('\a')
