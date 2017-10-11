@@ -388,12 +388,12 @@ def main(**kwargs):
     debug_sgd = False
     #debug_sgd = True
     ## Hyper Params SGD weight parametrization
-    M = 3
+    M = 6
     eta = 0.002 # eta = 1e-6
     if 'nb_iterations_WP' in kwargs:
         nb_iter = kwargs['nb_iterations_WP']
     else:
-        nb_iter = int(25*1000)
+        nb_iter = int(80*1000)
     #nb_iter = int(15*1000)
     A = 0.0
     if 'reg_lambda_WP' in kwargs:
@@ -401,10 +401,10 @@ def main(**kwargs):
     else:
         reg_lambda_WP = 0.0
     ## Hyper Params SGD standard parametrization
-    M_standard_sgd = 3
-    eta_standard_sgd = 0.1 # eta = 1e-6
+    M_standard_sgd = 6
+    eta_standard_sgd = 0.002 # eta = 1e-6
     #nb_iter_standard_sgd = int(1000)
-    nb_iter_standard_sgd = 5
+    nb_iter_standard_sgd = nb_iter
     A_standard_sgd = 0.0
     #reg_lambda_SP = 0.0
     if 'reg_lambda_SP' in kwargs:
@@ -412,21 +412,22 @@ def main(**kwargs):
     else:
         reg_lambda_SP = reg_lambda_WP
     ##
-    logging_freq = 10
-    logging_freq_standard_sgd = 2
+    logging_freq = 100
+    logging_freq_standard_sgd = 100
     ##
     ## activation params
-    # alb, aub = -100, 100
-    # aN = 100
+    #adegree = 2
+    #alb, aub = -100, 100
+    #aN = 100
+    #act = get_relu_poly_act(degree=adegree,lb=alb,ub=aub,N=aN) # ax**2+bx+c
+    ##
+    adegree = 2
     ax = np.concatenate( (np.linspace(-20,20,100), np.linspace(-10,10,1000)) )
     aX = np.concatenate( (ax,np.linspace(-2,2,100000)) )
-    ## activation funcs
-    adegree = 1
     act, c_pinv_relu = get_relu_poly_act2(aX,degree=adegree) # ax**2+bx+c, #[1, x^1, ..., x^D]
-    #act = get_relu_poly_act(degree=adegree,lb=alb,ub=aub,N=aN) # ax**2+bx+c
     #act = relu
-    act = lambda x: x
-    act.__name__ = 'linear'
+    #act = lambda x: x
+    #act.__name__ = 'linear'
     ## plot activation
     # palb, paub = -20, 20
     # paN = 1000
@@ -434,9 +435,9 @@ def main(**kwargs):
     # plot_activation_func(act,lb=palb,ub=paub,N=paN)
     # plt.show()
     #### 2-layered mdl
-    D0 = 15
+    D0 = 3
 
-    H1 = 2
+    H1 = 12
     D0,D1,D2 = D0,H1,1
     D_layers,act = [D0,D1,D2], act
 
@@ -537,8 +538,11 @@ def main(**kwargs):
         #data_filename='data_numpy_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_.npz'
         #truth_filename ='data_gen_type_mdl=WP_D_layers_[2, 10, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_9_N_test_5041_lb_-1_ub_1_act_poly_act_degree3_nb_params_40_msg_1st_2nd_units_are_zero'
         ##
-        truth_filename='data_gen_type_mdl=WP_D_layers_[15, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_13_N_test_25_lb_-1_ub_1_act_linear_nb_params_17_msg_'
-        data_filename='data_numpy_type_mdl=WP_D_layers_[15, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_13_N_test_25_lb_-1_ub_1_act_linear_nb_params_17_msg_.npz'
+        #truth_filename='data_gen_type_mdl=WP_D_layers_[15, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_13_N_test_25_lb_-1_ub_1_act_linear_nb_params_17_msg_'
+        #data_filename='data_numpy_type_mdl=WP_D_layers_[15, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_13_N_test_25_lb_-1_ub_1_act_linear_nb_params_17_msg_.npz'
+        ##
+        truth_filename='data_gen_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_'
+        data_filename='data_numpy_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_.npz'
         if truth_filename is not None:
             mdl_truth_dict = torch.load('./data/'+truth_filename)
             #mdl_truth_dict = torch.load(cwd+'/data'+truth_filename)
@@ -615,6 +619,7 @@ def main(**kwargs):
     ## check number of monomials
     nb_monomials = int(scipy.misc.comb(D0+Degree_mdl,Degree_mdl))
     print('>>>>>>>>>>>>> nb_monomials={}, c_pinv.shape[0]={} \n '.format(nb_monomials,c_pinv.shape[0]) )
+    print('count_params(mdl_WP) {} '.format( count_params(mdl_sgd) ))
     if c_pinv.shape[0] != int(scipy.misc.comb(D0+Degree_mdl,Degree_mdl)):
        raise ValueError('nb of monomials dont match D0={},Degree_mdl={}, number of monimials fron pinv={}, number of monomials analyticall = {}'.format( D0,Degree_mdl,c_pinv.shape[0],int(scipy.misc.comb(D0+Degree_mdl,Degree_mdl)) )    )
     ########################################################################################################################################################
@@ -643,6 +648,7 @@ def main(**kwargs):
     ########################################################################################################################################################
     ## SGD pNN
     nb_params = count_params(mdl_sgd)
+    #pdb.set_trace()
     ## Do SYMPY magic
     if len(D_layers) <= 2:
         c_WP = list(mdl_sgd.parameters())[0].data.numpy()

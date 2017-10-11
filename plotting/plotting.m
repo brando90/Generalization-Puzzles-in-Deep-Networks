@@ -1,12 +1,14 @@
 clear;
+disp('--------------')
 %%
-prefix_fname='experiment_lambdas_tmp';
+prefix_fname='experiment_lambdas_oct7_9521236';
+%prefix_fname='experiment_iter_oct7_9521402.mat';
 %experiment_iter_tmp.mat
 %prefix_fname='experiment_iter_tmp';
-filename = [prefix_fname '.mat'];
+filename = [prefix_fname '.mat']
 load( ['./results/' filename])
 %%
-if strcmp(filename,'experiment_lambdas.mat') || strcmp(filename,'experiment_lambdas_tmp.mat')
+if contains(filename,'lambda')
     title_name_train = '1/ \lambda vs train errors';
     title_name_test = '1/ \lambda vs test errors';
     xlabel_name = '1/ \lambda';
@@ -30,6 +32,7 @@ else
     test_errors_bars = test_stds;
 end
 %%
+fprintf('size(x_axis) = %d %d', size(x_axis))
 x_axis
 train_errors
 train_errors_bars
@@ -37,17 +40,20 @@ test_errors
 test_errors_bars
 %% SUBPLOTS
 fig = figure;
+fig.PaperPositionMode = 'auto';
 subplot(2,1,1)
 errorbar(x_axis,train_errors,train_errors_bars,'-bx','MarkerEdgeColor','blue')
 title(title_name_train)
 xlabel(xlabel_name);ylabel(ylabel_name);
 legend('train');
+%ylim([0 1.5*10^-3])
 
 subplot(2,1,2)
 errorbar(x_axis,test_errors,test_errors_bars,'-rx','MarkerEdgeColor','red')
 title(title_name_test)
 xlabel(xlabel_name);ylabel(ylabel_name)
 legend('test');
+%ylim([0.2 0.6])
 
 %%
 saveas(fig,strcat('fig_',prefix_fname))

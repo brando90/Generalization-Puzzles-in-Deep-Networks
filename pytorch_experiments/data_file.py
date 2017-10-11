@@ -271,15 +271,22 @@ def visualize(X,Y,Z,title_name='Test function'):
 if __name__ == '__main__':
     #X,Y,Z = generate_meshgrid_h_add(N=60000,start_val=-1,end_val=1)
     #visualize(X,Y,Z)
-    adegree=1
-    # act = get_relu_poly_act(degree=adegree,lb=-1,ub=1,N=100)
-    #act = quadratic
-    act = lambda x: x
-    act.__name__ = 'linear'
-    act.adegree = adegree
-
+    ## activation params
+    #adegree = 2
+    #alb, aub = -100, 100
+    #aN = 100
+    #act = get_relu_poly_act(degree=adegree,lb=alb,ub=aub,N=aN) # ax**2+bx+c
     ##
-    D0 = 15
+    adegree = 2
+    ax = np.concatenate( (np.linspace(-20,20,100), np.linspace(-10,10,1000)) )
+    aX = np.concatenate( (ax,np.linspace(-2,2,100000)) )
+    act, c_pinv_relu = get_relu_poly_act2(aX,degree=adegree) # ax**2+bx+c, #[1, x^1, ..., x^D]
+    #act = relu
+    #act = lambda x: x
+    #act.__name__ = 'linear'
+    act.adegree = adegree
+    ##
+    D0 = 3
     H1 = 1
     D0,D1,D2 = D0,H1,1
     D_layers,act = [D0,D1,D2], act
@@ -303,7 +310,7 @@ if __name__ == '__main__':
     msg = ''
     mu,std = 0.0,5.0
     #N_train, N_test= 4,5041
-    N_train, N_test= 13,25
+    N_train, N_test= 8,20
     ##
     visualize=False
     save_data = True
