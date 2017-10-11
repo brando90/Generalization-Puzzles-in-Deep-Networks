@@ -286,7 +286,7 @@ if __name__ == '__main__':
     #act.__name__ = 'linear'
     act.adegree = adegree
     ##
-    D0 = 3
+    D0 = 2
     H1 = 1
     D0,D1,D2 = D0,H1,1
     D_layers,act = [D0,D1,D2], act

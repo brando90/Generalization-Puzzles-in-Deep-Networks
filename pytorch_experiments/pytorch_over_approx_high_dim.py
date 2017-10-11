@@ -301,7 +301,8 @@ def stats_logger(mdl, data, eta,loss_list,test_loss_list,grad_list,func_diff,erm
             print('\n----------------- ERROR HAPPENED \a')
             print('reg_lambda', reg_lambda)
             print('error happened at: i = {} current_train_loss: {}, grad_norm: {},\n ----------------- \a'.format(i,current_train_loss,W.grad.data.norm(2)))
-            sys.exit()
+            #sys.exit()
+            raise ValueError('Nan Detected')
 
 def standard_tickhonov_reg(mdl,l):
     lp_reg = None
@@ -404,7 +405,7 @@ def main(**kwargs):
     M_standard_sgd = 6
     eta_standard_sgd = 0.002 # eta = 1e-6
     #nb_iter_standard_sgd = int(1000)
-    nb_iter_standard_sgd = nb_iter
+    nb_iter_standard_sgd = 10
     A_standard_sgd = 0.0
     #reg_lambda_SP = 0.0
     if 'reg_lambda_SP' in kwargs:
@@ -413,7 +414,7 @@ def main(**kwargs):
         reg_lambda_SP = reg_lambda_WP
     ##
     logging_freq = 100
-    logging_freq_standard_sgd = 100
+    logging_freq_standard_sgd = 5
     ##
     ## activation params
     #adegree = 2
@@ -624,9 +625,18 @@ def main(**kwargs):
        raise ValueError('nb of monomials dont match D0={},Degree_mdl={}, number of monimials fron pinv={}, number of monomials analyticall = {}'.format( D0,Degree_mdl,c_pinv.shape[0],int(scipy.misc.comb(D0+Degree_mdl,Degree_mdl)) )    )
     ########################################################################################################################################################
     print('Weight Parametrization SGD training')
-    train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params = train_SGD(
-        mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv, reg_lambda_WP
-    )
+    keep_training=True
+    while keep_training:
+        try:
+            train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params = train_SGD(
+                mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv, reg_lambda_WP
+            )
+            keep_training=False
+        except ValueError:
+            print('Nan was caught, going to restart training')
+            w_inits_sgd, b_inits_sgd = get_initialization(init_config)
+            mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,biases=biases)
+    ##
     print('Standard Parametrization SGD training')
     test_loss_list_SP,test_loss_list_SP,grad_list_standard_sgd,func_diff_standard_sgd,erm_lamdas_SP,nb_module_params = train_SGD(
         mdl_standard_sgd,data_stand, M_standard_sgd,eta_standard_sgd,nb_iter_standard_sgd,A_standard_sgd ,logging_freq ,dtype,c_pinv, reg_lambda_SP
