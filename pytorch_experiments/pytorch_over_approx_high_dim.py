@@ -272,7 +272,7 @@ def print_debug():
         if debug_sgd:
             print('------------- grad_norm={} delta={} ',grad_norm,delta.norm(2))
 
-def stats_logger(mdl, data, eta,loss_list,test_loss_list,grad_list,func_diff,erm_lamdas, i,c_pinv, reg_lambda):
+def stats_logger(arg, mdl, data, eta,loss_list,test_loss_list,grad_list,func_diff,erm_lamdas, i,c_pinv, reg_lambda):
     N_train,_ = tuple(data.X_train.size())
     N_test,_ = tuple(data.X_test.size())
     ## log: TRAIN ERROR
@@ -289,7 +289,7 @@ def stats_logger(mdl, data, eta,loss_list,test_loss_list,grad_list,func_diff,erm
     gen_diff = (1/N_test)*(y_test_sgd - y_test_pinv).pow(2).sum().data.numpy()
     func_diff.append( float(gen_diff) )
     ## ERM + regularization
-    erm_reg = get_ERM_lambda(mdl,reg_lambda,X=data.X_train,Y=data.Y_train,l=2).data.numpy()
+    erm_reg = get_ERM_lambda(arg,mdl,reg_lambda,X=data.X_train,Y=data.Y_train,l=2).data.numpy()
     erm_lamdas.append( float(erm_reg) )
     ##
     #func_diff_stand_weight( (1/N_test)*(y_test_sgd - y_test_pinv).pow(2).sum().data.numpy() )
@@ -304,7 +304,7 @@ def stats_logger(mdl, data, eta,loss_list,test_loss_list,grad_list,func_diff,erm
             #sys.exit()
             raise ValueError('Nan Detected')
 
-def standard_tickhonov_reg(mdl,l):
+def standard_tikhonov_reg(mdl,l):
     lp_reg = None
     for W in mdl.parameters():
         if lp_reg is None:
@@ -323,20 +323,37 @@ def VW_reg(mdl,l):
     reg = VW.norm(l)
     return reg
 
-def get_ERM_lambda(mdl,reg_lambda,X,Y,l=2):
+def V2W_reg(mdl,l):
+    ##
+    b_w = mdl[1].bias
+    W_p = mdl[1].weight
+    V = mdl[2].weight
+    ## TODO
+    pass
+
+def get_ERM_lambda(arg, mdl,reg_lambda,X,Y,l=2):
     M, _ = tuple( X.size() )
     ## compute regularization
     #reg = standard_tickhonov_reg(mdl,l)
     if type(mdl) ==  NN: # WP
-        reg = VW_reg(mdl,l)
+        #print(arg.reg_type)
+        if arg.reg_type == 'VW':
+            reg = VW_reg(mdl,l)
+        elif arg.reg_type == 'V[^2W':
+            reg = V2W(mdl,l)
+        elif arg.reg_type == 'tikhonov':
+            reg = standard_tikhonov_reg(mdl,l)
+        else:
+            print('Error, arg.reg_type = {} is not valid'.format(arg.reg_type))
+            sys.exit()
     else: # SP
-        reg = standard_tickhonov_reg(mdl,l)
+        reg = standard_tikhonov_reg(mdl,l)
     ##
     y_pred = mdl.forward(X)
     batch_loss = (1/M)*(y_pred - Y).pow(2).sum() + reg*reg_lambda
     return batch_loss
 
-def train_SGD(mdl,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv,reg_lambda):
+def train_SGD(arg, mdl,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv,reg_lambda):
     '''
     '''
     nb_module_params = len( list(mdl.parameters()) )
@@ -354,7 +371,7 @@ def train_SGD(mdl,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv,reg_lambda):
         y_pred = mdl.forward(batch_xs)
         ## LOSS + Regularization
         if reg_lambda != 0:
-            batch_loss = get_ERM_lambda(mdl,reg_lambda,X=batch_xs,Y=batch_ys,l=2)
+            batch_loss = get_ERM_lambda(arg, mdl,reg_lambda,X=batch_xs,Y=batch_ys,l=2)
         else:
             batch_loss = (1/M)*(y_pred - batch_ys).pow(2).sum()
         ## BACKARD PASS
@@ -365,7 +382,7 @@ def train_SGD(mdl,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv,reg_lambda):
             W.data.copy_(W.data - delta) # W - eta*g + A*gdl_eps
         ## stats logger
         if i % logging_freq == 0:
-            stats_logger(mdl, data, eta,loss_list,test_loss_list,grad_list,func_diff,erm_lamdas, i,c_pinv, reg_lambda)
+            stats_logger(arg, mdl, data, eta,loss_list,test_loss_list,grad_list,func_diff,erm_lamdas, i,c_pinv, reg_lambda)
         ## train stats
         if i % (nb_iter/10) == 0 or i == 0:
             current_train_loss = (1/N_train)*(mdl.forward(data.X_train) - data.Y_train).pow(2).sum().data.numpy()
@@ -389,7 +406,7 @@ def main(**kwargs):
     debug_sgd = False
     #debug_sgd = True
     ## Hyper Params SGD weight parametrization
-    M = 6
+    M = 3
     eta = 0.002 # eta = 1e-6
     if 'nb_iterations_WP' in kwargs:
         nb_iter = kwargs['nb_iterations_WP']
@@ -402,7 +419,7 @@ def main(**kwargs):
     else:
         reg_lambda_WP = 0.0
     ## Hyper Params SGD standard parametrization
-    M_standard_sgd = 6
+    M_standard_sgd = 3
     eta_standard_sgd = 0.002 # eta = 1e-6
     #nb_iter_standard_sgd = int(1000)
     nb_iter_standard_sgd = 10
@@ -415,69 +432,6 @@ def main(**kwargs):
     ##
     logging_freq = 100
     logging_freq_standard_sgd = 5
-    ##
-    ## activation params
-    #adegree = 2
-    #alb, aub = -100, 100
-    #aN = 100
-    #act = get_relu_poly_act(degree=adegree,lb=alb,ub=aub,N=aN) # ax**2+bx+c
-    ##
-    adegree = 2
-    ax = np.concatenate( (np.linspace(-20,20,100), np.linspace(-10,10,1000)) )
-    aX = np.concatenate( (ax,np.linspace(-2,2,100000)) )
-    act, c_pinv_relu = get_relu_poly_act2(aX,degree=adegree) # ax**2+bx+c, #[1, x^1, ..., x^D]
-    #act = relu
-    #act = lambda x: x
-    #act.__name__ = 'linear'
-    ## plot activation
-    # palb, paub = -20, 20
-    # paN = 1000
-    # print('Plotting activation function')
-    # plot_activation_func(act,lb=palb,ub=paub,N=paN)
-    # plt.show()
-    #### 2-layered mdl
-    D0 = 3
-
-    H1 = 12
-    D0,D1,D2 = D0,H1,1
-    D_layers,act = [D0,D1,D2], act
-
-    # H1,H2 = 20,20
-    # D0,D1,D2,D3 = D0,H1,H2,1
-    # D_layers,act = [D0,D1,D2,D3], act
-
-    # H1,H2,H3 = 15,15,15
-    # D0,D1,D2,D3,D4 = D0,H1,H2,H3,1
-    # D_layers,act = [D0,D1,D2,D3,D4], act
-
-    # H1,H2,H3,H4 = 25,25,25,25
-    # D0,D1,D2,D3,D4,D5 = D0,H1,H2,H3,H4,1
-    # D_layers,act = [D0,D1,D2,D3,D4,D5], act
-
-    nb_layers = len(D_layers)-1 #the number of layers include the last layer (the regression layer)
-    biases = [None] + [True] + (nb_layers-1)*[False] #bias only in first layer
-    #biases = [None] + (nb_layers)*[True] # biases in every layer
-    #pdb.set_trace()
-    start_time = time.time()
-    ##
-    np.set_printoptions(suppress=True)
-    lb, ub = -1, 1
-    ## mdl degree and D
-    nb_hidden_layers = nb_layers-1 #note the last "layer" is a summation layer for regression and does not increase the degree of the polynomial
-    Degree_mdl = adegree**( nb_hidden_layers ) # only hidden layers have activation functions
-    #### 1-layered mdl
-    # identity_act = lambda x: x
-    # D_1,D_2 = D_sgd,1 # note D^(0) is not present cuz the polyomial is explicitly constructed by me
-    # D_layers,act = [D_1,D_2], identity_act
-    # init_config = Maps( {'name':'w_init_normal','mu':0.0,'std':1.0} )
-    # if init_config.name == 'w_init_normal':
-    #     w_inits = [None]+[lambda x: w_init_normal(x,mu=init_config.mu,std=init_config.std) for i in range(len(D_layers)) ]
-    # elif init_config.name == 'w_init_zero':
-    #     w_inits = [None]+[lambda x: w_init_zero(x) for i in range(len(D_layers)) ]
-    # ##b_inits = [None]+[lambda x: b_fill(x,value=0.1) for i in range(len(D_layers)) ]
-    # ##b_inits = [None]+[lambda x: b_fill(x,value=0.0) for i in range(len(D_layers)) ]
-    # b_inits = []
-    # bias = False
     #### Get Data set
     if kwargs['experiment_type'] == 'data_generation': # empty dictionaries evluate to false
     #experiment_type='data_generation'
@@ -544,6 +498,9 @@ def main(**kwargs):
         ##
         truth_filename='data_gen_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_'
         data_filename='data_numpy_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_.npz'
+        ##
+        #truth_filename='data_gen_type_mdl=WP_D_layers_[2, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_4_N_test_25_lb_-1_ub_1_act_poly_act_degree2_nb_params_4_msg_'
+        #data_filename='data_numpy_type_mdl=WP_D_layers_[2, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_4_N_test_25_lb_-1_ub_1_act_poly_act_degree2_nb_params_4_msg_.npz'
         if truth_filename is not None:
             mdl_truth_dict = torch.load('./data/'+truth_filename)
             #mdl_truth_dict = torch.load(cwd+'/data'+truth_filename)
@@ -556,7 +513,7 @@ def main(**kwargs):
         X_train, Y_train = data['X_train'], data['Y_train']
         #X_train, Y_train = X_train[0:6], Y_train[0:6]
         X_test, Y_test = data['X_test'], data['Y_test']
-        D_data = D0
+        D_data = X_test.shape[1]
     elif run_type == 'h_add':
         #collect_functional_diffs = True
         collect_functional_diffs = False
@@ -593,6 +550,69 @@ def main(**kwargs):
     N_train,_ = X_train.shape
     N_test,_ = X_test.shape
     print('N_train = {}, N_test = {}'.format(N_train,N_test))
+    ## activation params
+    #adegree = 2
+    #alb, aub = -100, 100
+    #aN = 100
+    #act = get_relu_poly_act(degree=adegree,lb=alb,ub=aub,N=aN) # ax**2+bx+c
+    ##
+    adegree = 2
+    ax = np.concatenate( (np.linspace(-20,20,100), np.linspace(-10,10,1000)) )
+    aX = np.concatenate( (ax,np.linspace(-2,2,100000)) )
+    act, c_pinv_relu = get_relu_poly_act2(aX,degree=adegree) # ax**2+bx+c, #[1, x^1, ..., x^D]
+    print('c_pinv_relu = ', c_pinv_relu)
+    #act = relu
+    #act = lambda x: x
+    #act.__name__ = 'linear'
+    ## plot activation
+    # palb, paub = -20, 20
+    # paN = 1000
+    # print('Plotting activation function')
+    # plot_activation_func(act,lb=palb,ub=paub,N=paN)
+    # plt.show()
+    #### 2-layered mdl
+    D0 = D_data
+
+    H1 = 12
+    D0,D1,D2 = D0,H1,1
+    D_layers,act = [D0,D1,D2], act
+
+    # H1,H2 = 20,20
+    # D0,D1,D2,D3 = D0,H1,H2,1
+    # D_layers,act = [D0,D1,D2,D3], act
+
+    # H1,H2,H3 = 15,15,15
+    # D0,D1,D2,D3,D4 = D0,H1,H2,H3,1
+    # D_layers,act = [D0,D1,D2,D3,D4], act
+
+    # H1,H2,H3,H4 = 25,25,25,25
+    # D0,D1,D2,D3,D4,D5 = D0,H1,H2,H3,H4,1
+    # D_layers,act = [D0,D1,D2,D3,D4,D5], act
+
+    nb_layers = len(D_layers)-1 #the number of layers include the last layer (the regression layer)
+    biases = [None] + [True] + (nb_layers-1)*[False] #bias only in first layer
+    #biases = [None] + (nb_layers)*[True] # biases in every layer
+    #pdb.set_trace()
+    start_time = time.time()
+    ##
+    np.set_printoptions(suppress=True)
+    lb, ub = -1, 1
+    ## mdl degree and D
+    nb_hidden_layers = nb_layers-1 #note the last "layer" is a summation layer for regression and does not increase the degree of the polynomial
+    Degree_mdl = adegree**( nb_hidden_layers ) # only hidden layers have activation functions
+    #### 1-layered mdl
+    # identity_act = lambda x: x
+    # D_1,D_2 = D_sgd,1 # note D^(0) is not present cuz the polyomial is explicitly constructed by me
+    # D_layers,act = [D_1,D_2], identity_act
+    # init_config = Maps( {'name':'w_init_normal','mu':0.0,'std':1.0} )
+    # if init_config.name == 'w_init_normal':
+    #     w_inits = [None]+[lambda x: w_init_normal(x,mu=init_config.mu,std=init_config.std) for i in range(len(D_layers)) ]
+    # elif init_config.name == 'w_init_zero':
+    #     w_inits = [None]+[lambda x: w_init_zero(x) for i in range(len(D_layers)) ]
+    # ##b_inits = [None]+[lambda x: b_fill(x,value=0.1) for i in range(len(D_layers)) ]
+    # ##b_inits = [None]+[lambda x: b_fill(x,value=0.0) for i in range(len(D_layers)) ]
+    # b_inits = []
+    # bias = False
     ## Lift data/Kernelize data
     poly_feat = PolynomialFeatures(degree=Degree_mdl)
     Kern_train = poly_feat.fit_transform(X_train)
@@ -625,11 +645,18 @@ def main(**kwargs):
        raise ValueError('nb of monomials dont match D0={},Degree_mdl={}, number of monimials fron pinv={}, number of monomials analyticall = {}'.format( D0,Degree_mdl,c_pinv.shape[0],int(scipy.misc.comb(D0+Degree_mdl,Degree_mdl)) )    )
     ########################################################################################################################################################
     print('Weight Parametrization SGD training')
+    if 'reg_type_wp' in kwargs:
+        reg_type_wp = kwargs['reg_type_wp']
+    else:
+        reg_type_wp = 'tikhonov'
+    print('reg_type_wp = ', reg_type_wp)
+    ##
+    arg = Maps(reg_type=reg_type_wp)
     keep_training=True
     while keep_training:
         try:
             train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params = train_SGD(
-                mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv, reg_lambda_WP
+                arg,mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv, reg_lambda_WP
             )
             keep_training=False
         except ValueError:
@@ -638,8 +665,9 @@ def main(**kwargs):
             mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,biases=biases)
     ##
     print('Standard Parametrization SGD training')
+    arg = Maps(reg_type='tikhonov')
     test_loss_list_SP,test_loss_list_SP,grad_list_standard_sgd,func_diff_standard_sgd,erm_lamdas_SP,nb_module_params = train_SGD(
-        mdl_standard_sgd,data_stand, M_standard_sgd,eta_standard_sgd,nb_iter_standard_sgd,A_standard_sgd ,logging_freq ,dtype,c_pinv, reg_lambda_SP
+        arg,mdl_standard_sgd,data_stand, M_standard_sgd,eta_standard_sgd,nb_iter_standard_sgd,A_standard_sgd ,logging_freq ,dtype,c_pinv, reg_lambda_SP
     )
     print('training ended!')
     ########################################################################################################################################################
@@ -768,7 +796,7 @@ def main(**kwargs):
     print(' J(f_SP) = ', train_error_SP )
     print(' J(f_pinv) = ', train_error_pinv )
     ## Errors with Regularization
-    erm_reg_WP = get_ERM_lambda(mdl=mdl_sgd,reg_lambda=reg_lambda_WP,X=data.X_train,Y=data.Y_train).data.numpy()
+    erm_reg_WP = get_ERM_lambda(arg=arg, mdl=mdl_sgd,reg_lambda=reg_lambda_WP,X=data.X_train,Y=data.Y_train).data.numpy()
     print(' ERM_lambda(f_WP) = ', erm_reg_WP )
     #print(' J(c_rls) = ',(1/N)*(np.linalg.norm(Y-(1/N)*(np.linalg.norm(Y-np.dot( poly_kernel_matrix( x_true,D_sgd-1 ),c_rls))**2) )**2) )
     ## REPORT TIMES

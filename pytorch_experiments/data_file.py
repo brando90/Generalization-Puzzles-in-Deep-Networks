@@ -281,6 +281,7 @@ if __name__ == '__main__':
     ax = np.concatenate( (np.linspace(-20,20,100), np.linspace(-10,10,1000)) )
     aX = np.concatenate( (ax,np.linspace(-2,2,100000)) )
     act, c_pinv_relu = get_relu_poly_act2(aX,degree=adegree) # ax**2+bx+c, #[1, x^1, ..., x^D]
+    print('c_pinv_relu = ', c_pinv_relu)
     #act = relu
     #act = lambda x: x
     #act.__name__ = 'linear'
@@ -310,7 +311,7 @@ if __name__ == '__main__':
     msg = ''
     mu,std = 0.0,5.0
     #N_train, N_test= 4,5041
-    N_train, N_test= 8,20
+    N_train, N_test= 4,25
     ##
     visualize=False
     save_data = True
