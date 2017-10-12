@@ -87,9 +87,11 @@ def serial_multiple_lambdas(**kwargs):
         test_stds[lambda_index] = np.std( test_errors[lambda_index,:] )
     ##
     if kwargs['save_bulk_experiment']:
-        scipy.io.savemat( '../plotting/results/experiment_lambdas_oct7_{}.mat'.format(SLURM_JOBID), dict(lambdas=lambdas,one_over_lambdas=one_over_lambdas, train_means=train_means,train_stds=train_stds, test_means=test_means,test_stds=test_stds) )
+        path_to_save = '../plotting/results/experiment_lambdas_oct7_{}.mat'.format(SLURM_JOBID)
+        scipy.io.savemat( path_to_save, dict(lambdas=lambdas,one_over_lambdas=one_over_lambdas, train_means=train_means,train_stds=train_stds, test_means=test_means,test_stds=test_stds) )
 
 def serial_multiple_iterations(**kwargs):
+    print('serial_multiple_iterations')
     iterations, repetitions = kwargs['iterations'], kwargs['repetitions']
     nb_iterations = iterations.shape[0]
     ##
@@ -118,7 +120,9 @@ def serial_multiple_iterations(**kwargs):
         test_stds[iter_index] = np.std( test_errors[iter_index,:] )
     ##
     if kwargs['save_bulk_experiment']:
-        scipy.io.savemat( '../plotting/results/experiment_iter_oct7_{}.mat'.format(SLURM_JOBID), dict(iterations=iterations, train_means=train_means,train_stds=train_stds, test_means=test_means,test_stds=test_stds) )
+        print('save_bulk_experiment')
+        path_to_save = '../plotting/results/experiment_iter_oct7_{}.mat'.format(SLURM_JOBID)
+        scipy.io.savemat( path_to_save, dict(iterations=iterations, train_means=train_means,train_stds=train_stds, test_means=test_means,test_stds=test_stds) )
 
 ##
 

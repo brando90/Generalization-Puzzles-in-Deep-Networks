@@ -566,7 +566,7 @@ def main(**kwargs):
     #act.__name__ = 'linear'
     ## plot activation
     # palb, paub = -20, 20
-    # paN = 1000
+    # paN = 1000swqb
     # print('Plotting activation function')
     # plot_activation_func(act,lb=palb,ub=paub,N=paN)
     # plt.show()
