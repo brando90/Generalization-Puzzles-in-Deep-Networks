@@ -38,21 +38,21 @@ import scipy.io
 
 import argparse
 
-def get_argument_parser():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-expt_type','--experiment_type',type=str, help='save the result of the experiment')
-    parser.add_argument('-lb','--lower_bound',type=int, help='lower bound')
-    parser.add_argument('-ub','--upper_bound',type=int, help='upper bound')
-    parser.add_argument('-num','--number_values',type=int, help='number of values in between lb and ub')
-    parser.add_argument('-num_rep','--number_repetitions',type=int, help='number of repetitions per run')
-    parser.add_argument('-save','--save_bulk_experiment',type=bool, help='save the result of the experiment')
-    parser.add_argument('-sj', '--SLURM_JOBID', help='SLURM_JOBID for run')
-    parser.add_argument('-rt_wp', '--reg_type_wp', type=str, default='tikhonov', help='Regularization Type for WP. e.g: VM, tikhonov, V[^2W, etc')
-    cmd_args = parser.parse_args()
-    return cmd_args
-
-cmd_args = get_argument_parser()
-SLURM_JOBID = cmd_args.SLURM_JOBID
+# def get_argument_parser():
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument('-expt_type','--experiment_type',type=str, help='save the result of the experiment')
+#     parser.add_argument('-lb','--lower_bound',type=int, help='lower bound')
+#     parser.add_argument('-ub','--upper_bound',type=int, help='upper bound')
+#     parser.add_argument('-num','--number_values',type=int, help='number of values in between lb and ub')
+#     parser.add_argument('-num_rep','--number_repetitions',type=int, help='number of repetitions per run')
+#     parser.add_argument('-save','--save_bulk_experiment',type=bool, help='save the result of the experiment')
+#     parser.add_argument('-sj', '--SLURM_JOBID', help='SLURM_JOBID for run')
+#     parser.add_argument('-rt_wp', '--reg_type_wp', type=str, default='tikhonov', help='Regularization Type for WP. e.g: VM, tikhonov, V[^2W, etc')
+#     cmd_args = parser.parse_args()
+#     return cmd_args
+#
+# cmd_args = get_argument_parser()
+# SLURM_JOBID = cmd_args.SLURM_JOBID
 
 ##
 
