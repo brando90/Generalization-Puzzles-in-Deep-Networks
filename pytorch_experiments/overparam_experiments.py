@@ -107,11 +107,13 @@ def my_main(**kwargs):
     noise_train, noise_test = np.random.normal(loc=mu_noise,scale=std_noise,size=(N_train,D0)), np.random.normal(loc=mu_noise,scale=std_noise,size=(N_test,D0))
     X_train, X_test = np.random.rand(N_train,D0), np.random.rand(N_test,D0)
     # get data points
-    poly_feat = PolynomialFeatures(degree=Degree_data_set)
-    Kern_train = poly_feat.fit_transform(X_train)
-    Kern_test = poly_feat.fit_transform(X_test)
-    Y_train = np.dot(Kern_train,c_mdl)+noise_train
-    Y_test = np.dot(Kern_test,c_mdl)+noise_test
+    #poly_feat = PolynomialFeatures(degree=Degree_data_set)
+    #Kern_train = poly_feat.fit_transform(X_train)
+    #Kern_test = poly_feat.fit_transform(X_test)
+    #Y_train = np.dot(Kern_train,c_mdl)+noise_train
+    #Y_test = np.dot(Kern_test,c_mdl)+noise_test
+
+    Y_train, Y_test = generate_h_add_1d(X_train,noise_train), generate_h_add_1d(X_test,noise_test)
     ## get errors from models
     degrees = list(range(1,45,1))
     train_errors, test_errors = get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees)

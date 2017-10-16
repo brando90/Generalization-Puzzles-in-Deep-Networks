@@ -245,6 +245,15 @@ def load(path):
     # return data_generator
     pass
 
+def generate_h_add_1d(X,noise=0):
+    Z = np.sin(1.8*np.pi*X) + X**2
+    return Z+noise
+
+def generate_h_add(X,noise=0):
+    x,y = X[:,0], X[:,1]
+    Z = np.sin(1.8*np.pi*x) + np.cos(1.5*np.pi*y)
+    return Z+noise
+
 def generate_meshgrid_h_add(N=60000,start_val=-1,end_val=1):
     (X,Y) = generate_meshgrid(N,start_val,end_val)
     #Z = sin(2*pi*X) + 4*(Y - 0.5).^2; %% h_add
