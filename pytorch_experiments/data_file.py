@@ -17,6 +17,9 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import axes3d, Axes3D
 from matplotlib import cm
 
+import scipy
+import scipy.io
+
 def count_params(mdl):
     '''
     count the number of parameters of a pytorch model
@@ -245,9 +248,30 @@ def load(path):
     # return data_generator
     pass
 
-def generate_h_add_1d(X,noise=0):
-    Z = np.sin(1.8*np.pi*X) + X**2
+##
+
+def get_input_X():
+    X_train, X_test = 2*np.random.rand(N_train,D0)-1, 2*np.random.rand(N_test,D0)-1
+
+def generate_h_gabor_1d(X,noise=0):
+    Z = np.exp( -(X**2) )*np.cos(6*np.pi*(X))
     return Z+noise
+
+def generate_h_add_1d(X,noise=0):
+    Z = np.sin(10*np.pi*X) + np.cos(8*np.pi*X)
+    return Z+noise
+
+def get_target_Y_SP_poly(X_train,X_test,Degree_data_set,noise_train=0,noise_test=0):
+    ## get data points
+    poly_feat = PolynomialFeatures(degree=Degree_data_set)
+    ## create poly features
+    Kern_train = poly_feat.fit_transform(X_train)
+    Kern_test = poly_feat.fit_transform(X_test)
+    ## evaluate target function
+    Y_train = np.dot(Kern_train,c_mdl)
+    Y_test = np.dot(Kern_test,c_mdl)
+    ## add noise to target
+    return Y_train+noise_train, Y_test+noise_test
 
 def generate_h_add(X,noise=0):
     x,y = X[:,0], X[:,1]
@@ -268,6 +292,8 @@ def generate_meshgrid_h_gabor(N=60000,start_val=-1,end_val=1):
     (X,Y) = generate_meshgrid(N,start_val,end_val)
     Z = np.exp( -(X**2 + Y**2) )*np.cos(2*np.pi*(X+Y))
     return X,Y,Z
+
+##
 
 def visualize(X,Y,Z,title_name='Test function'):
     #Xp,Yp,Zp = make_meshgrid_data_from_training_data(X_data=X_test, Y_data=Y_test)

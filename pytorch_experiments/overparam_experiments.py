@@ -25,7 +25,7 @@ import scipy.io
 
 import argparse
 
-SLURM_JOBID = 2
+SLURM_JOBID = 3
 
 # def get_argument_parser():
 #     parser = argparse.ArgumentParser()
@@ -91,31 +91,35 @@ def get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees):
 def my_main(**kwargs):
     ##
     start_time = time.time()
-    ##
     plotting = kwargs['plotting'] if 'plotting' in kwargs else False
-    D0 = 1
-    ## Get data set
-    # get points
-    Degree_data_set = 4
-    nb_monomials_data = get_nb_monomials(nb_variables=D0,degree=Degree_data_set)
-    print( 'nb_monomials_data = {}'.format(nb_monomials_data) )
-    #c_mdl = np.random.rand(nb_monomials_data,1)
-    c_mdl = np.random.normal(loc=2.0,scale=1.0,size=(nb_monomials_data,1))
-    N_train, N_test = 5, 500*nb_monomials_data # N_train <= nb_monomials_data
-    print('N_train = {}, N_test = {}'.format(N_train,N_test))
-    mu_noise, std_noise = 0, 0.008
-    noise_train, noise_test = np.random.normal(loc=mu_noise,scale=std_noise,size=(N_train,D0)), np.random.normal(loc=mu_noise,scale=std_noise,size=(N_test,D0))
-    X_train, X_test = np.random.rand(N_train,D0), np.random.rand(N_test,D0)
-    # get data points
-    #poly_feat = PolynomialFeatures(degree=Degree_data_set)
-    #Kern_train = poly_feat.fit_transform(X_train)
-    #Kern_test = poly_feat.fit_transform(X_test)
-    #Y_train = np.dot(Kern_train,c_mdl)+noise_train
-    #Y_test = np.dot(Kern_test,c_mdl)+noise_test
-
-    Y_train, Y_test = generate_h_add_1d(X_train,noise_train), generate_h_add_1d(X_test,noise_test)
+    ## get target Y
+    if 'file_name' in kwargs:
+        mat_dict = scipy.io.loadmat(file_name=kwargs['file_name'])
+        #locals().update(mat_dict)
+        for k,v in mat_dict.items():
+            print(k,'__' not in k and k != 'None')
+            if '__' not in k and k != 'None':
+                cmd = '{} = mat_dict[\'{}\']'.format(k,k)
+                exec( cmd )
+    else:
+        ## get X input points
+        D0 = 1
+        N_train, N_test = 63, 435
+        print('D0 = {}, N_train = {}, N_test = {}'.format(D0,N_train,N_test))
+        ## get target function
+        Degree_data_set = 300
+        nb_monomials_data = get_nb_monomials(nb_variables=D0,degree=Degree_data_set)
+        c_mdl = np.random.normal(loc=2.0,scale=1.0,size=(nb_monomials_data,1))
+        print( 'nb_monomials_data = {}'.format(nb_monomials_data) )
+        ## get noise for target Y
+        mu_noise, std_noise = 0, 0.0
+        noise_train, noise_test = np.random.normal(loc=mu_noise,scale=std_noise,size=(N_train,D0)), np.random.normal(loc=mu_noise,scale=std_noise,size=(N_test,D0))
+        ## get target Y
+        Y_train, Y_test = get_target_Y_SP_poly(X_train,X_test, Degree_data_set,c_data_gen, noise_train=noise_train,noise_test=noise_test)
     ## get errors from models
-    degrees = list(range(1,45,1))
+    degrees = list(range(1,120,2))
+    #
+    pdb.set_trace()
     train_errors, test_errors = get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees)
     ## plot them
     monomials = [ get_nb_monomials(nb_variables=D0,degree=d) for d in degrees ]
@@ -136,16 +140,17 @@ def my_main(**kwargs):
         path_to_save = '../plotting/results/overfit_param_pinv_{}.mat'.format(SLURM_JOBID)
         scipy.io.savemat( path_to_save, dict(monomials=monomials,train_errors=train_errors,test_errors=test_errors,
             N_train=N_train,N_test=N_test,
-            c_mdl=c_mdl,nb_monomials_data=nb_monomials_data,
+            Degree_data_set=Degree_data_set,c_mdl=c_mdl,nb_monomials_data=nb_monomials_data,
             mu_noise=mu_noise,std_noise=std_noise,
-            X_train=X_train, X_test=X_test,
+            X_train=X_train, X_test=X_test, Y_train=Y_train, Y_test=Y_test,
             title_fig='Training data size: {}'.format(N_train)) )
 
 if __name__ == '__main__':
     ##
     start_time = time.time()
     ##
-    plotting = False
-    my_main(plotting=plotting,save_overparam_experiment=True)
+    #my_main(plotting=False,save_overparam_experiment=True)
+    ##
+    my_main(plotting=False,save_overparam_experiment=True,mat_load=True,file_name='../plotting/results/overfit_param_pinv_tommy_email2.mat')
     ##
     print('\a')
