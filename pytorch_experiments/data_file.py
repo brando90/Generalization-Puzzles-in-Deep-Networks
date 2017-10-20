@@ -254,14 +254,17 @@ def get_input_X():
     X_train, X_test = 2*np.random.rand(N_train,D0)-1, 2*np.random.rand(N_test,D0)-1
 
 def generate_h_gabor_1d(X,noise=0):
-    Z = np.exp( -(X**2) )*np.cos(6*np.pi*(X))
+    Z = np.exp( -(X**2) )*np.cos(4*np.pi*(X))
     return Z+noise
 
 def generate_h_add_1d(X,noise=0):
     Z = np.sin(10*np.pi*X) + np.cos(8*np.pi*X)
     return Z+noise
 
-def get_target_Y_SP_poly(X_train,X_test,Degree_data_set,noise_train=0,noise_test=0):
+def my_sin(X,period=10):
+    return np.sin(period*np.pi*X)
+
+def get_target_Y_SP_poly(X_train,X_test,Degree_data_set,c_mdl,noise_train=0,noise_test=0):
     ## get data points
     poly_feat = PolynomialFeatures(degree=Degree_data_set)
     ## create poly features
@@ -271,7 +274,8 @@ def get_target_Y_SP_poly(X_train,X_test,Degree_data_set,noise_train=0,noise_test
     Y_train = np.dot(Kern_train,c_mdl)
     Y_test = np.dot(Kern_test,c_mdl)
     ## add noise to target
-    return Y_train+noise_train, Y_test+noise_test
+    Y_train, Y_test = Y_train+noise_train, Y_test+noise_test
+    return Y_train, Y_test
 
 def generate_h_add(X,noise=0):
     x,y = X[:,0], X[:,1]
