@@ -264,19 +264,6 @@ def generate_h_add_1d(X,noise=0):
 def my_sin(X,period=10):
     return np.sin(period*np.pi*X)
 
-def get_target_Y_SP_poly(X_train,X_test,Degree_data_set,c_mdl,noise_train=0,noise_test=0):
-    ## get data points
-    poly_feat = PolynomialFeatures(degree=Degree_data_set)
-    ## create poly features
-    Kern_train = poly_feat.fit_transform(X_train)
-    Kern_test = poly_feat.fit_transform(X_test)
-    ## evaluate target function
-    Y_train = np.dot(Kern_train,c_mdl)
-    Y_test = np.dot(Kern_test,c_mdl)
-    ## add noise to target
-    Y_train, Y_test = Y_train+noise_train, Y_test+noise_test
-    return Y_train, Y_test
-
 def generate_h_add(X,noise=0):
     x,y = X[:,0], X[:,1]
     Z = np.sin(1.8*np.pi*x) + np.cos(1.5*np.pi*y)

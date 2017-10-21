@@ -46,7 +46,20 @@ SLURM_JOBID = 6
 
 ##
 
-def get_c_fit_function(target_f,D0,degree_mdl,N,lb=-1,ub=1):
+def get_target_Y_SP_poly(X_train,X_test,Degree_data_set,c_mdl,noise_train=0,noise_test=0):
+    ## get data points
+    poly_feat = PolynomialFeatures(degree=Degree_data_set)
+    ## create poly features
+    Kern_train = poly_feat.fit_transform(X_train)
+    Kern_test = poly_feat.fit_transform(X_test)
+    ## evaluate target function
+    Y_train = np.dot(Kern_train,c_mdl)
+    Y_test = np.dot(Kern_test,c_mdl)
+    ## add noise to target
+    Y_train, Y_test = Y_train+noise_train, Y_test+noise_test
+    return Y_train, Y_test
+
+def get_c_fit_function(target_f,D0,degree_mdl,N,lb,ub):
     ## evaluate target_f on x_points
     X = np.linspace(lb,ub,N).reshape(N,D0) # [N,D0]
     Y = target_f(X) #
@@ -54,6 +67,7 @@ def get_c_fit_function(target_f,D0,degree_mdl,N,lb=-1,ub=1):
     poly_feat = PolynomialFeatures(degree=degree_mdl)
     Kern = poly_feat.fit_transform(X)
     c_mdl = np.dot(np.linalg.pinv( Kern ), Y)
+    c_mdl = np.polyfit(X.reshape((N,)),Y.reshape((N,)),degree_mdl)[::-1]
     #c_mdl = np.polyfit(X.reshape((N,)),Y.reshape((N,)),deg=degree_mdl)
     return c_mdl
 
@@ -64,28 +78,33 @@ def get_c_fit_data(X,Y,degree_mdl):
     c_mdl = np.dot(np.linalg.pinv( Kern ), Y)
     return c_mdl
 
-def plot_target_function(c_mdl,X_train,Y_train):
+def plot_target_function(c_mdl,X_train,Y_train,lb,ub,f_2_imitate):
     '''
     Note: training data os govem to visualize the training data set with the model
     '''
     deg = c_mdl.shape[0]-1
     ## plotting data (note this is NOT training data)
     N=5000
-    x_plot_points = np.linspace(-1,1,N).reshape(N,1) # [N,1]
+    x_plot_points = np.linspace(lb,ub,N).reshape(N,1) # [N,1]
     ## evaluate the model given on plot points
     poly_feat = PolynomialFeatures(degree=deg)
     Kern_plot_points = poly_feat.fit_transform(x_plot_points)
     y_plot_points = np.dot(Kern_plot_points,c_mdl)
     #
+    x_for_f = np.linspace(lb,ub,30000)
+    #pdb.set_trace()
+    y_for_f = f_2_imitate( x_for_f )
+    #
     p_mdl, = plt.plot(x_plot_points,y_plot_points)
+    p_f_2_imitate, = plt.plot(x_for_f,y_for_f)
     p_training_data, = plt.plot(X_train,Y_train,'ro')
-    plt.legend([p_mdl,p_training_data], ['Target function f(x) of degree {}'.format(deg),'data points'])
+    plt.legend([p_mdl,p_f_2_imitate,p_training_data], ['Target function f(x) of degree {}'.format(deg),'f trying to imitate','data points'])
     ##
     plt.xlabel('x')
     plt.ylabel('f(x)')
     plt.title('Target Function of degree {}'.format(deg))
 
-def plot_poly_with_params(c_mdl,X_train,Y_train):
+def plot_poly_with_params(c_mdl,X_train,Y_train,lb,ub):
     '''
     Note: training data os govem to visualize the training data set with the model
     '''
@@ -93,7 +112,7 @@ def plot_poly_with_params(c_mdl,X_train,Y_train):
     deg = c_mdl.shape[0]-1
     ## plotting data (note this is NOT training data)
     N=5000
-    x_plot_points = np.linspace(-1,1,N).reshape(N,1) # [N,1]
+    x_plot_points = np.linspace(lb,ub,N).reshape(N,1) # [N,1]
     ## evaluate the model given on plot points
     poly_feat = PolynomialFeatures(degree=deg)
     Kern_plot_points = poly_feat.fit_transform(x_plot_points)
@@ -144,6 +163,7 @@ def get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees):
         Kern_train_pinv = np.linalg.pinv( Kern_train )
         #Kern_train_pinv = my_pinv(Kern_train)
         c_pinv = np.dot(Kern_train_pinv, Y_train) # c = <K^+,Y>
+        c_pinv = np.polyfit(X_train.reshape((N_train,)),Y_train.reshape((N_train,)),degree_mdl)[::-1]
         #pdb.set_trace()
         #c_pinv = np.polyfit(X_train.reshape((N_train,)),Y_train.reshape((N_train,)),deg=degree_mdl)
         ##
@@ -171,7 +191,7 @@ def get_c(nb_monomials_data):
 
 def my_main(**kwargs):
     ##
-    lb,ub = -1,1
+    lb,ub = -2,2
     start_time = time.time()
     plotting = kwargs['plotting'] if 'plotting' in kwargs else False
     freq = -1
@@ -186,22 +206,24 @@ def my_main(**kwargs):
     else:
         ## get X input points
         D0 = 1
-        N_train, N_test = 31, 500
+        N_train, N_test = 150, 1000
         print('D0 = {}, N_train = {}, N_test = {}'.format(D0,N_train,N_test))
         #X_train, X_test = 2*np.random.rand(N_train,D0)-1, 2*np.random.rand(N_test,D0)-1
         #X_train, X_test = 2*np.random.rand(N_train,D0)-1, 2*np.random.rand(N_test,D0)-1
         X_train, X_test = np.linspace(lb,ub,N_train).reshape(N_train,D0), np.linspace(lb,ub,N_test).reshape(N_test,D0)
         #X_train = np.concatenate( (X_train, X_test) ,axis=0)
         ## get target function
-        Degree_data_set = 30
+        Degree_data_set = 200
         nb_monomials_data = get_nb_monomials(nb_variables=D0,degree=Degree_data_set)
         #c_mdl = np.arange(1,nb_monomials_data+1).reshape((nb_monomials_data,1))+np.random.normal(loc=3.0,scale=1.0,size=(nb_monomials_data,1))
         #c_mdl = get_c(nb_monomials_data) # [D,1]
         #c_mdl = get_c_fit_function(generate_h_add_1d,D0,Degree_data_set,N=3*N_test,lb=-1,ub=1)
         #c_mdl = get_c_fit_function(generate_h_gabor_1d,D0,Degree_data_set,N=3*N_test,lb=-1,ub=1)
-        freq_sin, freq_cos = 15, 5
+        freq_sin = 15
+        freq_cos = 2
         freq = max(freq_sin, freq_cos)
-        c_mdl = get_c_fit_function(lambda x: np.cos(freq_cos*2*np.pi*x), D0,Degree_data_set, N=110, lb=lb,ub=ub) # [Deg,1] sin with period k
+        f_2_imitate = lambda x: np.cos(freq_cos*2*np.pi*x)
+        c_mdl = get_c_fit_function(f_2_imitate, D0,Degree_data_set, N=2000*N_test, lb=lb,ub=ub) # [Deg,1] sin with period k
         #c_mdl = get_c_fit_function(lambda x: np.exp( -(x**2) )*np.cos(4*np.pi*(x)),  D0,Degree_data_set, N=3*N_test, lb=lb,ub=ub)
         #c_mdl = get_c_fit_function(lambda x: np.exp( -(x**2) )*( np.cos(freq_sin*np.pi*(x)) + np.sin(freq_cos*np.pi*(x)) ),  D0,Degree_data_set, N=30*N_test, lb=lb,ub=ub)
         ##
@@ -219,8 +241,9 @@ def my_main(**kwargs):
         ## get target Y
         Y_train, Y_test = get_target_Y_SP_poly(X_train,X_test, Degree_data_set,c_mdl, noise_train=noise_train,noise_test=noise_test)
     ## get errors from models
-    smallest_deg,largest_deg = 1,45
-    degrees = list(range(smallest_deg,largest_deg,1))
+    step_deg=2
+    smallest_deg,largest_deg = 1,200
+    degrees = list(range(smallest_deg,largest_deg,step_deg))
     train_errors,test_errors,ranks,s_inv_total,s_inv_max = get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees)
     ##
     print('train_errors = ', train_errors)
@@ -239,14 +262,14 @@ def my_main(**kwargs):
     ##
     poly_feat = PolynomialFeatures(degree=Degree_data_set)
     Kern_mdl_truth = poly_feat.fit_transform(X_train)
-    i = np.linalg.inv(Kern_mdl_truth)
     print('Degree_data_set = {}'.format(Degree_data_set))
     print('rank(Kern_mdl_truth) = {}'.format( matrix_rank(Kern_mdl_truth) ))
     print('N_train = {} '.format(N_train))
     print('Kern_mdl_truth.shape = {}'.format(Kern_mdl_truth.shape))
     c_mdl_deg_truth = get_c_fit_data(X_train,Y_train,Degree_data_set) # model with same degree as truth but trained on training set
-    c_mdl_deg_truth = np.dot(i,Y_train)
-    c_mdl_deg_truth = np.linalg.solve(Kern_mdl_truth,Y_train)
+    #i = np.linalg.inv(Kern_mdl_truth)
+    #c_mdl_deg_truth = np.dot(i,Y_train)
+    #c_mdl_deg_truth = np.linalg.solve(Kern_mdl_truth,Y_train)
     y_truth = np.dot(Kern_mdl_truth,c_mdl)
     y_mdl_deg_truth = np.dot(Kern_mdl_truth,c_mdl_deg_truth)
     print('|| <X_train,c_mdl> - <X_train,c_mdl_deg_truth> ||^2 = {}'.format( np.linalg.norm(y_truth-Y_train) ) )
@@ -255,7 +278,7 @@ def my_main(**kwargs):
     if plotting:
         if D0 == 1:
             ## plot target func
-            plot_target_function(c_mdl,X_train,Y_train)
+            plot_target_function(c_mdl,X_train,Y_train,lb=lb,ub=ub,f_2_imitate=f_2_imitate)
             ## plot models to check
             c_mdls_2_plot = {}
             low_mdl,middle_mdl,high_mdl =int(largest_deg/4),int(largest_deg/2),largest_deg
@@ -267,11 +290,11 @@ def my_main(**kwargs):
             c_mdls_2_plot[middle_mdl] = get_c_fit_data(X_train,Y_train,middle_mdl)
             c_mdls_2_plot[high_mdl] = get_c_fit_data(X_train,Y_train,high_mdl)
             ##
-            plot_poly_with_params(c_mdls_2_plot[Degree_data_set],X_train,Y_train)
+            plot_poly_with_params(c_mdls_2_plot[Degree_data_set],X_train,Y_train,lb=lb,ub=ub)
 
-            plot_poly_with_params(c_mdls_2_plot[low_mdl],X_train,Y_train)
-            plot_poly_with_params(c_mdls_2_plot[middle_mdl],X_train,Y_train)
-            plot_poly_with_params(c_mdls_2_plot[high_mdl],X_train,Y_train)
+            plot_poly_with_params(c_mdls_2_plot[low_mdl],X_train,Y_train,lb=lb,ub=ub)
+            plot_poly_with_params(c_mdls_2_plot[middle_mdl],X_train,Y_train,lb=lb,ub=ub)
+            plot_poly_with_params(c_mdls_2_plot[high_mdl],X_train,Y_train,lb=lb,ub=ub)
         ## plot errors
         plot_fig4(monomials,train_errors,test_errors,N_train,N_test)
         ## plot ranks
