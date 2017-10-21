@@ -79,7 +79,7 @@ def plot_target_function(c_mdl,X_train,Y_train):
     #
     p_mdl, = plt.plot(x_plot_points,y_plot_points)
     p_training_data, = plt.plot(X_train,Y_train,'ro')
-    plt.legend([p_training_data,p_training_data], ['Target function f(x) of degree {}'.format(deg),'data points'])
+    plt.legend([p_mdl,p_training_data], ['Target function f(x) of degree {}'.format(deg),'data points'])
     ##
     plt.xlabel('x')
     plt.ylabel('f(x)')
@@ -186,21 +186,25 @@ def my_main(**kwargs):
     else:
         ## get X input points
         D0 = 1
-        N_train, N_test = 25, 500
+        N_train, N_test = 31, 500
         print('D0 = {}, N_train = {}, N_test = {}'.format(D0,N_train,N_test))
         #X_train, X_test = 2*np.random.rand(N_train,D0)-1, 2*np.random.rand(N_test,D0)-1
         #X_train, X_test = 2*np.random.rand(N_train,D0)-1, 2*np.random.rand(N_test,D0)-1
         X_train, X_test = np.linspace(lb,ub,N_train).reshape(N_train,D0), np.linspace(lb,ub,N_test).reshape(N_test,D0)
         #X_train = np.concatenate( (X_train, X_test) ,axis=0)
         ## get target function
-        Degree_data_set = 15
+        Degree_data_set = 30
         nb_monomials_data = get_nb_monomials(nb_variables=D0,degree=Degree_data_set)
         #c_mdl = np.arange(1,nb_monomials_data+1).reshape((nb_monomials_data,1))+np.random.normal(loc=3.0,scale=1.0,size=(nb_monomials_data,1))
         #c_mdl = get_c(nb_monomials_data) # [D,1]
         #c_mdl = get_c_fit_function(generate_h_add_1d,D0,Degree_data_set,N=3*N_test,lb=-1,ub=1)
         #c_mdl = get_c_fit_function(generate_h_gabor_1d,D0,Degree_data_set,N=3*N_test,lb=-1,ub=1)
-        freq =1.5
-        c_mdl = get_c_fit_function(lambda x: np.cos(freq*2*np.pi*x), D0,Degree_data_set, N=3*N_test, lb=lb,ub=ub) # [Deg,1] sin with period k
+        freq_sin, freq_cos = 15, 5
+        freq = max(freq_sin, freq_cos)
+        c_mdl = get_c_fit_function(lambda x: np.cos(freq_cos*2*np.pi*x), D0,Degree_data_set, N=110, lb=lb,ub=ub) # [Deg,1] sin with period k
+        #c_mdl = get_c_fit_function(lambda x: np.exp( -(x**2) )*np.cos(4*np.pi*(x)),  D0,Degree_data_set, N=3*N_test, lb=lb,ub=ub)
+        #c_mdl = get_c_fit_function(lambda x: np.exp( -(x**2) )*( np.cos(freq_sin*np.pi*(x)) + np.sin(freq_cos*np.pi*(x)) ),  D0,Degree_data_set, N=30*N_test, lb=lb,ub=ub)
+        ##
         def f_data(x):
             poly_feat = PolynomialFeatures(degree=Degree_data_set)
             Kern = poly_feat.fit_transform(x)
@@ -215,7 +219,7 @@ def my_main(**kwargs):
         ## get target Y
         Y_train, Y_test = get_target_Y_SP_poly(X_train,X_test, Degree_data_set,c_mdl, noise_train=noise_train,noise_test=noise_test)
     ## get errors from models
-    smallest_deg,largest_deg = 1,50
+    smallest_deg,largest_deg = 1,45
     degrees = list(range(smallest_deg,largest_deg,1))
     train_errors,test_errors,ranks,s_inv_total,s_inv_max = get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees)
     ##
@@ -229,16 +233,42 @@ def my_main(**kwargs):
     hours = minutes/ 60
     print("\a--- {} seconds --- \n --- {} minutes --- \n --- {} hours ---".format(seconds, minutes, hours) )
     print('f_s > 2F_max = N_train > 4 freq = {} > 4*{} =  {} > {} ?, Is it true: {}'.format(N_train,freq, N_train,4*freq, N_train>4*freq))
+    print('number of zeros sine = {}'.format( int( 2*2/(1/freq_sin) )   ))
+    print('number of zeros cos = {}'.format( int( 2*2/(1/freq_cos) )    ))
+    print('total number of zeros = {}'.format(   int( 2*2/(1/freq_cos) ) + int( 2*2/(1/freq_sin) )   ))
+    ##
+    poly_feat = PolynomialFeatures(degree=Degree_data_set)
+    Kern_mdl_truth = poly_feat.fit_transform(X_train)
+    i = np.linalg.inv(Kern_mdl_truth)
+    print('Degree_data_set = {}'.format(Degree_data_set))
+    print('rank(Kern_mdl_truth) = {}'.format( matrix_rank(Kern_mdl_truth) ))
+    print('N_train = {} '.format(N_train))
+    print('Kern_mdl_truth.shape = {}'.format(Kern_mdl_truth.shape))
+    c_mdl_deg_truth = get_c_fit_data(X_train,Y_train,Degree_data_set) # model with same degree as truth but trained on training set
+    c_mdl_deg_truth = np.dot(i,Y_train)
+    c_mdl_deg_truth = np.linalg.solve(Kern_mdl_truth,Y_train)
+    y_truth = np.dot(Kern_mdl_truth,c_mdl)
+    y_mdl_deg_truth = np.dot(Kern_mdl_truth,c_mdl_deg_truth)
+    print('|| <X_train,c_mdl> - <X_train,c_mdl_deg_truth> ||^2 = {}'.format( np.linalg.norm(y_truth-Y_train) ) )
+    print( '|| <X_train,c_mdl> - <X_train,c_mdl_deg_truth> ||^2 = {}'.format( np.linalg.norm(y_truth-y_mdl_deg_truth) ) )
+    print('||c_truth - c_mdl_deg_truth||^2 = {}'.format( np.linalg.norm(c_mdl - c_mdl_deg_truth) ))
     if plotting:
         if D0 == 1:
             ## plot target func
             plot_target_function(c_mdl,X_train,Y_train)
             ## plot models to check
             c_mdls_2_plot = {}
-            low_mdl,middle_mdl,high_mdl =12,16,200
+            low_mdl,middle_mdl,high_mdl =int(largest_deg/4),int(largest_deg/2),largest_deg
+            #low_mdl,middle_mdl,high_mdl = 21,22,23
+            ##
+            c_mdls_2_plot[Degree_data_set] = get_c_fit_data(X_train,Y_train,Degree_data_set)
+            ##
             c_mdls_2_plot[low_mdl] = get_c_fit_data(X_train,Y_train,low_mdl)
             c_mdls_2_plot[middle_mdl] = get_c_fit_data(X_train,Y_train,middle_mdl)
             c_mdls_2_plot[high_mdl] = get_c_fit_data(X_train,Y_train,high_mdl)
+            ##
+            plot_poly_with_params(c_mdls_2_plot[Degree_data_set],X_train,Y_train)
+
             plot_poly_with_params(c_mdls_2_plot[low_mdl],X_train,Y_train)
             plot_poly_with_params(c_mdls_2_plot[middle_mdl],X_train,Y_train)
             plot_poly_with_params(c_mdls_2_plot[high_mdl],X_train,Y_train)
@@ -253,16 +283,16 @@ def my_main(**kwargs):
         plt.xlabel('Monomials')
         plt.ylabel('Rank')
         plt.title('Rank of data set')
-        ##
-        fig1 = plt.figure()
-        p_s_inv_total, = plt.plot(monomials,s_inv_total,'c')
-        p_s_inv_max, = plt.plot(monomials,s_inv_max,'m')
-        p_v = plt.axvline(x=N_train,color='g',linestyle='--')
-        plt.legend([p_s_inv_total,p_s_inv_max,p_v], ['1/singular values total', '1/singular values max',
-            '# Training data = {}'.format(N_train)])
-        plt.xlabel('Monomials')
-        plt.ylabel('1/singular values')
-        plt.title('1/singular values statistics of data set')
+        ## plot singular values
+        # fig1 = plt.figure()
+        # p_s_inv_total, = plt.plot(monomials,s_inv_total,'c')
+        # p_s_inv_max, = plt.plot(monomials,s_inv_max,'m')
+        # p_v = plt.axvline(x=N_train,color='g',linestyle='--')
+        # plt.legend([p_s_inv_total,p_s_inv_max,p_v], ['1/singular values total', '1/singular values max',
+        #     '# Training data = {}'.format(N_train)])
+        # plt.xlabel('Monomials')
+        # plt.ylabel('1/singular values')
+        # plt.title('1/singular values statistics of data set')
         ##
         plt.show()
     ##
