@@ -66,9 +66,8 @@ def get_c_fit_function(target_f,D0,degree_mdl,N,lb,ub):
     ## copy that f with the target degree polynomial
     poly_feat = PolynomialFeatures(degree=degree_mdl)
     Kern = poly_feat.fit_transform(X)
-    c_mdl = np.dot(np.linalg.pinv( Kern ), Y)
+    #c_mdl = np.dot(np.linalg.pinv( Kern ), Y)
     c_mdl = np.polyfit(X.reshape((N,)),Y.reshape((N,)),degree_mdl)[::-1]
-    #c_mdl = np.polyfit(X.reshape((N,)),Y.reshape((N,)),deg=degree_mdl)
     return c_mdl
 
 def get_c_fit_data(X,Y,degree_mdl):
@@ -213,7 +212,7 @@ def my_main(**kwargs):
         X_train, X_test = np.linspace(lb,ub,N_train).reshape(N_train,D0), np.linspace(lb,ub,N_test).reshape(N_test,D0)
         #X_train = np.concatenate( (X_train, X_test) ,axis=0)
         ## get target function
-        Degree_data_set = 200
+        Degree_data_set = 80
         nb_monomials_data = get_nb_monomials(nb_variables=D0,degree=Degree_data_set)
         #c_mdl = np.arange(1,nb_monomials_data+1).reshape((nb_monomials_data,1))+np.random.normal(loc=3.0,scale=1.0,size=(nb_monomials_data,1))
         #c_mdl = get_c(nb_monomials_data) # [D,1]
@@ -223,7 +222,7 @@ def my_main(**kwargs):
         freq_cos = 2
         freq = max(freq_sin, freq_cos)
         f_2_imitate = lambda x: np.cos(freq_cos*2*np.pi*x)
-        c_mdl = get_c_fit_function(f_2_imitate, D0,Degree_data_set, N=2000*N_test, lb=lb,ub=ub) # [Deg,1] sin with period k
+        c_mdl = get_c_fit_function(f_2_imitate, D0,Degree_data_set, N=20000, lb=lb,ub=ub) # [Deg,1] sin with period k
         #c_mdl = get_c_fit_function(lambda x: np.exp( -(x**2) )*np.cos(4*np.pi*(x)),  D0,Degree_data_set, N=3*N_test, lb=lb,ub=ub)
         #c_mdl = get_c_fit_function(lambda x: np.exp( -(x**2) )*( np.cos(freq_sin*np.pi*(x)) + np.sin(freq_cos*np.pi*(x)) ),  D0,Degree_data_set, N=30*N_test, lb=lb,ub=ub)
         ##
