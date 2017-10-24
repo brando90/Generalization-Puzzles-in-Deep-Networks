@@ -64,17 +64,25 @@ def get_c_fit_function(target_f,D0,degree_mdl,N,lb,ub):
     X = np.linspace(lb,ub,N).reshape(N,D0) # [N,D0]
     Y = target_f(X) #
     ## copy that f with the target degree polynomial
-    poly_feat = PolynomialFeatures(degree=degree_mdl)
-    Kern = poly_feat.fit_transform(X)
+    #poly_feat = PolynomialFeatures(degree=degree_mdl)
+    #Kern = poly_feat.fit_transform(X)
     #c_mdl = np.dot(np.linalg.pinv( Kern ), Y)
+    print(X.shape)
+    print(Y.shape)
+    print(N)
     c_mdl = np.polyfit(X.reshape((N,)),Y.reshape((N,)),degree_mdl)[::-1]
     return c_mdl
 
 def get_c_fit_data(X,Y,degree_mdl):
+    N = X.shape[0]
     ## copy that f with the target degree polynomial
     poly_feat = PolynomialFeatures(degree=degree_mdl)
     Kern = poly_feat.fit_transform(X)
-    c_mdl = np.dot(np.linalg.pinv( Kern ), Y)
+    #c_mdl = np.dot(np.linalg.pinv( Kern ), Y)
+    # print(degree_mdl)
+    # print(Y)
+    # print(degree_mdl)
+    c_mdl  = np.polyfit( X.reshape((N,)) , Y.reshape((N,)) , degree_mdl )[::-1]
     return c_mdl
 
 def plot_target_function(c_mdl,X_train,Y_train,lb,ub,f_2_imitate):
@@ -83,16 +91,27 @@ def plot_target_function(c_mdl,X_train,Y_train,lb,ub,f_2_imitate):
     '''
     deg = c_mdl.shape[0]-1
     ## plotting data (note this is NOT training data)
-    N=5000
+    N=50000
     x_plot_points = np.linspace(lb,ub,N).reshape(N,1) # [N,1]
     ## evaluate the model given on plot points
     poly_feat = PolynomialFeatures(degree=deg)
     Kern_plot_points = poly_feat.fit_transform(x_plot_points)
     y_plot_points = np.dot(Kern_plot_points,c_mdl)
     #
-    x_for_f = np.linspace(lb,ub,30000)
+    x_for_f = np.linspace(lb,ub,50000)
     #pdb.set_trace()
     y_for_f = f_2_imitate( x_for_f )
+    # print(x_for_f)
+    # print(f_2_imitate( x_for_f ))
+    # N=5
+    # lb,ub = -6,6
+    # freq_cos = 0.05
+    # freq_sin = 0.3
+    # f = lambda x: np.cos(freq_cos*2*np.pi*x)*np.sin(freq_sin*2*np.pi*x)
+    # x = np.linspace(lb,ub,N)
+    # print(x)
+    # print(f(x))
+    # pdb.set_trace()
     #
     p_mdl, = plt.plot(x_plot_points,y_plot_points)
     p_f_2_imitate, = plt.plot(x_for_f,y_for_f)
@@ -159,17 +178,26 @@ def get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees):
         poly_feat = PolynomialFeatures(degree=degree_mdl)
         # get mdl
         Kern_train = poly_feat.fit_transform(X_train)
-        Kern_train_pinv = np.linalg.pinv( Kern_train )
+        #Kern_train_pinv = np.linalg.pinv( Kern_train )
         #Kern_train_pinv = my_pinv(Kern_train)
-        c_pinv = np.dot(Kern_train_pinv, Y_train) # c = <K^+,Y>
+        #c_pinv = np.dot(Kern_train_pinv, Y_train) # c = <K^+,Y>
         c_pinv = np.polyfit(X_train.reshape((N_train,)),Y_train.reshape((N_train,)),degree_mdl)[::-1]
         #pdb.set_trace()
-        #c_pinv = np.polyfit(X_train.reshape((N_train,)),Y_train.reshape((N_train,)),deg=degree_mdl)
+        #c_pinv = np.polyfit(X_train.reshape((N_train,)),Y_train.reshape((N_train,)),deg=degree_mdl)[::-1]
         ##
-        U,S,V = np.linalg.svd(Kern_train_pinv)
-        s_inv_total.append( np.sum(S) )
-        s_inv_max.append(max(S))
+        #try:
+        # Kern_train_pinv = np.linalg.pinv( Kern_train )
+        # U,S,V = np.linalg.svd(Kern_train_pinv)
+        # s_inv_total.append( np.sum(S) )
+        # s_inv_max.append(max(S))
+        # except:
+        #     s_inv_total.append( -1 )
+        #     s_inv_max.append(-1)
         #pdb.set_trace()
+        ##
+        #ranks.append(-1)
+        s_inv_total.append( -1 )
+        s_inv_max.append(-1)
         ##
         rank_kern_train = matrix_rank(Kern_train)
         ranks.append(rank_kern_train)
@@ -190,7 +218,7 @@ def get_c(nb_monomials_data):
 
 def my_main(**kwargs):
     ##
-    lb,ub = -2,2
+    lb,ub = 0,4
     start_time = time.time()
     plotting = kwargs['plotting'] if 'plotting' in kwargs else False
     freq = -1
@@ -205,26 +233,64 @@ def my_main(**kwargs):
     else:
         ## get X input points
         D0 = 1
-        N_train, N_test = 150, 1000
+        N_train, N_test = 40, 60
         print('D0 = {}, N_train = {}, N_test = {}'.format(D0,N_train,N_test))
         #X_train, X_test = 2*np.random.rand(N_train,D0)-1, 2*np.random.rand(N_test,D0)-1
         #X_train, X_test = 2*np.random.rand(N_train,D0)-1, 2*np.random.rand(N_test,D0)-1
         X_train, X_test = np.linspace(lb,ub,N_train).reshape(N_train,D0), np.linspace(lb,ub,N_test).reshape(N_test,D0)
         #X_train = np.concatenate( (X_train, X_test) ,axis=0)
         ## get target function
-        Degree_data_set = 80
+        Degree_data_set = 500
         nb_monomials_data = get_nb_monomials(nb_variables=D0,degree=Degree_data_set)
         #c_mdl = np.arange(1,nb_monomials_data+1).reshape((nb_monomials_data,1))+np.random.normal(loc=3.0,scale=1.0,size=(nb_monomials_data,1))
         #c_mdl = get_c(nb_monomials_data) # [D,1]
         #c_mdl = get_c_fit_function(generate_h_add_1d,D0,Degree_data_set,N=3*N_test,lb=-1,ub=1)
         #c_mdl = get_c_fit_function(generate_h_gabor_1d,D0,Degree_data_set,N=3*N_test,lb=-1,ub=1)
-        freq_sin = 15
         freq_cos = 2
-        freq = max(freq_sin, freq_cos)
-        f_2_imitate = lambda x: np.cos(freq_cos*2*np.pi*x)
-        c_mdl = get_c_fit_function(f_2_imitate, D0,Degree_data_set, N=20000, lb=lb,ub=ub) # [Deg,1] sin with period k
+        freq_sin = 1
+        # freq = max(freq_sin, freq_cos)
+        # f_2_imitate = lambda x: np.cos(freq_cos*2*np.pi*x)
+        # c_mdl = get_c_fit_function(f_2_imitate, D0,Degree_data_set, N=20000, lb=lb,ub=ub) # [Deg,1] sin with period k
         #c_mdl = get_c_fit_function(lambda x: np.exp( -(x**2) )*np.cos(4*np.pi*(x)),  D0,Degree_data_set, N=3*N_test, lb=lb,ub=ub)
         #c_mdl = get_c_fit_function(lambda x: np.exp( -(x**2) )*( np.cos(freq_sin*np.pi*(x)) + np.sin(freq_cos*np.pi*(x)) ),  D0,Degree_data_set, N=30*N_test, lb=lb,ub=ub)
+        ##
+        def poly(x):
+            N = x.shape[0]
+            poly_feat = PolynomialFeatures(degree=Degree_data_set)
+            Kern = poly_feat.fit_transform( x.reshape(N,D0) ) # low degrees first [1,x,x**2,...]
+            nb_monomials_data = Kern.shape[1]
+            #c_mdl = np.random.normal(loc=10.0,scale=5.0,size=(nb_monomials_data,1))
+            #c_mdl = np.arange(1,nb_monomials_data+1).reshape((nb_monomials_data,1))+np.random.normal(loc=3.0,scale=1.0,size=(nb_monomials_data,1))
+            c_mdl = np.arange(1,nb_monomials_data+1).reshape((nb_monomials_data,1))
+            #c_mdl = np.array( [ c**10 for c in np.arange(1,nb_monomials_data+1)] )[::-1]
+            #c_mdl = np.array( [ c**10 for c in np.arange(1,nb_monomials_data+1)] )
+            #print(c_mdl)
+            # y=1
+            # #d=np.linspace(lb,ub,Degree_data_set)
+            # d=(ub-lb)*np.random.rand(Degree_data_set,1)-lb
+            # for i in range(len(d)):
+            #     y=y*(x-d[i])
+            #y = np.dot(Kern,c_mdl).reshape((N,))
+            y = np.dot(Kern,c_mdl)
+            #print('poly',y.shape)
+            return y
+        #f_2_imitate = lambda x: poly(x)+np.exp(-x**2)*np.cos(freq_cos*2*np.pi*x)
+        def f_2_imitate(x):
+            N = x.shape[0]
+            #y1 = poly(x)
+            #print('y1',y1.shape)
+            #y2 = np.exp(-x**2)*np.cos(freq_cos*2*np.pi*x)
+            #y2 = np.exp(-x**2)*np.sin(freq_sin*2*np.pi*x)
+            y2 = np.sin(freq_sin*2*np.pi*x)
+            #y2 = np.cos(freq_cos*2*np.pi*x)
+            #y2 = np.cos(freq_cos*2*np.pi*x+1.3*np.pi)*np.sin(freq_sin*2*np.pi*x)
+            #y2 = 100*np.cos(freq_cos*2*np.pi*x)*np.sin(freq_sin*2*np.pi*x)
+            #print('y2',y2.shape)
+            #y=y1+y2.reshape((N,D0))
+            y=y2.reshape((N,D0))
+            #y=y1
+            return y
+        c_mdl = get_c_fit_function(f_2_imitate, D0,Degree_data_set, N=25000, lb=lb,ub=ub) # [Deg,1] sin with period k
         ##
         def f_data(x):
             poly_feat = PolynomialFeatures(degree=Degree_data_set)
@@ -240,8 +306,8 @@ def my_main(**kwargs):
         ## get target Y
         Y_train, Y_test = get_target_Y_SP_poly(X_train,X_test, Degree_data_set,c_mdl, noise_train=noise_train,noise_test=noise_test)
     ## get errors from models
-    step_deg=2
-    smallest_deg,largest_deg = 1,200
+    step_deg=1
+    smallest_deg,largest_deg = 1,70
     degrees = list(range(smallest_deg,largest_deg,step_deg))
     train_errors,test_errors,ranks,s_inv_total,s_inv_max = get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees)
     ##
@@ -280,7 +346,7 @@ def my_main(**kwargs):
             plot_target_function(c_mdl,X_train,Y_train,lb=lb,ub=ub,f_2_imitate=f_2_imitate)
             ## plot models to check
             c_mdls_2_plot = {}
-            low_mdl,middle_mdl,high_mdl =int(largest_deg/4),int(largest_deg/2),largest_deg
+            low_mdl,middle_mdl,high_mdl =int(largest_deg/6),int(largest_deg/2),largest_deg
             #low_mdl,middle_mdl,high_mdl = 21,22,23
             ##
             c_mdls_2_plot[Degree_data_set] = get_c_fit_data(X_train,Y_train,Degree_data_set)
