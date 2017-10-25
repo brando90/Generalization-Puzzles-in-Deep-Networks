@@ -1,4 +1,0 @@
-  File "/home/slurm/slurmd/job9581478/slurm_script", line 65
-    raise ValueError(f'The SLURM_ARRAY_TASK_ID = {satid} is illegal. Start your job at 1 please.')
-                                                                                                ^
-SyntaxError: invalid syntax

@@ -92,7 +92,6 @@ def main(**kwargs):
     N_lambdas = 3
     lb,ub = 1,3
     lambdas = list(np.linspace(lb,ub,N_lambdas))
-    print(lambdas)
     nb_iterations = [120]
     repetitions = len(lambdas)*[3]
     ## iterations
