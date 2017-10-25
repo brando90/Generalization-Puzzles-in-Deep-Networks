@@ -1,3 +1,13 @@
+#!/usr/bin/env python
+#SBATCH --mem=7000
+#SBATCH --time=0-01:00
+#SBATCH --array=1-200
+#SBATCH --mail-type=END
+#SBATCH --mail-user=brando90@mit.com
+'''
+    #SBATCH --gres=gpu:1
+'''
+
 import time
 
 import os
@@ -25,8 +35,10 @@ import unittest
 
 #SLURM_ARRAY_TASK_ID = int(os.environ['SLURM_ARRAY_TASK_ID'])
 #SLURM_JOBID = int(os.environ['SLURM_JOBID'])
-SLURM_ARRAY_TASK_ID = 1
+SLURM_ARRAY_TASK_ID = 7
 SLURM_JOBID = 1
+
+print(os.getcwd())
 
 print('SLURM_ARRAY_TASK_ID = ',SLURM_ARRAY_TASK_ID)
 print('SLURM_JOBID = ',SLURM_JOBID)
@@ -100,9 +112,11 @@ def main(**kwargs):
     elif len(lambdas) > 1:
         reg_lambda_WP = get_hp_to_run(hyper_params=lambdas,repetitions=repetitions,satid=SLURM_ARRAY_TASK_ID)
         nb_iter = nb_iterations[0]
+        prefix_experiment = 'oct_{}_lambdas'.format(25)
     else:
         reg_lambda_WP = lambdas[0]
         nb_iter = get_hp_to_run(hyper_params=nb_iterations,repetitions=repetitions,satid=SLURM_ARRAY_TASK_ID)
+        prefix_experiment = 'oct_{}_iterations'.format(25)
     print('reg_lambda_WP = ',reg_lambda_WP)
     print('nb_iter = ',nb_iter)
     ##
@@ -209,7 +223,7 @@ def main(**kwargs):
     erm_reg_WP = get_ERM_lambda(arg=arg, mdl=mdl_sgd,reg_lambda=reg_lambda_WP,X=data.X_train,Y=data.Y_train).data.numpy()
     ##
     if kwargs['save_bulk_experiment']:
-        path_to_save = f'./test_runs/sid_{SLURM_JOBID}'
+        path_to_save = f'./test_runs/{prefix_experiment}_sid_{SLURM_JOBID}'
         make_and_check_dir(path_to_save)
         experiment_results= dict(
             SLURM_ARRAY_TASK_ID=SLURM_ARRAY_TASK_ID,
