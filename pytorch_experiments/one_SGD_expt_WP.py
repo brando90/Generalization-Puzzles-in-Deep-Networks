@@ -1,5 +1,7 @@
 import time
 
+import os
+
 from pytorch_over_approx_high_dim import *
 from models_pytorch import *
 from inits import *
@@ -22,9 +24,21 @@ import pdb
 import unittest
 
 #SLURM_ARRAY_TASK_ID = int(os.environ['SLURM_ARRAY_TASK_ID'])
-#SLURM_ARRAY_TASK_ID = 45
+#SLURM_JOBID = int(os.environ['SLURM_JOBID'])
+SLURM_ARRAY_TASK_ID = 1
+SLURM_JOBID = 1
 
 print('SLURM_ARRAY_TASK_ID = ',SLURM_ARRAY_TASK_ID)
+print('SLURM_JOBID = ',SLURM_JOBID)
+
+def make_and_check_dir(path):
+    '''
+        tries to make dir/file, if it exists already does nothing else creates it.
+    '''
+    try:
+        os.makedirs(path)
+    except OSError:
+        pass
 
 def get_hp_to_run(hyper_params,repetitions,satid):
     '''
@@ -52,7 +66,7 @@ def get_hp_to_run(hyper_params,repetitions,satid):
             return hyper_params[hp_job_nb]
     raise ValueError('There is something wrong with the number of jobs you submitted compared.')
 
-def main():
+def main(**kwargs):
     start_time = time.time()
     ##dtype = torch.cuda.FloatTensor # Uncomment this to run on GPU
     dtype = torch.FloatTensor
@@ -67,7 +81,7 @@ def main():
     lambdas = list(np.linspace(lb,ub,N_lambdas))
     print(lambdas)
     nb_iterations = [120]
-    repetitions = len(lambdas)*[15]
+    repetitions = len(lambdas)*[3]
     ## iterations
     # N_iterations = 3
     # lb,ub = 1,400
@@ -189,6 +203,23 @@ def main():
             print('Nan was caught, going to restart training')
             w_inits_sgd, b_inits_sgd = get_initialization(init_config)
             mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,biases=biases)
+    ##
+    train_error_WP = (1/N_train)*(mdl_sgd.forward(data.X_train) - data.Y_train).pow(2).sum().data.numpy()
+    test_error_WP = (1/N_test)*(mdl_sgd.forward(data.X_test) - Variable(torch.FloatTensor(Y_test)) ).pow(2).sum().data.numpy()
+    erm_reg_WP = get_ERM_lambda(arg=arg, mdl=mdl_sgd,reg_lambda=reg_lambda_WP,X=data.X_train,Y=data.Y_train).data.numpy()
+    ##
+    if kwargs['save_bulk_experiment']:
+        path_to_save = f'./test_runs/sid_{SLURM_JOBID}'
+        make_and_check_dir(path_to_save)
+        experiment_results= dict(
+            SLURM_ARRAY_TASK_ID=SLURM_ARRAY_TASK_ID,
+            reg_type_wp=reg_type_wp,
+            reg_lambda_WP=reg_lambda_WP,nb_iter=nb_iter,
+            lambdas=lambdas,nb_iterations=nb_iterations,repetitions=repetitions,
+            train_error_WP=train_error_WP,test_error_WP=test_error_WP,erm_reg_WP=erm_reg_WP
+            )
+        path_to_save = f'{path_to_save}/satid_{SLURM_ARRAY_TASK_ID}'
+        scipy.io.savemat( path_to_save, experiment_results)
 
 class TestStringMethods(unittest.TestCase):
 
@@ -207,5 +238,5 @@ class TestStringMethods(unittest.TestCase):
                 satid+=1
 
 if __name__ == '__main__':
-    main()
+    main(save_bulk_experiment=True)
     #unittest.main()
