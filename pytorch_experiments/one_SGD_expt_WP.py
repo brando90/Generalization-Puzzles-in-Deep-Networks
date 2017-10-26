@@ -106,8 +106,8 @@ def main(**kwargs):
     ## lambdas
     N_lambdas = 5
     lb,ub = 50,1000
-    one_over_lambdas = list( np.linspace(lb,ub,N_lambdas) )
-    lambdas = 1/one_over_lambdas
+    one_over_lambdas = np.linspace(lb,ub,N_lambdas)
+    lambdas = list( 1/one_over_lambdas )
     nb_iterations = [int(1.4*10**6)]
     repetitions = len(lambdas)*[15]
     ## iterations
