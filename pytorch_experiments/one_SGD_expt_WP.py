@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #SBATCH --mem=7000
-#SBATCH --time=0-10:00
+#SBATCH --time=0-06:00
 #SBATCH --array=1-9
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
@@ -39,10 +39,10 @@ import pdb
 
 import unittest
 
-#SLURM_ARRAY_TASK_ID = int(os.environ['SLURM_ARRAY_TASK_ID'])
-#SLURM_JOBID = int(os.environ['SLURM_JOBID'])
-SLURM_ARRAY_TASK_ID = 1
-SLURM_JOBID = 3
+SLURM_ARRAY_TASK_ID = int(os.environ['SLURM_ARRAY_TASK_ID'])
+SLURM_JOBID = int(os.environ['SLURM_JOBID'])
+#SLURM_ARRAY_TASK_ID = 1
+#SLURM_JOBID = 3
 
 print(os.getcwd())
 
