@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #SBATCH --mem=7000
-#SBATCH --time=0-01:00
+#SBATCH --time=0-10:00
 #SBATCH --array=1-9
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
