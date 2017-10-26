@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #SBATCH --mem=7000
 #SBATCH --time=0-06:00
-#SBATCH --array=1-9
+#SBATCH --array=1-75
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
 #SBATCH --qos=cbmm
