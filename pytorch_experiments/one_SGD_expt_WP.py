@@ -95,19 +95,21 @@ def main(**kwargs):
     day = today_obj.day
     month = calendar.month_name[today_obj.month]
     ##
-    experiment_name = 'unit_test'
+    truth_filename='data_gen_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_'
+    data_filename='data_numpy_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_.npz'
+    #experiment_name = 'unit_test'
     experiment_name = 'nonlinear_VW_expt1'
     ## Regularization
     #reg_type_wp = 'tikhonov'
     reg_type_wp = 'VW'
     ## config params
     ## lambdas
-    N_lambdas = 3
-    lb,ub = 0.0001,1
-    lambdas = list(np.linspace(lb,ub,N_lambdas))
+    N_lambdas = 5
+    lb,ub = 50,1000
+    one_over_lambdas = list( np.linspace(lb,ub,N_lambdas) )
+    lambdas = 1/one_over_lambdas
     nb_iterations = [int(1.4*10**6)]
-    nb_iterations = [int(1.4*10**3)]
-    repetitions = len(lambdas)*[3]
+    repetitions = len(lambdas)*[15]
     ## iterations
     # N_iterations = 3
     # lb,ub = 10,250
@@ -117,7 +119,7 @@ def main(**kwargs):
     ##
     #debug, debug_sgd = True, False
     ## Hyper Params SGD weight parametrization
-    M = 3
+    M = 6
     eta = 0.002 # eta = 1e-6
     A = 0.0
     # pick the right hyper param
@@ -138,8 +140,6 @@ def main(**kwargs):
     ##
     logging_freq = 100
     #### Get Data set
-    truth_filename='data_gen_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_'
-    data_filename='data_numpy_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_.npz'
     if truth_filename is not None:
         mdl_truth_dict = torch.load('./data/'+truth_filename)
         D_layers_truth=extract_list_filename(truth_filename)

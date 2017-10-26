@@ -419,7 +419,7 @@ def main(**kwargs):
     else:
         reg_lambda_WP = 0.0
     ## Hyper Params SGD standard parametrization
-    M_standard_sgd = 3
+    M_standard_sgd = 6
     eta_standard_sgd = 0.002 # eta = 1e-6
     #nb_iter_standard_sgd = int(1000)
     nb_iter_standard_sgd = 10
