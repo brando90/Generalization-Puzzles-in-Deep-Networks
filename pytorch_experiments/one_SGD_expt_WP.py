@@ -10,6 +10,8 @@
 '''
 
 import time
+from datetime import date
+import calendar
 
 import os
 import sys
@@ -37,10 +39,10 @@ import pdb
 
 import unittest
 
-#SLURM_ARRAY_TASK_ID = int(os.environ['SLURM_ARRAY_TASK_ID'])
-#SLURM_JOBID = int(os.environ['SLURM_JOBID'])
-SLURM_ARRAY_TASK_ID = 7
-SLURM_JOBID = 1
+SLURM_ARRAY_TASK_ID = int(os.environ['SLURM_ARRAY_TASK_ID'])
+SLURM_JOBID = int(os.environ['SLURM_JOBID'])
+#SLURM_ARRAY_TASK_ID = 7
+#SLURM_JOBID = 1
 
 print(os.getcwd())
 
@@ -83,26 +85,33 @@ def get_hp_to_run(hyper_params,repetitions,satid):
     raise ValueError('There is something wrong with the number of jobs you submitted compared.')
 
 def main(**kwargs):
+    ##
     start_time = time.time()
+    np.set_printoptions(suppress=True) #Whether or not suppress printing of small floating point values using scientific notation (default False).
     ##dtype = torch.cuda.FloatTensor # Uncomment this to run on GPU
     dtype = torch.FloatTensor
     ##
+    today_obj = date.today() # contains datetime.date(year, month, day); accessible via .day etc
+    day = today_obj.day
+    month = calendar.month_name[today_obj.month]
+    ##
+    experiment_name = 'unit_test'
+    ## Regularization
     #reg_type_wp = 'tikhonov'
     reg_type_wp = 'VW'
-    np.set_printoptions(suppress=True) #Whether or not suppress printing of small floating point values using scientific notation (default False).
     ## config params
     ## lambdas
     N_lambdas = 3
-    lb,ub = 1,3
+    lb,ub = 4,6
     lambdas = list(np.linspace(lb,ub,N_lambdas))
     nb_iterations = [120]
     repetitions = len(lambdas)*[3]
     ## iterations
-    # N_iterations = 3
-    # lb,ub = 1,400
-    # lambdas = [0]
-    # nb_iterations = [ int(i) for i in np.linspace(lb,ub,N_iterations)]
-    # repetitions = len(nb_iterations)*[2]
+    N_iterations = 3
+    lb,ub = 1,303
+    lambdas = [0]
+    nb_iterations = [ int(i) for i in np.linspace(lb,ub,N_iterations)]
+    repetitions = len(nb_iterations)*[3]
     ##
     debug, debug_sgd = True, False
     ## Hyper Params SGD weight parametrization
@@ -115,11 +124,13 @@ def main(**kwargs):
     elif len(lambdas) > 1:
         reg_lambda_WP = get_hp_to_run(hyper_params=lambdas,repetitions=repetitions,satid=SLURM_ARRAY_TASK_ID)
         nb_iter = nb_iterations[0]
-        prefix_experiment = 'oct_{}_lambdas'.format(25)
+        expt_type = 'LAMBDAS'
+        prefix_experiment = f'{month}_{day}_lambda_{reg_lambda_WP}_it_{nb_iter}_reg_{reg_type_wp}'
     else:
         reg_lambda_WP = lambdas[0]
         nb_iter = get_hp_to_run(hyper_params=nb_iterations,repetitions=repetitions,satid=SLURM_ARRAY_TASK_ID)
-        prefix_experiment = 'oct_{}_iterations'.format(25)
+        expt_type = 'ITERATIONS'
+        prefix_experiment = f'{month}_{day}_lambda_{reg_lambda_WP}_it_{nb_iter}_reg_{reg_type_wp}'
     print('reg_lambda_WP = ',reg_lambda_WP)
     print('nb_iter = ',nb_iter)
     ##
@@ -226,7 +237,7 @@ def main(**kwargs):
     erm_reg_WP = get_ERM_lambda(arg=arg, mdl=mdl_sgd,reg_lambda=reg_lambda_WP,X=data.X_train,Y=data.Y_train).data.numpy()
     ##
     if kwargs['save_bulk_experiment']:
-        path_to_save = f'./test_runs/{prefix_experiment}_sid_{SLURM_JOBID}'
+        path_to_save = f'./test_runs/{experiment_name}_reg_{reg_type_wp}_expt_type_{expt_type}/{prefix_experiment}/'
         make_and_check_dir(path_to_save)
         experiment_results= dict(
             SLURM_ARRAY_TASK_ID=SLURM_ARRAY_TASK_ID,
@@ -235,7 +246,7 @@ def main(**kwargs):
             lambdas=lambdas,nb_iterations=nb_iterations,repetitions=repetitions,
             train_error_WP=train_error_WP,test_error_WP=test_error_WP,erm_reg_WP=erm_reg_WP
             )
-        path_to_save = f'{path_to_save}/satid_{SLURM_ARRAY_TASK_ID}'
+        path_to_save = f'{path_to_save}/satid_{SLURM_ARRAY_TASK_ID}_sid_{SLURM_JOBID}'
         scipy.io.savemat( path_to_save, experiment_results)
 
 class TestStringMethods(unittest.TestCase):
