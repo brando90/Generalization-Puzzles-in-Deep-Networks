@@ -39,10 +39,10 @@ import pdb
 
 import unittest
 
-SLURM_ARRAY_TASK_ID = int(os.environ['SLURM_ARRAY_TASK_ID'])
-SLURM_JOBID = int(os.environ['SLURM_JOBID'])
-#SLURM_ARRAY_TASK_ID = 7
-#SLURM_JOBID = 1
+#SLURM_ARRAY_TASK_ID = int(os.environ['SLURM_ARRAY_TASK_ID'])
+#SLURM_JOBID = int(os.environ['SLURM_JOBID'])
+SLURM_ARRAY_TASK_ID = 1
+SLURM_JOBID = 3
 
 print(os.getcwd())
 
@@ -96,24 +96,26 @@ def main(**kwargs):
     month = calendar.month_name[today_obj.month]
     ##
     experiment_name = 'unit_test'
+    experiment_name = 'nonlinear_VW_expt1'
     ## Regularization
     #reg_type_wp = 'tikhonov'
     reg_type_wp = 'VW'
     ## config params
     ## lambdas
     N_lambdas = 3
-    lb,ub = 4,6
+    lb,ub = 0.0001,1
     lambdas = list(np.linspace(lb,ub,N_lambdas))
-    nb_iterations = [120]
+    nb_iterations = [int(1.4*10**6)]
+    nb_iterations = [int(1.4*10**3)]
     repetitions = len(lambdas)*[3]
     ## iterations
-    N_iterations = 3
-    lb,ub = 10,250
-    lambdas = [0]
-    nb_iterations = [ int(i) for i in np.linspace(lb,ub,N_iterations)]
-    repetitions = len(nb_iterations)*[3]
+    # N_iterations = 3
+    # lb,ub = 10,250
+    # lambdas = [0]
+    # nb_iterations = [ int(i) for i in np.linspace(lb,ub,N_iterations)]
+    # repetitions = len(nb_iterations)*[3]
     ##
-    debug, debug_sgd = True, False
+    #debug, debug_sgd = True, False
     ## Hyper Params SGD weight parametrization
     M = 3
     eta = 0.002 # eta = 1e-6
@@ -125,12 +127,12 @@ def main(**kwargs):
         reg_lambda_WP = get_hp_to_run(hyper_params=lambdas,repetitions=repetitions,satid=SLURM_ARRAY_TASK_ID)
         nb_iter = nb_iterations[0]
         expt_type = 'LAMBDAS'
-        prefix_experiment = f'{month}_{day}_lambda_{reg_lambda_WP}_it_{nb_iter}_reg_{reg_type_wp}'
+        prefix_experiment = f'it_{nb_iter}/lambda_{reg_lambda_WP}_reg_{reg_type_wp}'
     else:
         reg_lambda_WP = lambdas[0]
         nb_iter = get_hp_to_run(hyper_params=nb_iterations,repetitions=repetitions,satid=SLURM_ARRAY_TASK_ID)
         expt_type = 'ITERATIONS'
-        prefix_experiment = f'{month}_{day}_lambda_{reg_lambda_WP}_it_{nb_iter}_reg_{reg_type_wp}'
+        prefix_experiment = f'lambda_{reg_lambda_WP}/it_{nb_iter}_reg_{reg_type_wp}'
     print('reg_lambda_WP = ',reg_lambda_WP)
     print('nb_iter = ',nb_iter)
     ##
@@ -235,7 +237,13 @@ def main(**kwargs):
     train_error_WP = (1/N_train)*(mdl_sgd.forward(data.X_train) - data.Y_train).pow(2).sum().data.numpy()
     test_error_WP = (1/N_test)*(mdl_sgd.forward(data.X_test) - Variable(torch.FloatTensor(Y_test)) ).pow(2).sum().data.numpy()
     erm_reg_WP = get_ERM_lambda(arg=arg, mdl=mdl_sgd,reg_lambda=reg_lambda_WP,X=data.X_train,Y=data.Y_train).data.numpy()
-    ##
+    ## REPORT TIMES
+    seconds = (time.time() - start_time)
+    minutes = seconds/ 60
+    hours = minutes/ 60
+    print("--- %s seconds ---" % seconds )
+    print("--- %s minutes ---" % minutes )
+    print("--- %s hours ---" % hours )
     if kwargs['save_bulk_experiment']:
         path_to_save = f'./test_runs/{experiment_name}_reg_{reg_type_wp}_expt_type_{expt_type}/{prefix_experiment}/'
         make_and_check_dir(path_to_save)
@@ -244,9 +252,11 @@ def main(**kwargs):
             reg_type_wp=reg_type_wp,
             reg_lambda_WP=reg_lambda_WP,nb_iter=nb_iter,
             lambdas=lambdas,nb_iterations=nb_iterations,repetitions=repetitions,
-            train_error_WP=train_error_WP,test_error_WP=test_error_WP,erm_reg_WP=erm_reg_WP
+            train_error_WP=train_error_WP,test_error_WP=test_error_WP,erm_reg_WP=erm_reg_WP,
+            seconds=seconds,minutes=minutes,hours=hours,
+            truth_filename=truth_filename,data_filename=data_filename
             )
-        path_to_save = f'{path_to_save}/satid_{SLURM_ARRAY_TASK_ID}_sid_{SLURM_JOBID}'
+        path_to_save = f'{path_to_save}/satid_{SLURM_ARRAY_TASK_ID}_sid_{SLURM_JOBID}_{month}_{day}'
         scipy.io.savemat( path_to_save, experiment_results)
 
 class TestStringMethods(unittest.TestCase):
