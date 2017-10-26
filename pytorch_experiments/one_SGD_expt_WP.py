@@ -3,7 +3,7 @@
 #SBATCH --time=0-01:00
 #SBATCH --array=1-9
 #SBATCH --mail-type=END
-#SBATCH --mail-user=brando90@mit.com
+#SBATCH --mail-user=brando90@mit.edu
 #SBATCH --qos=cbmm
 '''
     #SBATCH --gres=gpu:1
@@ -12,6 +12,9 @@
 import time
 
 import os
+import sys
+
+sys.path.append(os.getcwd())
 
 from pytorch_over_approx_high_dim import *
 from models_pytorch import *
