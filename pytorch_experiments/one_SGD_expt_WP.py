@@ -97,25 +97,26 @@ def main(**kwargs):
     ##
     truth_filename='data_gen_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_'
     data_filename='data_numpy_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_.npz'
-    #experiment_name = 'unit_test'
-    experiment_name = 'nonlinear_VW_expt1'
+    experiment_name = 'unit_test'
+    #experiment_name = 'nonlinear_VW_expt1'
     ## Regularization
     #reg_type_wp = 'tikhonov'
     reg_type_wp = 'VW'
     ## config params
     ## lambdas
-    N_lambdas = 5
+    N_lambdas = 3
     lb,ub = 50,1000
     one_over_lambdas = np.linspace(lb,ub,N_lambdas)
     lambdas = list( 1/one_over_lambdas )
-    nb_iterations = [int(1.4*10**6)]
-    repetitions = len(lambdas)*[15]
+    #nb_iterations = [int(1.4*10**6)]
+    nb_iterations = [int(1.4*10**3)]
+    repetitions = len(lambdas)*[3]
     ## iterations
-    # N_iterations = 3
-    # lb,ub = 10,250
-    # lambdas = [0]
-    # nb_iterations = [ int(i) for i in np.linspace(lb,ub,N_iterations)]
-    # repetitions = len(nb_iterations)*[3]
+    N_iterations = 3
+    lb,ub = 10,250
+    lambdas = [0]
+    nb_iterations = [ int(i) for i in np.linspace(lb,ub,N_iterations)]
+    repetitions = len(nb_iterations)*[3]
     ##
     #debug, debug_sgd = True, False
     ## Hyper Params SGD weight parametrization
@@ -248,13 +249,14 @@ def main(**kwargs):
         path_to_save = f'./test_runs/{experiment_name}_reg_{reg_type_wp}_expt_type_{expt_type}/{prefix_experiment}/'
         make_and_check_dir(path_to_save)
         experiment_results= dict(
-            SLURM_ARRAY_TASK_ID=SLURM_ARRAY_TASK_ID,
+            SLURM_JOBID=SLURM_JOBID,SLURM_ARRAY_TASK_ID=SLURM_ARRAY_TASK_ID,
             reg_type_wp=reg_type_wp,
             reg_lambda_WP=reg_lambda_WP,nb_iter=nb_iter,
             lambdas=lambdas,nb_iterations=nb_iterations,repetitions=repetitions,
             train_error_WP=train_error_WP,test_error_WP=test_error_WP,erm_reg_WP=erm_reg_WP,
             seconds=seconds,minutes=minutes,hours=hours,
-            truth_filename=truth_filename,data_filename=data_filename
+            truth_filename=truth_filename,data_filename=data_filename,
+            expt_type=expt_type
             )
         path_to_save = f'{path_to_save}/satid_{SLURM_ARRAY_TASK_ID}_sid_{SLURM_JOBID}_{month}_{day}'
         scipy.io.savemat( path_to_save, experiment_results)
