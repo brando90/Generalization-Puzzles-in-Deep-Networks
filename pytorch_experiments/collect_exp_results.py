@@ -1,15 +1,23 @@
 import os
 
-import scipy
+import scipy.io
+import numpy as np
+
+import pdb
 
 def make_second_entry_numpy_array(experiment_results):
     return [ np.array(results_list) for hp,results_list in experiment_results ]
 
+def make_tuple_2_into_float(error_dict):
+    return [ (hp,float(error[0])) for hp,error in error_dict.items() ]
+
 ## the name for lambdas or iterations, depending of type of experiment
 expt_type_dirname = 'unit_test_reg_VW_expt_type_LAMBDAS'
+expt_type_dirname = 'nonlinear_VW_expt1_reg_VW_expt_type_LAMBDAS'
 ## the name for experiments, for lambdas its the #iters for that set of lambdas, for iters its the specific lambda tried for that experiment
 #set__experiments_dirname = 'lambda_0'
 set_experiments_dirname = 'it_1400'
+set_experiments_dirname = 'it_1400000'
 ##
 path = f'./test_runs/{expt_type_dirname}/{set_experiments_dirname}'
 print(f'path = {path}')
@@ -31,40 +39,60 @@ test_errors = {}
 duration_secs = {}
 for dirpath, dirnames, filenames in os.walk(path):
     if dirpath != path: # check is not neccessary, but essentially is a reminder that now its going through the actual contents of a dir with experiments
-        for single_run_fname in filenames:
+        for i,single_run_fname in enumerate(filenames):
             path_to_file = f'{dirpath}/{single_run_fname}'
             expt_result = scipy.io.loadmat(path_to_file)
             ##
+            hp = float(expt_result[varying_hp])
             train_error, test_error = expt_result['train_error_WP'], expt_result['test_error_WP']
             seconds = expt_result['seconds']
-            if varying_hp not in train_errors:
-                train_errors[varying_hp] = [train_error]
-                test_errors[varying_hp] = [test_error]
-                duration_secs[varying_hp] = [seconds]
+            print(f'varying_hp = {varying_hp}')
+            print(f'hp = {hp}')
+            print(f'train_error, test_error = {train_error},{test_error}')
+            ##
+            if hp not in train_errors:
+                train_errors[hp] = np.zeros(len(filenames))
+                test_errors[hp] = np.zeros(len(filenames))
+                duration_secs[hp] = np.zeros(len(filenames))
             else:
-                train_errors[varying_hp].append(train_error)
-                test_errors[varying_hp].append(test_error)
-                duration_secs[varying_hp].append(seconds)
-## conversion table
-train_errors = list( train_errors.items() ).sort(key=lambda x: x[0])
-test_errors = list( test_errors.items() ).sort(key=lambda x: x[0])
-duration_secs = list( duration_secs.items() ).sort(key=lambda x: x[0])
-
-train_errors = make_second_entry_numpy_array(train_errors)
-test_errors = make_second_entry_numpy_array(test_errors)
-duration_secs = make_second_entry_numpy_array(duration_secs)
+                train_errors[hp][i] = train_error
+                test_errors[hp][i] = test_error
+                duration_secs[hp][i] = seconds
+        #pdb.set_trace()
+#pdb.set_trace()
 ##
-train_means, train_stds = np.zeros( nb_iterations ), np.zeros( nb_iterations ) # one moment per lambda
-test_means, test_stds = np.zeros( nb_iterations ), np.zeros( nb_iterations ) # one moment per lambda
+train_errors = list( train_errors.items() )
+test_errors = list( test_errors.items() )
+duration_secs = list( duration_secs.items() )
+## sort based on hp param
+train_errors.sort(key=lambda x: x[0],reverse=True)
+test_errors.sort(key=lambda x: x[0],reverse=True)
+duration_secs.sort(key=lambda x: x[0],reverse=True)
+
+## get [[erro_1],...,[error_K]]
+hps = np.array([ hp for hp,_ in train_errors ])
+train_errors = [ errors for hp,errors in train_errors ]
+test_errors = [ errors for hp,errors in test_errors ]
+duration_secs = [ seconds for hp,seconds in duration_secs ]
+##
+N_hp = len(train_errors)
+train_means, train_stds = np.zeros( N_hp ), np.zeros( N_hp ) # one moment per lambda
+test_means, test_stds = np.zeros( N_hp ), np.zeros( N_hp ) # one moment per lambda
 ## collect the statistics for every lambda
 for i in range(len(train_errors)):
-    train_means[i] = np.mean( train_errors[i,:] )
-    train_stds[i] = np.std( train_errors[i,:] )
+    train_means[i] = np.mean( train_errors[i] )
+    train_stds[i] = np.std( train_errors[i] )
     #
-    test_means[i] = np.mean( test_errors[i,:] )
-    test_stds[i] = np.std( test_errors[i,:] )
+    test_means[i] = np.mean( test_errors[i] )
+    test_stds[i] = np.std( test_errors[i] )
 ##
-SLURM_JOBID = expt_result['SLURM_JOBID']
+#SLURM_JOBID = expt_result['SLURM_JOBID']
+SLURM_JOBID = 9582799
 print('saving')
 path_to_save = f'../plotting/results/{prefix_hp}_{SLURM_JOBID}.mat'
-scipy.io.savemat( path_to_save, dict(iterations=iterations, train_means=train_means,train_stds=train_stds, test_means=test_means,test_stds=test_stds) )
+if varying_hp == 'reg_lambda_WP':
+    one_over_lambdas = 1/hps
+    scipy.io.savemat( path_to_save, dict(one_over_lambdas=one_over_lambdas, train_means=train_means,train_stds=train_stds, test_means=test_means,test_stds=test_stds) )
+else:
+    iterations = hps
+    scipy.io.savemat( path_to_save, dict(iterations=iterations, train_means=train_means,train_stds=train_stds, test_means=test_means,test_stds=test_stds) )
