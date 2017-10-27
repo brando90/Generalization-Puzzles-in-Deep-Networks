@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #SBATCH --mem=7000
 #SBATCH --time=0-06:00
-#SBATCH --array=1-75
+#SBATCH --array=1-300
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
 #SBATCH --qos=cbmm
@@ -39,10 +39,10 @@ import pdb
 
 import unittest
 
-SLURM_ARRAY_TASK_ID = int(os.environ['SLURM_ARRAY_TASK_ID'])
-SLURM_JOBID = int(os.environ['SLURM_JOBID'])
-#SLURM_ARRAY_TASK_ID = 1
-#SLURM_JOBID = 3
+#SLURM_ARRAY_TASK_ID = int(os.environ['SLURM_ARRAY_TASK_ID'])
+#SLURM_JOBID = int(os.environ['SLURM_JOBID'])
+SLURM_ARRAY_TASK_ID = 1
+SLURM_JOBID = 0
 
 print(os.getcwd())
 
@@ -97,26 +97,26 @@ def main(**kwargs):
     ##
     truth_filename='data_gen_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_'
     data_filename='data_numpy_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_.npz'
-    experiment_name = 'unit_test'
-    #experiment_name = 'nonlinear_VW_expt1'
+    #experiment_name = 'unit_test'
+    experiment_name = 'nonlinear_VW_expt1'
     ## Regularization
     #reg_type_wp = 'tikhonov'
     reg_type_wp = 'VW'
     ## config params
     ## lambdas
-    N_lambdas = 3
-    lb,ub = 50,1000
+    N_lambdas = 20
+    lb,ub = 1,1000
     one_over_lambdas = np.linspace(lb,ub,N_lambdas)
     lambdas = list( 1/one_over_lambdas )
     #nb_iterations = [int(1.4*10**6)]
-    nb_iterations = [int(1.4*10**3)]
-    repetitions = len(lambdas)*[3]
+    nb_iterations = [int(8*10**4)]
+    repetitions = len(lambdas)*[15]
     ## iterations
-    N_iterations = 3
-    lb,ub = 10,250
-    lambdas = [0]
-    nb_iterations = [ int(i) for i in np.linspace(lb,ub,N_iterations)]
-    repetitions = len(nb_iterations)*[3]
+    # N_iterations = 20
+    # lb,ub = 300,5000
+    # lambdas = [0]
+    # nb_iterations = [ int(i) for i in np.linspace(lb,ub,N_iterations)]
+    # repetitions = len(nb_iterations)*[3]
     ##
     #debug, debug_sgd = True, False
     ## Hyper Params SGD weight parametrization
@@ -139,7 +139,7 @@ def main(**kwargs):
     print('reg_lambda_WP = ',reg_lambda_WP)
     print('nb_iter = ',nb_iter)
     ##
-    logging_freq = 100
+    logging_freq = 2
     #### Get Data set
     if truth_filename is not None:
         mdl_truth_dict = torch.load('./data/'+truth_filename)
@@ -278,5 +278,5 @@ class TestStringMethods(unittest.TestCase):
                 satid+=1
 
 if __name__ == '__main__':
-    main(save_bulk_experiment=True)
+    main(save_bulk_experiment=False)
     #unittest.main()

@@ -3,6 +3,10 @@ import os
 import scipy.io
 import numpy as np
 
+import time
+from datetime import date
+import calendar
+
 import pdb
 
 def make_second_entry_numpy_array(experiment_results):
@@ -11,13 +15,21 @@ def make_second_entry_numpy_array(experiment_results):
 def make_tuple_2_into_float(error_dict):
     return [ (hp,float(error[0])) for hp,error in error_dict.items() ]
 
+##
+today_obj = date.today() # contains datetime.date(year, month, day); accessible via .day etc
+day = today_obj.day
+month = calendar.month_name[today_obj.month]
+##
+SLURM_JOBID = 1
 ## the name for lambdas or iterations, depending of type of experiment
 expt_type_dirname = 'unit_test_reg_VW_expt_type_LAMBDAS'
-expt_type_dirname = 'nonlinear_VW_expt1_reg_VW_expt_type_LAMBDAS'
+expt_type_dirname = 'unit_test_reg_VW_expt_type_ITERATIONS'
+#expt_type_dirname = 'nonlinear_VW_expt1_reg_VW_expt_type_LAMBDAS'
 ## the name for experiments, for lambdas its the #iters for that set of lambdas, for iters its the specific lambda tried for that experiment
-#set__experiments_dirname = 'lambda_0'
-set_experiments_dirname = 'it_1400'
-set_experiments_dirname = 'it_1400000'
+set_experiments_dirname = 'lambda_0'
+#set_experiments_dirname = 'lambda_0'
+#set_experiments_dirname = 'it_12000'
+#set_experiments_dirname = 'it_1400000'
 ##
 path = f'./test_runs/{expt_type_dirname}/{set_experiments_dirname}'
 print(f'path = {path}')
@@ -27,10 +39,10 @@ print(f'Does path = {path}, exist? Answer: {path_exists}')
 ## here we decide which is the hyper param that we are testing makes a change, indepedent variable
 if 'LAMBDAS' in expt_type_dirname:
     varying_hp = 'reg_lambda_WP'
-    prefix_hp = 'experiment_lambdas_oct7_'
+    prefix_hp = f'experiment_lambdas_{month}_{day}_'
 elif 'ITERATIONS' in expt_type_dirname:
     varying_hp = 'nb_iter'
-    prefix_hp = 'experiment_iter_oct7_'
+    prefix_hp = f'experiment_iterations_{month}_{day}_'
 else:
     raise ValueError(f'Look at path {expt_type_dirname}, contains neither LAMBDAS nor ITERATIONS.')
 ## go through the experiments and collect statistics
@@ -87,8 +99,10 @@ for i in range(len(train_errors)):
     test_stds[i] = np.std( test_errors[i] )
 ##
 #SLURM_JOBID = expt_result['SLURM_JOBID']
-SLURM_JOBID = 9582799
-print('saving')
+#SLURM_JOBID = 9582799
+print(f'\nexpt_type_dirname={expt_type_dirname}')
+print(f'varying_hp={varying_hp} \nprefix_hp={prefix_hp}')
+print('saving\a')
 path_to_save = f'../plotting/results/{prefix_hp}_{SLURM_JOBID}.mat'
 if varying_hp == 'reg_lambda_WP':
     one_over_lambdas = 1/hps
