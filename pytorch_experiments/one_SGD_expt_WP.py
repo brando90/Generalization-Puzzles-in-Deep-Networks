@@ -104,12 +104,12 @@ def main(**kwargs):
     reg_type_wp = 'VW'
     ## config params
     ## lambdas
-    N_lambdas = 20
-    lb,ub = 1,1000
+    N_lambdas = 10
+    lb,ub = 0.01,950
     one_over_lambdas = np.linspace(lb,ub,N_lambdas)
     lambdas = list( 1/one_over_lambdas )
-    #nb_iterations = [int(1.4*10**6)]
-    nb_iterations = [int(8*10**4)]
+    nb_iterations = [int(1.4*10**6)]
+    #nb_iterations = [int(8*10**4)]
     repetitions = len(lambdas)*[15]
     ## iterations
     # N_iterations = 20

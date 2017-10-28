@@ -2,8 +2,11 @@ clear;
 disp('--------------')
 %%
 %prefix_fname='experiment_iter_oct7_9533381';
+prefix_fname='experiment_lambdas_October_27__1';
+%prefix_fname='experiment_iterations_October_27__1';
 %prefix_fname='experiment_lambdas_oct7_9528553';
-prefix_fname='experiment_lambdas_oct7__9582799';
+%prefix_fname='experiment_lambdas_oct7__9582799';
+%prefix_fname='experiment_lambdas_oct7__1';
 %experiment_iter_tmp.mat
 %prefix_fname='experiment_iter_tmp';
 filename = [prefix_fname '.mat']

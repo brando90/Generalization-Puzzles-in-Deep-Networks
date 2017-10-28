@@ -24,12 +24,13 @@ SLURM_JOBID = 1
 ## the name for lambdas or iterations, depending of type of experiment
 expt_type_dirname = 'unit_test_reg_VW_expt_type_LAMBDAS'
 expt_type_dirname = 'unit_test_reg_VW_expt_type_ITERATIONS'
-#expt_type_dirname = 'nonlinear_VW_expt1_reg_VW_expt_type_LAMBDAS'
+expt_type_dirname = 'nonlinear_VW_expt1_reg_VW_expt_type_LAMBDAS'
 ## the name for experiments, for lambdas its the #iters for that set of lambdas, for iters its the specific lambda tried for that experiment
-set_experiments_dirname = 'lambda_0'
+#set_experiments_dirname = 'lambda_80000'
 #set_experiments_dirname = 'lambda_0'
 #set_experiments_dirname = 'it_12000'
-#set_experiments_dirname = 'it_1400000'
+set_experiments_dirname = 'it_80000'
+set_experiments_dirname = 'it_1400000'
 ##
 path = f'./test_runs/{expt_type_dirname}/{set_experiments_dirname}'
 print(f'path = {path}')
