@@ -39,10 +39,10 @@ import pdb
 
 import unittest
 
-#SLURM_ARRAY_TASK_ID = int(os.environ['SLURM_ARRAY_TASK_ID'])
-#SLURM_JOBID = int(os.environ['SLURM_JOBID'])
-SLURM_ARRAY_TASK_ID = 1
-SLURM_JOBID = 0
+SLURM_ARRAY_TASK_ID = int(os.environ['SLURM_ARRAY_TASK_ID'])
+SLURM_JOBID = int(os.environ['SLURM_JOBID'])
+#SLURM_ARRAY_TASK_ID = 1
+#SLURM_JOBID = 0
 
 print(os.getcwd())
 
@@ -278,5 +278,5 @@ class TestStringMethods(unittest.TestCase):
                 satid+=1
 
 if __name__ == '__main__':
-    main(save_bulk_experiment=False)
+    main(save_bulk_experiment=True)
     #unittest.main()
