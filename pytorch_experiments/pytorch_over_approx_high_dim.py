@@ -406,7 +406,7 @@ def main(**kwargs):
     debug_sgd = False
     #debug_sgd = True
     ## Hyper Params SGD weight parametrization
-    M = 3
+    M = 12
     eta = 0.002 # eta = 1e-6
     if 'nb_iterations_WP' in kwargs:
         nb_iter = kwargs['nb_iterations_WP']
@@ -489,15 +489,15 @@ def main(**kwargs):
         #data_filename='data_numpy_type_mdl=WP_D_layers_[2, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_4_N_test_5041_lb_-1_ub_1_act_quad_ax2_bx_c_nb_params_4_msg_.npz'
         #
         ## n=9,D=12, linear!
-        #truth_filename='data_gen_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_'
-        #data_filename='data_numpy_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_.npz'
+        truth_filename='data_gen_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_'
+        data_filename='data_numpy_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_.npz'
         #truth_filename ='data_gen_type_mdl=WP_D_layers_[2, 10, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_9_N_test_5041_lb_-1_ub_1_act_poly_act_degree3_nb_params_40_msg_1st_2nd_units_are_zero'
         ##
         #truth_filename='data_gen_type_mdl=WP_D_layers_[15, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_13_N_test_25_lb_-1_ub_1_act_linear_nb_params_17_msg_'
         #data_filename='data_numpy_type_mdl=WP_D_layers_[15, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_13_N_test_25_lb_-1_ub_1_act_linear_nb_params_17_msg_.npz'
         ##
-        truth_filename='data_gen_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_'
-        data_filename='data_numpy_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_.npz'
+        # truth_filename='data_gen_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_'
+        # data_filename='data_numpy_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_.npz'
         ##
         #truth_filename='data_gen_type_mdl=WP_D_layers_[2, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_4_N_test_25_lb_-1_ub_1_act_poly_act_degree2_nb_params_4_msg_'
         #data_filename='data_numpy_type_mdl=WP_D_layers_[2, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_4_N_test_25_lb_-1_ub_1_act_poly_act_degree2_nb_params_4_msg_.npz'
@@ -562,8 +562,8 @@ def main(**kwargs):
     act, c_pinv_relu = get_relu_poly_act2(aX,degree=adegree) # ax**2+bx+c, #[1, x^1, ..., x^D]
     print('c_pinv_relu = ', c_pinv_relu)
     #act = relu
-    #act = lambda x: x
-    #act.__name__ = 'linear'
+    act = lambda x: x
+    act.__name__ = 'linear'
     ## plot activation
     # palb, paub = -20, 20
     # paN = 1000swqb
@@ -573,7 +573,8 @@ def main(**kwargs):
     #### 2-layered mdl
     D0 = D_data
 
-    H1 = 12
+    #H1 = 12
+    H1 = 2
     D0,D1,D2 = D0,H1,1
     D_layers,act = [D0,D1,D2], act
 

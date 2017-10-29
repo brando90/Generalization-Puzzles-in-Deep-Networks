@@ -95,22 +95,27 @@ def main(**kwargs):
     day = today_obj.day
     month = calendar.month_name[today_obj.month]
     ##
-    truth_filename='data_gen_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_'
-    data_filename='data_numpy_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_.npz'
+    truth_filename='data_gen_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_'
+    data_filename='data_numpy_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_.npz'
+    #truth_filename='data_gen_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_'
+    #data_filename='data_numpy_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_.npz'
     #experiment_name = 'unit_test'
-    experiment_name = 'nonlinear_VW_expt1'
+    #experiment_name = 'linear_unit_test'
+    #experiment_name = 'nonlinear_VW_expt1'
+    experiment_name = 'linear_VW_expt1'
     ## Regularization
     #reg_type_wp = 'tikhonov'
     reg_type_wp = 'VW'
     ## config params
     ## lambdas
-    N_lambdas = 10
-    lb,ub = 0.01,950
+    N_lambdas = 30
+    lb,ub = 0.001,10000
     one_over_lambdas = np.linspace(lb,ub,N_lambdas)
     lambdas = list( 1/one_over_lambdas )
-    nb_iterations = [int(1.4*10**6)]
+    #nb_iterations = [int(1.4*10**6)]
     #nb_iterations = [int(8*10**4)]
-    repetitions = len(lambdas)*[15]
+    nb_iterations = [int(60*1000)]
+    repetitions = len(lambdas)*[10]
     ## iterations
     # N_iterations = 20
     # lb,ub = 300,5000
@@ -120,9 +125,10 @@ def main(**kwargs):
     ##
     #debug, debug_sgd = True, False
     ## Hyper Params SGD weight parametrization
-    M = 6
+    M = 10
     eta = 0.002 # eta = 1e-6
     A = 0.0
+    logging_freq = 100
     # pick the right hyper param
     if len(lambdas) > 1 and len(nb_iterations) > 1:
         raise ValueError('You cannot test both hyper parameters at once.')
@@ -138,8 +144,6 @@ def main(**kwargs):
         prefix_experiment = f'lambda_{reg_lambda_WP}/it_{nb_iter}_reg_{reg_type_wp}'
     print('reg_lambda_WP = ',reg_lambda_WP)
     print('nb_iter = ',nb_iter)
-    ##
-    logging_freq = 2
     #### Get Data set
     if truth_filename is not None:
         mdl_truth_dict = torch.load('./data/'+truth_filename)
@@ -154,20 +158,20 @@ def main(**kwargs):
     N_train,_ = X_train.shape
     N_test,_ = X_test.shape
     ## activation function
-    adegree = 2
-    ax = np.concatenate( (np.linspace(-20,20,100), np.linspace(-10,10,1000)) )
-    aX = np.concatenate( (ax,np.linspace(-2,2,100000)) )
-    act, c_pinv_relu = get_relu_poly_act2(aX,degree=adegree) # ax**2+bx+c, #[1, x^1, ..., x^D]
-    print('c_pinv_relu = ', c_pinv_relu)
+    adegree = 1
+    # ax = np.concatenate( (np.linspace(-20,20,100), np.linspace(-10,10,1000)) )
+    # aX = np.concatenate( (ax,np.linspace(-2,2,100000)) )
+    # act, c_pinv_relu = get_relu_poly_act2(aX,degree=adegree) # ax**2+bx+c, #[1, x^1, ..., x^D]
+    # print('c_pinv_relu = ', c_pinv_relu)
     #act = relu
-    #act = lambda x: x
-    #act.__name__ = 'linear'
+    act = lambda x: x
+    act.__name__ = 'linear'
     # plot_activation_func(act,lb=-20,ub=20,N=1000)
     # plt.show()
     #### 2-layered mdl
     D0 = D_data
 
-    H1 = 12
+    H1 = 2
     D0,D1,D2 = D0,H1,1
     D_layers,act = [D0,D1,D2], act
 

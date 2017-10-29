@@ -29,7 +29,7 @@ expt_type_dirname = 'nonlinear_VW_expt1_reg_VW_expt_type_LAMBDAS'
 #set_experiments_dirname = 'lambda_80000'
 #set_experiments_dirname = 'lambda_0'
 #set_experiments_dirname = 'it_12000'
-set_experiments_dirname = 'it_80000'
+#set_experiments_dirname = 'it_80000'
 set_experiments_dirname = 'it_1400000'
 ##
 path = f'./test_runs/{expt_type_dirname}/{set_experiments_dirname}'
