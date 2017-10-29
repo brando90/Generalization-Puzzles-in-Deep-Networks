@@ -108,20 +108,20 @@ def main(**kwargs):
     reg_type_wp = 'VW'
     ## config params
     ## lambdas
-    N_lambdas = 30
-    lb,ub = 0.001,10000
-    one_over_lambdas = np.linspace(lb,ub,N_lambdas)
-    lambdas = list( 1/one_over_lambdas )
+    # N_lambdas = 30
+    # lb,ub = 0.001,10000
+    # one_over_lambdas = np.linspace(lb,ub,N_lambdas)
+    # lambdas = list( 1/one_over_lambdas )
     #nb_iterations = [int(1.4*10**6)]
     #nb_iterations = [int(8*10**4)]
-    nb_iterations = [int(60*1000)]
-    repetitions = len(lambdas)*[10]
+    # nb_iterations = [int(60*1000)]
+    # repetitions = len(lambdas)*[10]
     ## iterations
-    # N_iterations = 20
-    # lb,ub = 300,5000
-    # lambdas = [0]
-    # nb_iterations = [ int(i) for i in np.linspace(lb,ub,N_iterations)]
-    # repetitions = len(nb_iterations)*[3]
+    N_iterations = 30
+    lb,ub = 1,60*10**4
+    lambdas = [0]
+    nb_iterations = [ int(i) for i in np.linspace(lb,ub,N_iterations)]
+    repetitions = len(nb_iterations)*[10]
     ##
     #debug, debug_sgd = True, False
     ## Hyper Params SGD weight parametrization
