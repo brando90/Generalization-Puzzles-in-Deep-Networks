@@ -24,13 +24,15 @@ SLURM_JOBID = 1
 ## the name for lambdas or iterations, depending of type of experiment
 expt_type_dirname = 'unit_test_reg_VW_expt_type_LAMBDAS'
 expt_type_dirname = 'unit_test_reg_VW_expt_type_ITERATIONS'
-expt_type_dirname = 'nonlinear_VW_expt1_reg_VW_expt_type_LAMBDAS'
-## the name for experiments, for lambdas its the #iters for that set of lambdas, for iters its the specific lambda tried for that experiment
+expt_type_dirname = 'nonlinear_VW_expt1_reg_VW_expt_type_LAMBDAS' ## the name for experiments, for lambdas its the #iters for that set of lambdas, for iters its the specific lambda tried for that experiment
+expt_type_dirname = 'linear_VW_expt1_reg_VW_expt_type_LAMBDAS'
+expt_type_dirname = 'linear_VW_expt1_reg_VW_expt_type_ITERATIONS'
 #set_experiments_dirname = 'lambda_80000'
-#set_experiments_dirname = 'lambda_0'
+set_experiments_dirname = 'lambda_0'
 #set_experiments_dirname = 'it_12000'
 #set_experiments_dirname = 'it_80000'
-set_experiments_dirname = 'it_1400000'
+#set_experiments_dirname = 'it_1400000'
+#set_experiments_dirname = 'it_60000'
 ##
 path = f'./test_runs/{expt_type_dirname}/{set_experiments_dirname}'
 print(f'path = {path}')
@@ -105,6 +107,8 @@ print(f'\nexpt_type_dirname={expt_type_dirname}')
 print(f'varying_hp={varying_hp} \nprefix_hp={prefix_hp}')
 print('saving\a')
 path_to_save = f'../plotting/results/{prefix_hp}_{SLURM_JOBID}.mat'
+print(f'path_to_save = {path_to_save}')
+print(f'file_name = {prefix_hp}_{SLURM_JOBID}')
 if varying_hp == 'reg_lambda_WP':
     one_over_lambdas = 1/hps
     scipy.io.savemat( path_to_save, dict(one_over_lambdas=one_over_lambdas, train_means=train_means,train_stds=train_stds, test_means=test_means,test_stds=test_stds) )

@@ -95,33 +95,36 @@ def main(**kwargs):
     day = today_obj.day
     month = calendar.month_name[today_obj.month]
     ##
-    truth_filename='data_gen_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_'
-    data_filename='data_numpy_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_.npz'
-    #truth_filename='data_gen_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_'
-    #data_filename='data_numpy_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_.npz'
+    # truth_filename='data_gen_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_'
+    # data_filename='data_numpy_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_.npz'
+    truth_filename='data_gen_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_'
+    data_filename='data_numpy_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_.npz'
     #experiment_name = 'unit_test'
     #experiment_name = 'linear_unit_test'
     #experiment_name = 'nonlinear_VW_expt1'
-    experiment_name = 'linear_VW_expt1'
+    experiment_name = 'nonlinear_V2W_D3_expt1'
+    experiment_name = 'unit_test_nonlinear_V2W_D3_expt1'
+    #experiment_name = 'linear_VW_expt1'
     ## Regularization
     #reg_type_wp = 'tikhonov'
-    reg_type_wp = 'VW'
+    #reg_type_wp = 'VW'
+    reg_type_wp = 'V2W_D3'
     ## config params
     ## lambdas
-    # N_lambdas = 30
-    # lb,ub = 0.001,10000
-    # one_over_lambdas = np.linspace(lb,ub,N_lambdas)
-    # lambdas = list( 1/one_over_lambdas )
+    N_lambdas = 30
+    lb,ub = 1000,10000
+    one_over_lambdas = np.linspace(lb,ub,N_lambdas)
+    lambdas = list( 1/one_over_lambdas )
     #nb_iterations = [int(1.4*10**6)]
     #nb_iterations = [int(8*10**4)]
-    # nb_iterations = [int(60*1000)]
-    # repetitions = len(lambdas)*[10]
+    nb_iterations = [int(60*100)]
+    repetitions = len(lambdas)*[10]
     ## iterations
-    N_iterations = 30
-    lb,ub = 1,60*10**4
-    lambdas = [0]
-    nb_iterations = [ int(i) for i in np.linspace(lb,ub,N_iterations)]
-    repetitions = len(nb_iterations)*[10]
+    # N_iterations = 30
+    # lb,ub = 1,60*10**4
+    # lambdas = [0]
+    # nb_iterations = [ int(i) for i in np.linspace(lb,ub,N_iterations)]
+    # repetitions = len(nb_iterations)*[10]
     ##
     #debug, debug_sgd = True, False
     ## Hyper Params SGD weight parametrization

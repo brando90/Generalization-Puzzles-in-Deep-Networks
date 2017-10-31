@@ -331,6 +331,22 @@ def V2W_reg(mdl,l):
     ## TODO
     pass
 
+def V2W_D3_reg(mdl,l):
+    ##
+    b_w = mdl[1].bias
+    W_p = mdl[1].weight
+    V = mdl[2].weight
+    ## TODO
+    W_p_2 = W_p*W_p
+    R = torch.sum( torch.matmul(V,W_p_2))
+    indices = [(1,2),(1,3),(2,3)]
+    for i,j in indices:
+        R += torch.matmul(W[:,i],W[:,j] )
+    indices = [(1,4),(2,4),(3,4)]
+    for i,j in indices:
+        R+= torch.matmul(V,W[:,i])
+    return R
+
 def get_ERM_lambda(arg, mdl,reg_lambda,X,Y,l=2):
     M, _ = tuple( X.size() )
     ## compute regularization
@@ -341,6 +357,8 @@ def get_ERM_lambda(arg, mdl,reg_lambda,X,Y,l=2):
             reg = VW_reg(mdl,l)
         elif arg.reg_type == 'V[^2W':
             reg = V2W(mdl,l)
+        elif arg.reg_type == 'V2W_D3':
+            reg = V2W_D3_reg(mdl,l)
         elif arg.reg_type == 'tikhonov':
             reg = standard_tikhonov_reg(mdl,l)
         else:
