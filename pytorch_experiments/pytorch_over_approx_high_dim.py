@@ -302,6 +302,7 @@ def stats_logger(arg, mdl, data, eta,loss_list,test_loss_list,grad_list,func_dif
             print('reg_lambda', reg_lambda)
             print('error happened at: i = {} current_train_loss: {}, grad_norm: {},\n ----------------- \a'.format(i,current_train_loss,W.grad.data.norm(2)))
             #sys.exit()
+            #pdb.set_trace()
             raise ValueError('Nan Detected')
 
 def standard_tikhonov_reg(mdl,l):
@@ -332,19 +333,22 @@ def V2W_reg(mdl,l):
     pass
 
 def V2W_D3_reg(mdl,l):
+    #print('--> VW new\n')
+    #pdb.set_trace()
     ##
     b_w = mdl[1].bias
     W_p = mdl[1].weight
     V = mdl[2].weight
-    ## TODO
+    #pdb.set_trace()
+    ##
     W_p_2 = W_p*W_p
     R = torch.sum( torch.matmul(V,W_p_2))
-    indices = [(1,2),(1,3),(2,3)]
+    indices = [(0,1),(0,2),(1,2)]
     for i,j in indices:
-        R += torch.matmul(W[:,i],W[:,j] )
-    indices = [(1,4),(2,4),(3,4)]
+        R += torch.matmul(V,W_p[:,i]*W_p[:,j] )
+    indices = [(0,3),(1,3),(2,3)]
     for i,j in indices:
-        R+= torch.matmul(V,W[:,i])
+        R+= torch.matmul(V,W_p[:,i])
     return R
 
 def get_ERM_lambda(arg, mdl,reg_lambda,X,Y,l=2):
@@ -386,12 +390,14 @@ def train_SGD(arg, mdl,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv,reg_lam
         # Forward pass: compute predicted Y using operations on Variables
         batch_xs, batch_ys = get_batch2(data.X_train,data.Y_train,M,dtype) # [M, D], [M, 1]
         ## FORWARD PASS
+        #pdb.set_trace()
         y_pred = mdl.forward(batch_xs)
         ## LOSS + Regularization
         if reg_lambda != 0:
             batch_loss = get_ERM_lambda(arg, mdl,reg_lambda,X=batch_xs,Y=batch_ys,l=2)
         else:
             batch_loss = (1/M)*(y_pred - batch_ys).pow(2).sum()
+        #pdb.set_trace()
         ## BACKARD PASS
         batch_loss.backward() # Use autograd to compute the backward pass. Now w will have gradients
         ## SGD update
@@ -424,7 +430,7 @@ def main(**kwargs):
     debug_sgd = False
     #debug_sgd = True
     ## Hyper Params SGD weight parametrization
-    M = 12
+    M = 6
     eta = 0.002 # eta = 1e-6
     if 'nb_iterations_WP' in kwargs:
         nb_iter = kwargs['nb_iterations_WP']
@@ -507,15 +513,15 @@ def main(**kwargs):
         #data_filename='data_numpy_type_mdl=WP_D_layers_[2, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_4_N_test_5041_lb_-1_ub_1_act_quad_ax2_bx_c_nb_params_4_msg_.npz'
         #
         ## n=9,D=12, linear!
-        truth_filename='data_gen_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_'
-        data_filename='data_numpy_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_.npz'
+        # truth_filename='data_gen_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_'
+        # data_filename='data_numpy_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_.npz'
         #truth_filename ='data_gen_type_mdl=WP_D_layers_[2, 10, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_9_N_test_5041_lb_-1_ub_1_act_poly_act_degree3_nb_params_40_msg_1st_2nd_units_are_zero'
         ##
         #truth_filename='data_gen_type_mdl=WP_D_layers_[15, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_13_N_test_25_lb_-1_ub_1_act_linear_nb_params_17_msg_'
         #data_filename='data_numpy_type_mdl=WP_D_layers_[15, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_13_N_test_25_lb_-1_ub_1_act_linear_nb_params_17_msg_.npz'
         ##
-        # truth_filename='data_gen_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_'
-        # data_filename='data_numpy_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_.npz'
+        truth_filename='data_gen_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_'
+        data_filename='data_numpy_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_.npz'
         ##
         #truth_filename='data_gen_type_mdl=WP_D_layers_[2, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_4_N_test_25_lb_-1_ub_1_act_poly_act_degree2_nb_params_4_msg_'
         #data_filename='data_numpy_type_mdl=WP_D_layers_[2, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_4_N_test_25_lb_-1_ub_1_act_poly_act_degree2_nb_params_4_msg_.npz'
@@ -580,8 +586,8 @@ def main(**kwargs):
     act, c_pinv_relu = get_relu_poly_act2(aX,degree=adegree) # ax**2+bx+c, #[1, x^1, ..., x^D]
     print('c_pinv_relu = ', c_pinv_relu)
     #act = relu
-    act = lambda x: x
-    act.__name__ = 'linear'
+    # act = lambda x: x
+    # act.__name__ = 'linear'
     ## plot activation
     # palb, paub = -20, 20
     # paN = 1000swqb
@@ -592,7 +598,7 @@ def main(**kwargs):
     D0 = D_data
 
     #H1 = 12
-    H1 = 2
+    H1 = 12
     D0,D1,D2 = D0,H1,1
     D_layers,act = [D0,D1,D2], act
 
@@ -678,8 +684,9 @@ def main(**kwargs):
                 arg,mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv, reg_lambda_WP
             )
             keep_training=False
-        except ValueError:
-            print('Nan was caught, going to restart training')
+        except Exception as e:
+            err_msg = str(e)
+            print(f'\nExcaption caught turin training with msg: {err_msg}')
             w_inits_sgd, b_inits_sgd = get_initialization(init_config)
             mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,biases=biases)
     ##

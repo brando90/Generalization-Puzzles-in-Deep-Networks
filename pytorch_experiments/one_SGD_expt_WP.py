@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #SBATCH --mem=7000
 #SBATCH --time=0-06:00
-#SBATCH --array=1-300
+#SBATCH --array=1-750
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
 #SBATCH --qos=cbmm
@@ -103,7 +103,7 @@ def main(**kwargs):
     #experiment_name = 'linear_unit_test'
     #experiment_name = 'nonlinear_VW_expt1'
     experiment_name = 'nonlinear_V2W_D3_expt1'
-    experiment_name = 'unit_test_nonlinear_V2W_D3_expt1'
+    #experiment_name = 'unit_test_nonlinear_V2W_D3_expt1'
     #experiment_name = 'linear_VW_expt1'
     ## Regularization
     #reg_type_wp = 'tikhonov'
@@ -111,14 +111,14 @@ def main(**kwargs):
     reg_type_wp = 'V2W_D3'
     ## config params
     ## lambdas
-    N_lambdas = 30
-    lb,ub = 1000,10000
+    N_lambdas = 50
+    lb,ub = 0.01,10000
     one_over_lambdas = np.linspace(lb,ub,N_lambdas)
     lambdas = list( 1/one_over_lambdas )
-    #nb_iterations = [int(1.4*10**6)]
+    nb_iterations = [int(1.4*10**6)]
     #nb_iterations = [int(8*10**4)]
-    nb_iterations = [int(60*100)]
-    repetitions = len(lambdas)*[10]
+    #nb_iterations = [int(60*100)]
+    repetitions = len(lambdas)*[15]
     ## iterations
     # N_iterations = 30
     # lb,ub = 1,60*10**4
@@ -128,7 +128,7 @@ def main(**kwargs):
     ##
     #debug, debug_sgd = True, False
     ## Hyper Params SGD weight parametrization
-    M = 10
+    M = 6
     eta = 0.002 # eta = 1e-6
     A = 0.0
     logging_freq = 100
@@ -161,20 +161,20 @@ def main(**kwargs):
     N_train,_ = X_train.shape
     N_test,_ = X_test.shape
     ## activation function
-    adegree = 1
-    # ax = np.concatenate( (np.linspace(-20,20,100), np.linspace(-10,10,1000)) )
-    # aX = np.concatenate( (ax,np.linspace(-2,2,100000)) )
-    # act, c_pinv_relu = get_relu_poly_act2(aX,degree=adegree) # ax**2+bx+c, #[1, x^1, ..., x^D]
-    # print('c_pinv_relu = ', c_pinv_relu)
+    adegree = 2
+    ax = np.concatenate( (np.linspace(-20,20,100), np.linspace(-10,10,1000)) )
+    aX = np.concatenate( (ax,np.linspace(-2,2,100000)) )
+    act, c_pinv_relu = get_relu_poly_act2(aX,degree=adegree) # ax**2+bx+c, #[1, x^1, ..., x^D]
+    print('c_pinv_relu = ', c_pinv_relu)
     #act = relu
-    act = lambda x: x
-    act.__name__ = 'linear'
+    #act = lambda x: x
+    #act.__name__ = 'linear'
     # plot_activation_func(act,lb=-20,ub=20,N=1000)
     # plt.show()
     #### 2-layered mdl
     D0 = D_data
 
-    H1 = 2
+    H1 = 12
     D0,D1,D2 = D0,H1,1
     D_layers,act = [D0,D1,D2], act
 
@@ -231,14 +231,16 @@ def main(**kwargs):
     ##
     arg = Maps(reg_type=reg_type_wp)
     keep_training=True
+    #train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params = train_SGD( arg,mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv, reg_lambda_WP)
     while keep_training:
         try:
             train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params = train_SGD(
                 arg,mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv, reg_lambda_WP
             )
             keep_training=False
-        except ValueError:
-            print('Nan was caught, going to restart training')
+        except Exception as e:
+            err_msg = str(e)
+            print(f'\nExcaption caught turin training with msg: {err_msg}')
             w_inits_sgd, b_inits_sgd = get_initialization(init_config)
             mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,biases=biases)
     ##
