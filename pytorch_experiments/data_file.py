@@ -73,7 +73,7 @@ def make_mesh_grid_to_data_set(X, Y, Z=None):
             X_data[i,:] = x_data
             Y_data[i,:] = y_data
             i=i+1;
-    return X_data, Y_data
+    return X_data,Y_data
 
 def make_meshgrid_data_from_training_data(X_data, Y_data):
     N, _ = X_data.shape

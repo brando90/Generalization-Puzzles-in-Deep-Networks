@@ -4,7 +4,6 @@
 #SBATCH --array=1-750
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
-#SBATCH --qos=cbmm
 '''
     #SBATCH --gres=gpu:1
 '''
@@ -103,7 +102,7 @@ def main(**kwargs):
     #experiment_name = 'linear_unit_test'
     #experiment_name = 'nonlinear_VW_expt1'
     experiment_name = 'nonlinear_V2W_D3_expt1'
-    #experiment_name = 'unit_test_nonlinear_V2W_D3_expt1'
+    experiment_name = 'unit_test_nonlinear_V2W_D3_expt1'
     #experiment_name = 'linear_VW_expt1'
     ## Regularization
     #reg_type_wp = 'tikhonov'
@@ -117,7 +116,7 @@ def main(**kwargs):
     lambdas = list( 1/one_over_lambdas )
     nb_iterations = [int(1.4*10**6)]
     #nb_iterations = [int(8*10**4)]
-    #nb_iterations = [int(60*100)]
+    nb_iterations = [int(60*100)]
     repetitions = len(lambdas)*[15]
     ## iterations
     # N_iterations = 30

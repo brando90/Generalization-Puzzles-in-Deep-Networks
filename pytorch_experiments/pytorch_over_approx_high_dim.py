@@ -342,13 +342,13 @@ def V2W_D3_reg(mdl,l):
     #pdb.set_trace()
     ##
     W_p_2 = W_p*W_p
-    R = torch.sum( torch.matmul(V,W_p_2))
+    R = torch.sum( torch.matmul(V,W_p_2) )
     indices = [(0,1),(0,2),(1,2)]
     for i,j in indices:
         R += torch.matmul(V,W_p[:,i]*W_p[:,j] )
     indices = [(0,3),(1,3),(2,3)]
     for i,j in indices:
-        R+= torch.matmul(V,W_p[:,i])
+        R += torch.matmul(V,W_p[:,i])
     return R
 
 def get_ERM_lambda(arg, mdl,reg_lambda,X,Y,l=2):
@@ -415,6 +415,11 @@ def train_SGD(arg, mdl,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv,reg_lam
         mdl.zero_grad()
     return loss_list,test_loss_list,grad_list,func_diff,erm_lamdas,nb_module_params
 
+
+###############################################################################
+###############################################################################
+###############################################################################
+
 def main(**kwargs):
     '''
     main code, where experiments for over parametrization are made
@@ -435,13 +440,17 @@ def main(**kwargs):
     if 'nb_iterations_WP' in kwargs:
         nb_iter = kwargs['nb_iterations_WP']
     else:
-        nb_iter = int(80*1000)
+        #nb_iter = int(80*1000)
+        nb_iter = int(1.4*10**6)
     #nb_iter = int(15*1000)
     A = 0.0
     if 'reg_lambda_WP' in kwargs:
         reg_lambda_WP = kwargs['reg_lambda_WP']
     else:
         reg_lambda_WP = 0.0
+    print('WP training config')
+    print(f'reg_lambda_WP={reg_lambda_WP}')
+    print(f'M={M},eta={eta}')
     ## Hyper Params SGD standard parametrization
     M_standard_sgd = 6
     eta_standard_sgd = 0.002 # eta = 1e-6
@@ -986,7 +995,10 @@ def main(**kwargs):
 
 if __name__ == '__main__':
     print('__main__ started')
-    main(experiment_type='quick_run',plotting=True)
+    #main(experiment_type='quick_run',plotting=True)
+    reg_type_wp='V2W_D3'
+    reg_lambda = 0.001
+    train_error, test_error, erm_reg = main(experiment_type='serial_multiple_lambdas',reg_lambda_WP=reg_lambda,reg_type_wp=reg_type_wp,plotting=False)
     ##
     #run_type = 'h_add'
     #run_type = 'h_gabor'
