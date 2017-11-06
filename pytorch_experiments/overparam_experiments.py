@@ -46,6 +46,16 @@ SLURM_JOBID = 6
 
 ##
 
+def g():
+    Y_pinv = np.dot(poly_feat.fit_transform(X_test),c_pinv)
+    _,_,Zp_pinv = make_meshgrid_data_from_training_data(X_test=X_test, Y_test=Y_pinv)
+    return
+
+def f_target(x):
+    poly_feat = PolynomialFeatures(degree=Degree_data_set)
+    Kern = poly_feat.fit_transform(x)
+    return  np.dot(Kern,c_target)
+
 def get_f_2_imitate_D0_1(Degree_data_set):
     # TODO
     D0 = 1
@@ -99,9 +109,9 @@ def get_f_2_imitate_D0_1(Degree_data_set):
         return y
     return f_2_imitate
 
-def get_f_2_imitate_D0_2(Degree_data_set):
+def get_f_2_imitate_D0_2():
     #
-    f_2_imitate = lambda X,Y: sin(2*pi*X) + 4*(Y - 0.5).^2
+    f_2_imitate = lambda X,Y: np.sin(2*np.pi*X) + 4*(Y - 0.5)**2
     #f_2_imitate = lambda X,Y: np.exp( -(X**2 + Y**2) )*np.cos(2*np.pi*(X+Y))
     return f_2_imitate
 
@@ -132,28 +142,29 @@ def get_c_fit_function(target_f,D0,degree_mdl,N,lb,ub):
         print(N)
         c_target = np.polyfit(X.reshape((N,)),Y.reshape((N,)),degree_mdl)[::-1]
     elif D0 == 2:
-        ## TODO
-        ## Lift data/Kernelize data
-        poly_feat = PolynomialFeatures(degree=Degree_mdl)
-        Kern_train = poly_feat.fit_transform(X_train)
-        Kern_test = poly_feat.fit_transform(X_test)
+        ##
+        X_cord,Y_cord = generate_meshgrid(N,lb,ub)
+        Z_data = target_f(X_cord,Y_cord)
+        ##
+        X_data, Y_data = make_mesh_grid_to_data_set(X_cord,Y_cord,Z=Z_data)
         ## LA models
-        c_target = np.dot(np.linalg.pinv( Kern_train ),Y_train)
+        poly_feat = PolynomialFeatures(degree=degree_mdl)
+        Kern_data = poly_feat.fit_transform(X_data)
+        c_target = np.dot(np.linalg.pinv( Kern_data ),Y_data)
     else:
         # TODO
         raise ValueError(f'Not implemented D0={D0}')
     return c_target
 
 def get_c_fit_data(X,Y,degree_mdl):
-    N = X.shape[0]
+    N,D0 = X.shape
     ## copy that f with the target degree polynomial
     poly_feat = PolynomialFeatures(degree=degree_mdl)
     Kern = poly_feat.fit_transform(X)
-    #c_target = np.dot(np.linalg.pinv( Kern ), Y)
-    # print(degree_mdl)
-    # print(Y)
-    # print(degree_mdl)
-    c_target  = np.polyfit( X.reshape((N,)) , Y.reshape((N,)) , degree_mdl )[::-1]
+    if D0==1:
+        c_target  = np.polyfit( X.reshape((N,)) , Y.reshape((N,)) , degree_mdl )[::-1]
+    else:
+        c_target = np.dot(np.linalg.pinv( Kern ), Y)
     return c_target
 
 def plot_target_function(c_target,X_train,Y_train,lb,ub,f_2_imitate):
@@ -243,16 +254,18 @@ def get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees):
     ranks = []
     s_inv_total, s_inv_max = [], []
     ##
-    N_train = X_train.shape[0]
+    N_train,D0 = X_train.shape
     ##
     for degree_mdl in degrees:
         poly_feat = PolynomialFeatures(degree=degree_mdl)
         # get mdl
         Kern_train = poly_feat.fit_transform(X_train)
-        #Kern_train_pinv = np.linalg.pinv( Kern_train )
-        #Kern_train_pinv = my_pinv(Kern_train)
-        #c_pinv = np.dot(Kern_train_pinv, Y_train) # c = <K^+,Y>
-        c_pinv = np.polyfit(X_train.reshape((N_train,)),Y_train.reshape((N_train,)),degree_mdl)[::-1]
+        if D0==1:
+            c_pinv = np.polyfit(X_train.reshape((N_train,)),Y_train.reshape((N_train,)),degree_mdl)[::-1]
+        else:
+            Kern_train_pinv = np.linalg.pinv( Kern_train )
+            Kern_train_pinv = my_pinv(Kern_train)
+            c_pinv = np.dot(Kern_train_pinv, Y_train) # c = <K^+,Y>
         #pdb.set_trace()
         #c_pinv = np.polyfit(X_train.reshape((N_train,)),Y_train.reshape((N_train,)),deg=degree_mdl)[::-1]
         ##
@@ -304,31 +317,30 @@ def my_main(**kwargs):
     else:
         ## properties of Data set
         D0 = 2
-        N_train, N_test = 40, 60
-        print('D0 = {}, N_train = {}, N_test = {}'.format(D0,N_train,N_test))
+        N_train, N_test = 36, 64
+        print(f'D0 = {D0}, N_train = {N_train}, N_test = {N_test}')
         ## get function to imitate and X input points
-        Degree_data_set = 500
+        Degree_data_set = 20
         nb_monomials_data = get_nb_monomials(nb_variables=D0,degree=Degree_data_set)
         if D0 == 1:
             #X_train, X_test = 2*np.random.rand(N_train,D0)-1, 2*np.random.rand(N_test,D0)-1
             X_train, X_test = np.linspace(lb,ub,N_train).reshape(N_train,D0), np.linspace(lb,ub,N_test).reshape(N_test,D0)
             f_2_imitate = get_f_2_imitate_D0_1(Degree_data_set)
         elif D0 == 2:
-            X,Y = generate_meshgrid(N,lb,ub)
-            X_train, _ = make_mesh_grid_to_data_set(X,Y,Z=None)
-            X_data,Y_data = f_2_imitate = get_f_2_imitate_D0_2(Degree_data_set)
+            X_cord_train,Y_cord_train = generate_meshgrid(N_train,lb,ub)
+            X_train, _ = make_mesh_grid_to_data_set(X_cord_train,Y_cord_train,Z=None)
+            X_cord_test,Y_cord_test = generate_meshgrid(N_test,lb,ub)
+            X_test, _ = make_mesh_grid_to_data_set(X_cord_test,Y_cord_test,Z=None)
+            ##
+            f_2_imitate = get_f_2_imitate_D0_2()
         else:
             # TODO
             raise ValueError(f'Not implemented D0={D0}')
         ## get actual (polynomial) target function
-        c_target = get_c_fit_function(f_2_imitate, D0,Degree_data_set, N=25000, lb=lb,ub=ub) # [Deg,1] sin with period k
-        def f_target(x):
-            poly_feat = PolynomialFeatures(degree=Degree_data_set)
-            Kern = poly_feat.fit_transform(x)
-            return  np.dot(Kern,c_target)
+        c_target = get_c_fit_function(f_2_imitate, D0,Degree_data_set, N=24964, lb=lb,ub=ub) # [Deg,1] sin with period k
         ## get noise for target Y
-        mu_noise, std_noise = 0, 0.0
-        noise_train, noise_test = 0, 0
+        mu_noise, std_noise = 0,0
+        noise_train, noise_test = 0,0
         ## get target Y
         Y_train, Y_test = get_target_Y_SP_poly(X_train,X_test, Degree_data_set, c_target, noise_train=noise_train,noise_test=noise_test)
     ## print
@@ -371,7 +383,7 @@ def my_main(**kwargs):
     print( '|| <X_train,c_target> - <X_train,c_target_deg_truth> ||^2 = {}'.format( np.linalg.norm(y_truth-y_mdl_deg_truth) ) )
     print('||c_truth - c_target_deg_truth||^2 = {}'.format( np.linalg.norm(c_target - c_target_deg_truth) ))
     if plotting:
-        if D0 == 1:
+        if D0==1:
             ## plot target func
             plot_target_function(c_target,X_train,Y_train,lb=lb,ub=ub,f_2_imitate=f_2_imitate)
             ## plot models to check
@@ -392,43 +404,22 @@ def my_main(**kwargs):
             plot_poly_with_params(c_targets_2_plot[high_mdl],X_train,Y_train,lb=lb,ub=ub)
         elif D0==2:
             #
-            Xp,Yp,Zp = make_meshgrid_data_from_training_data(X_test=X_test, Y_test=Y_test) # meshgrid for visualization
-            Xp_train,Yp_train,Zp_train = make_meshgrid_data_from_training_data(X_test=X_train, Y_test=Y_train) # meshgrid for trainign points
-            #
-            Y_pinv = np.dot(poly_feat.fit_transform(X_test),c_pinv)
-            _,_,Zp_pinv = make_meshgrid_data_from_training_data(X_test=X_test, Y_test=Y_pinv)
-            ## FIG PINV
+            _,_,Z_cord_train = make_meshgrid_data_from_training_data(X_data=X_train, Y_data=Y_train) # meshgrid for trainign points visualization
+            _,_,Z_cord_test = make_meshgrid_data_from_training_data(X_data=X_test, Y_data=Y_test) # meshgrid for function visualization
+            ## fig target function
             fig1 = plt.figure()
             ax1 = Axes3D(fig1)
-            data_pts = ax1.scatter(Xp_train,Yp_train,Zp_train, marker='D')
-            surf = ax1.plot_surface(Xp,Yp,Zp_pinv,color='y',cmap=cm.coolwarm)
+            data_pts = ax1.scatter(X_cord_train,Y_cord_train,Z_cord_train, marker='D')
+            surf = ax1.plot_surface(X_cord_test,Y_cord_test,Z_cord_test,color='y',cmap=cm.coolwarm)
             ax1.set_xlabel('x1'),ax1.set_ylabel('x2'),ax1.set_zlabel('f(x)')
             surf_proxy = mpl.lines.Line2D([0],[0], linestyle="none", c='r', marker ='_')
             ax1.legend([surf_proxy,data_pts],[
-                'minimum norm solution Degree model={}, number of monomials={}'.format(Degree_mdl,nb_monomials),
-                'data points, number of data points = {}'.format(N_train)])
-            ## FIG SGD standard param
-            fig = plt.figure()
-            ax3 = Axes3D(fig)
-            data_pts = ax3.scatter(Xp_train,Yp_train,Zp_train, marker='D')
-            surf = ax3.plot_surface(Xp,Yp,Zp_sgd_stand, cmap=cm.coolwarm)
-            ax3.set_xlabel('x1'),ax3.set_ylabel('x2'),ax3.set_zlabel('f(x)')
-            ax3.legend([surf_proxy,data_pts],[
-                'SGD solution standard parametrization Degree model={}, number of monomials={}, param count={}, batch-size={}, iterations={}, step size={}'.format(degree_sgd,nb_monomials,nb_monomials,M_standard_sgd,nb_iter_standard_sgd,eta_standard_sgd),
-                'data points, number of data points = {}'.format(N_train)])
-            ## PLOT train surface
-            # fig = plt.figure()
-            # ax = Axes3D(fig)
-            # points_scatter = ax.scatter(Xp_train,Yp_train,Zp_train, marker='D')
-            # surf = ax.plot_surface(Xp_train,Yp_train,Zp_train, cmap=cm.coolwarm)
-            # plt.title('Train function')
-            # ## PLOT test surface
-            # fig = plt.figure()
-            # ax = Axes3D(fig)
-            # points_scatter = ax.scatter(Xp,Yp,Zp, marker='D')
-            # surf = ax.plot_surface(Xp,Yp,Zp, cmap=cm.coolwarm)
-            # plt.title('Test function')
-    ## plot errors
+                f'target function degree={Degree_data_set}, number of monomials={nb_monomials_data}',
+                f'data points, number of data points = {N_train}'])
+        else:
+            #TODO
+            raise ValueError("not implemented yet")
+        ## plot errors
         plot_fig4(monomials,train_errors,test_errors,N_train,N_test)
         ## plot ranks
         fig1 = plt.figure()
