@@ -111,7 +111,7 @@ def get_f_2_imitate_D0_1(Degree_data_set):
 
 def get_f_2_imitate_D0_2():
     #
-    f_2_imitate = lambda X,Y: np.sin(2*np.pi*X) + 4*(Y - 0.5)**2
+    f_2_imitate = lambda X,Y: np.sin(2*np.pi*X) + 4*(Y - 2)**2
     #f_2_imitate = lambda X,Y: np.exp( -(X**2 + Y**2) )*np.cos(2*np.pi*(X+Y))
     return f_2_imitate
 
@@ -302,7 +302,7 @@ def get_c(nb_monomials_data):
 
 def my_main(**kwargs):
     ##
-    lb,ub = 1,2
+    lb,ub = 1,4
     start_time = time.time()
     plotting = kwargs['plotting'] if 'plotting' in kwargs else False
     freq = -1
@@ -317,10 +317,10 @@ def my_main(**kwargs):
     else:
         ## properties of Data set
         D0 = 2
-        N_train, N_test = 36, 64
+        N_train, N_test = 100,2624
         print(f'D0 = {D0}, N_train = {N_train}, N_test = {N_test}')
         ## get function to imitate and X input points
-        Degree_data_set = 20
+        Degree_data_set = 30
         nb_monomials_data = get_nb_monomials(nb_variables=D0,degree=Degree_data_set)
         if D0 == 1:
             #X_train, X_test = 2*np.random.rand(N_train,D0)-1, 2*np.random.rand(N_test,D0)-1
@@ -349,7 +349,7 @@ def my_main(**kwargs):
     print('nb_monomials_data = {} \n'.format(nb_monomials_data) )
     ## get errors from models
     step_deg=1
-    smallest_deg,largest_deg = 1,70
+    smallest_deg,largest_deg = 1,25
     degrees = list(range(smallest_deg,largest_deg,step_deg))
     train_errors,test_errors,ranks,s_inv_total,s_inv_max = get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees)
     ##
