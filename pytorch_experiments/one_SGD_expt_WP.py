@@ -98,11 +98,14 @@ def main(**kwargs):
     # data_filename='data_numpy_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_.npz'
     truth_filename='data_gen_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_'
     data_filename='data_numpy_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_.npz'
+    ##
+    data_filename='degree4_fit_2_sin.npz'
     #experiment_name = 'unit_test'
     #experiment_name = 'linear_unit_test'
     #experiment_name = 'nonlinear_VW_expt1'
     experiment_name = 'nonlinear_V2W_D3_expt1'
     experiment_name = 'unit_test_nonlinear_V2W_D3_expt1'
+    experiment_name = 'unit_test_SP'
     #experiment_name = 'linear_VW_expt1'
     ## Regularization
     #reg_type_wp = 'tikhonov'
@@ -127,7 +130,7 @@ def main(**kwargs):
     ##
     #debug, debug_sgd = True, False
     ## Hyper Params SGD weight parametrization
-    M = 6
+    M = 3
     eta = 0.002 # eta = 1e-6
     A = 0.0
     logging_freq = 100
@@ -200,7 +203,8 @@ def main(**kwargs):
     Kern_train, Kern_test = poly_feat.fit_transform(X_train), poly_feat.fit_transform(X_test)
     ## LA models
     if D0 == 1:
-        c_pinv = np.polyfit( X_train.reshape((N_train,)) , Y_train.reshape((N_train,)) , degree_mdl )[::-1]
+        Degree_mdl = 4 ## variable to CHANGE
+        c_pinv = np.polyfit( X_train.reshape((N_train,)) , Y_train.reshape((N_train,)) , Degree_mdl )[::-1]
     else:
         ## TODO: https://stackoverflow.com/questions/10988082/multivariate-polynomial-regression-with-numpy
         c_pinv = np.dot(np.linalg.pinv( Kern_train ),Y_train)
@@ -214,14 +218,17 @@ def main(**kwargs):
         mdl_truth = NN(D_layers=D_layers_truth,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,biases=biases)
         mdl_truth.load_state_dict(mdl_truth_dict)
     mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,biases=biases)
+    ##
+    mdl_sgd = get_sequential_lifted_mdl(nb_monomials=c_pinv.shape[0],D_out=1, bias=False)
     ## data to TORCH
     data = get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test,dtype)
     data_stand = get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test,dtype)
     data_stand.X_train, data_stand.X_test = data_stand.Kern_train, data_stand.Kern_test
     ## check number of monomials
     nb_monomials = int(scipy.misc.comb(D0+Degree_mdl,Degree_mdl))
-    if c_pinv.shape[0] != int(scipy.misc.comb(D0+Degree_mdl,Degree_mdl)):
-       raise ValueError('nb of monomials dont match D0={},Degree_mdl={}, number of monimials fron pinv={}, number of monomials analyticall = {}'.format( D0,Degree_mdl,c_pinv.shape[0],int(scipy.misc.comb(D0+Degree_mdl,Degree_mdl)) )    )
+    nb_terms = c_pinv.shape[0]
+    if nb_terms != int(scipy.misc.comb(D0+Degree_mdl,Degree_mdl)):
+       raise ValueError(f'nb of monomials dont match D0={D0},Degree_mdl={Degree_mdl}, number of monimials fron pinv={nb_terms}, number of monomials analyticall = {nb_monomials}')
     ########################################################################################################################################################
     ## some debugging print statements
     print('nb = ', nb_iter)
@@ -239,7 +246,7 @@ def main(**kwargs):
             keep_training=False
         except Exception as e:
             err_msg = str(e)
-            print(f'\nExcaption caught turin training with msg: {err_msg}')
+            print(f'\nException caught during training with msg: {err_msg}')
             w_inits_sgd, b_inits_sgd = get_initialization(init_config)
             mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,biases=biases)
     ##

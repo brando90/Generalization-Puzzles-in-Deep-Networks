@@ -20,6 +20,9 @@ from matplotlib import cm
 import scipy
 import scipy.io
 
+def get_nb_monomials(nb_variables,degree):
+    return int(scipy.misc.comb(nb_variables+degree,degree))
+
 def count_params(mdl):
     '''
     count the number of parameters of a pytorch model
@@ -122,6 +125,79 @@ def compare_first_layer(mdl_gen,mdl_sgd):
     print(W1)
     print(W1_g)
     pdb.set_trace()
+
+####
+
+def get_func_pointer_poly(c_mdl,Degree_data_set,D0):
+    nb_monomials_data = get_nb_monomials(nb_variables=D0,degree=Degree_data_set)
+    nb_terms = c_mdl.shape[0]
+    if nb_monomials_data != nb_terms:
+        raise ValueError(f'nb monomials and nb terms don\'t match: {nb_monomials_data}!={nb_terms}')
+    def f_poly(x):
+        poly_feat = PolynomialFeatures(degree=Degree_data_set)
+        kern = poly_feat.fit_transform(x)
+        y = np.dot(kern,c_mdl)
+        return y
+    return f_poly
+
+def get_X_Y_data(f_2_imitate, D0,N,lb,ub):
+    if D0 == 1:
+        #pdb.set_trace()
+        X = np.linspace(lb,ub,N).reshape(N,D0) # [N,D0]
+        Y = f_2_imitate(X) #
+    elif D0 == 2:
+        ##
+        X_cord,Y_cord = generate_meshgrid(N,lb,ub)
+        Z_data = target_f(X_cord,Y_cord)
+        ##
+        X,Y = make_mesh_grid_to_data_set(X_cord,Y_cord,Z=Z_data)
+    else:
+        raise ValueError('Not implemented')
+    return X,Y
+
+def get_c_fit_function(D0,degree_mdl,X,Y):
+    ## evaluate target_f on x_points
+    if D0 == 1:
+        ## copy that f with the target degree polynomial
+        #poly_feat = PolynomialFeatures(degree=degree_mdl)
+        #Kern = poly_feat.fit_transform(X)
+        #c_target = np.dot(np.linalg.pinv( Kern ), Y)
+        N,_ = X.shape
+        print(X.shape)
+        print(Y.shape)
+        print(N)
+        c_target = np.polyfit(X.reshape((N,)),Y.reshape((N,)),degree_mdl)[::-1]
+    elif D0 == 2:
+        ## LA models
+        poly_feat = PolynomialFeatures(degree=degree_mdl)
+        Kern = poly_feat.fit_transform(X)
+        c_target = np.dot(np.linalg.pinv( Kern ), Y)
+    else:
+        # TODO
+        raise ValueError(f'Not implemented D0={D0}')
+    return c_target
+
+def save_data_poly_fit_to_f_2_imitate(saving,path_to_save, f_2_imitate,Degree_data_set, D0,lb,ub,N_train,N_test, N_4_func_approx, noise_train=0,noise_test=0):
+    print(f'D0 = {D0}, N_train = {N_train}, N_test = {N_test}')
+    ##
+    nb_monomials_data = get_nb_monomials(nb_variables=D0,degree=Degree_data_set)
+    print(f'> Degree_data_set={Degree_data_set}, nb_monomials_data={nb_monomials_data}')
+    ##
+    X,Y = get_X_Y_data(f_2_imitate, D0,N_4_func_approx,lb,ub)
+    c_target = get_c_fit_function(D0,Degree_data_set,X,Y)
+    f_target = get_func_pointer_poly(c_target,Degree_data_set,D0)
+    ##
+    X_train,Y_train = get_X_Y_data(f_2_imitate, D0,N_train,lb,ub)
+    X_test,Y_test = get_X_Y_data(f_2_imitate, D0,N_test,lb,ub)
+    Y_train, Y_test = f_target(X_train)+noise_train, f_target(X_test)+noise_test
+    ##
+    if saving:
+        experiment_data = dict(
+            X_train=X_train,Y_train=Y_train, X_test=X_test,Y_test=Y_test,
+        )
+        np.savez( path_to_save, **experiment_data)
+        #np.savez( path_to_save, X_train=X_train,Y_train=Y_train, X_test=X_test,Y_test=Y_test)
+    return X_train,Y_train, X_test,Y_test
 
 ####
 
@@ -286,6 +362,24 @@ def generate_meshgrid_h_gabor(N=60000,start_val=-1,end_val=1):
 
 ##
 
+def main_poly():
+    saving=True
+    file_name='degree4_fit_2_sin'
+    path_to_save = f'./data/{file_name}'
+    f_2_imitate = np.sin
+    Degree_data_set = 4
+    D0 = 1
+    lb,ub = 0,1
+    N_train, N_test = 5,200
+    N_4_func_approx = 5
+    ##
+    save_data_poly_fit_to_f_2_imitate(
+        saving,path_to_save, f_2_imitate,Degree_data_set, D0,lb,ub,N_train,N_test,N_4_func_approx,
+        noise_train=0,noise_test=0
+    )
+
+##
+
 def visualize(X,Y,Z,title_name='Test function'):
     #Xp,Yp,Zp = make_meshgrid_data_from_training_data(X_data=X_test, Y_data=Y_test)
     fig = plt.figure()
@@ -344,6 +438,7 @@ if __name__ == '__main__':
     type_mdl = 'WP'
     #type_mdl = 'SP'
     #save_data_set_mdl_sgd(path='./data/{}', run_type='h_add', lb=-1,ub=1,N_train=35,N_test=5041,msg='',visualize=False)
-    save_data_set(path='./data/{}',type_mdl=type_mdl,D_layers=D_layers,act=act,biases=biases,mu=mu,std=std, lb=-1,ub=1,N_train=N_train,N_test=N_test,msg=msg,visualize=visualize,save_data=save_data)
+    #save_data_set(path='./data/{}',type_mdl=type_mdl,D_layers=D_layers,act=act,biases=biases,mu=mu,std=std, lb=-1,ub=1,N_train=N_train,N_test=N_test,msg=msg,visualize=visualize,save_data=save_data)
     #data_generator = load(path='./data/data_gen_nb_layers3_biasTrue_mu0.0_std5.0')
+    main_poly()
     print('End! \a')

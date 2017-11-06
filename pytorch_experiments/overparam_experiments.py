@@ -111,8 +111,9 @@ def get_f_2_imitate_D0_1(Degree_data_set):
 
 def get_f_2_imitate_D0_2():
     #
-    f_2_imitate = lambda X,Y: np.sin(2*np.pi*X) + 4*(Y - 2)**2
+    #f_2_imitate = lambda X,Y: np.sin(2*np.pi*X) + 4*(Y - 2)**2
     #f_2_imitate = lambda X,Y: np.exp( -(X**2 + Y**2) )*np.cos(2*np.pi*(X+Y))
+    f_2_imitate = lambda X,Y: np.cos(2*np.pi*(X+Y))
     return f_2_imitate
 
 def get_target_Y_SP_poly(X_train,X_test,Degree_data_set,c_target,noise_train=0,noise_test=0):
@@ -127,34 +128,6 @@ def get_target_Y_SP_poly(X_train,X_test,Degree_data_set,c_target,noise_train=0,n
     ## add noise to target
     Y_train, Y_test = Y_train+noise_train, Y_test+noise_test
     return Y_train, Y_test
-
-def get_c_fit_function(target_f,D0,degree_mdl,N,lb,ub):
-    ## evaluate target_f on x_points
-    if D0 == 1:
-        X = np.linspace(lb,ub,N).reshape(N,D0) # [N,D0]
-        Y = target_f(X) #
-        ## copy that f with the target degree polynomial
-        #poly_feat = PolynomialFeatures(degree=degree_mdl)
-        #Kern = poly_feat.fit_transform(X)
-        #c_target = np.dot(np.linalg.pinv( Kern ), Y)
-        print(X.shape)
-        print(Y.shape)
-        print(N)
-        c_target = np.polyfit(X.reshape((N,)),Y.reshape((N,)),degree_mdl)[::-1]
-    elif D0 == 2:
-        ##
-        X_cord,Y_cord = generate_meshgrid(N,lb,ub)
-        Z_data = target_f(X_cord,Y_cord)
-        ##
-        X_data, Y_data = make_mesh_grid_to_data_set(X_cord,Y_cord,Z=Z_data)
-        ## LA models
-        poly_feat = PolynomialFeatures(degree=degree_mdl)
-        Kern_data = poly_feat.fit_transform(X_data)
-        c_target = np.dot(np.linalg.pinv( Kern_data ),Y_data)
-    else:
-        # TODO
-        raise ValueError(f'Not implemented D0={D0}')
-    return c_target
 
 def get_c_fit_data(X,Y,degree_mdl):
     N,D0 = X.shape
@@ -226,12 +199,13 @@ def plot_poly_with_params(c_target,X_train,Y_train,lb,ub):
     plt.ylabel('f(x)')
     plt.title('Function of degree {}'.format(deg))
 
-def plot_fig4(monomials, train_errors, test_errors, N_train, N_test):
+def plot_fig4(monomials, train_errors, test_errors, N_train, N_test, target_nb_monomials):
     fig1 = plt.figure()
     p_train, = plt.plot(monomials, train_errors,'-ob')
     p_test, = plt.plot(monomials, test_errors,'-xr')
-    p_v = plt.axvline(x=N_train,color='g',linestyle='--')
-    plt.legend([p_train,p_test,p_v], ['Train error','Test error','# Training data'])
+    p_N_train = plt.axvline(x=N_train,color='g',linestyle='--')
+    p_nb_monomials = plt.axvline(x=target_nb_monomials,color='c',linestyle='--')
+    plt.legend([p_train,p_test,p_N_train,p_nb_monomials], ['Train error','Test error','# Training data','# of monomials'])
     #plt.ylim(0,100)
     plt.xlabel('Number of monomials' )
     plt.ylabel('Error/loss')
@@ -317,11 +291,12 @@ def my_main(**kwargs):
     else:
         ## properties of Data set
         D0 = 2
-        N_train, N_test = 100,2624
+        N_train, N_test = 49,81
         print(f'D0 = {D0}, N_train = {N_train}, N_test = {N_test}')
         ## get function to imitate and X input points
-        Degree_data_set = 30
+        Degree_data_set = 50
         nb_monomials_data = get_nb_monomials(nb_variables=D0,degree=Degree_data_set)
+        print(f'> Degree_data_set={Degree_data_set}, nb_monomials_data={nb_monomials_data}')
         if D0 == 1:
             #X_train, X_test = 2*np.random.rand(N_train,D0)-1, 2*np.random.rand(N_test,D0)-1
             X_train, X_test = np.linspace(lb,ub,N_train).reshape(N_train,D0), np.linspace(lb,ub,N_test).reshape(N_test,D0)
@@ -337,12 +312,15 @@ def my_main(**kwargs):
             # TODO
             raise ValueError(f'Not implemented D0={D0}')
         ## get actual (polynomial) target function
-        c_target = get_c_fit_function(f_2_imitate, D0,Degree_data_set, N=24964, lb=lb,ub=ub) # [Deg,1] sin with period k
+        X_data,Y_data = get_X_Y_data(f_2_imitate, D0=D0, N=50176, lb=lb,ub=ub)
+        c_target = get_c_fit_function(D0,Degree_data_set, X_data,Y_data) # [Deg,1] sin with period k
         ## get noise for target Y
         mu_noise, std_noise = 0,0
         noise_train, noise_test = 0,0
         ## get target Y
-        Y_train, Y_test = get_target_Y_SP_poly(X_train,X_test, Degree_data_set, c_target, noise_train=noise_train,noise_test=noise_test)
+        f_target = get_func_pointer_poly(c_mdl,Degree_data_set)
+        #Y_train, Y_test = get_target_Y_SP_poly(X_train,X_test, Degree_data_set, c_target, noise_train=noise_train,noise_test=noise_test)
+        Y_train, Y_test = f_target(X_train)+noise_train, f_target(X_test)+noise_test
     ## print
     print('c_target = ',c_target)
     print('c_target.shape = ',c_target.shape)
@@ -420,7 +398,7 @@ def my_main(**kwargs):
             #TODO
             raise ValueError("not implemented yet")
         ## plot errors
-        plot_fig4(monomials,train_errors,test_errors,N_train,N_test)
+        plot_fig4(monomials,train_errors,test_errors,N_train,N_test,nb_monomials_data)
         ## plot ranks
         fig1 = plt.figure()
         p_rank, = plt.plot(monomials,ranks,'c')
