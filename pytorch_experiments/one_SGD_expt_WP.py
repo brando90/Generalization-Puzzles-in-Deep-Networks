@@ -23,6 +23,7 @@ from inits import *
 from sympy_poly import *
 from poly_checks_on_deep_net_coeffs import *
 from data_file import *
+from plotting_utils import *
 
 import torch
 from torch.autograd import Variable
@@ -33,6 +34,8 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import scipy.integrate as integrate
 import scipy
+
+from maps import NamedDict
 
 import pdb
 
@@ -101,7 +104,7 @@ def main(**kwargs):
     data_filename='data_numpy_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_.npz'
     ##
     truth_filename=''
-    data_filename='degree4_fit_2_sin.npz'
+    data_filename='degree4_fit_2_sin_N_train_5_N_test_200.npz'
     #experiment_name = 'unit_test'
     #experiment_name = 'linear_unit_test'
     #experiment_name = 'nonlinear_VW_expt1'
@@ -112,7 +115,8 @@ def main(**kwargs):
     ## Regularization
     #reg_type_wp = 'tikhonov'
     #reg_type_wp = 'VW'
-    reg_type_wp = 'V2W_D3'
+    #reg_type_wp = 'V2W_D3'
+    reg_type_wp = ''
     ## config params
     ## lambdas
     N_lambdas = 50
@@ -120,9 +124,9 @@ def main(**kwargs):
     one_over_lambdas = np.linspace(lb,ub,N_lambdas)
     lambdas = list( 1/one_over_lambdas )
     lambdas = N_lambdas*[0]
-    nb_iterations = [int(1.4*10**6)]
+    #nb_iterations = [int(1.4*10**6)]
     #nb_iterations = [int(8*10**4)]
-    nb_iterations = [int(60*100)]
+    nb_iterations = [int(80*1000)]
     repetitions = len(lambdas)*[15]
     ## iterations
     # N_iterations = 30
@@ -136,7 +140,7 @@ def main(**kwargs):
     M = 3
     eta = 0.002 # eta = 1e-6
     A = 0.0
-    logging_freq = 100
+    logging_freq = 50
     # pick the right hyper param
     if len(lambdas) > 1 and len(nb_iterations) > 1:
         raise ValueError('You cannot test both hyper parameters at once.')
@@ -158,6 +162,10 @@ def main(**kwargs):
         D_layers_truth=extract_list_filename(truth_filename)
     ## load data
     data = np.load( './data/{}'.format(data_filename) )
+    if 'lb' and 'ub' in data:
+        data_lb, data_ub = data['lb'],data['ub']
+    else:
+        data_lb, data_ub = 0,1 #TODO change!
     X_train, Y_train = data['X_train'], data['Y_train']
     #X_train, Y_train = X_train[0:6], Y_train[0:6]
     X_test, Y_test = data['X_test'], data['Y_test']
@@ -168,6 +176,7 @@ def main(**kwargs):
     N_test,_ = X_test.shape
     ## activation function
     if WP:
+        print('--->training WP mdl')
         adegree = 2
         ax = np.concatenate( (np.linspace(-20,20,100), np.linspace(-10,10,1000)) )
         aX = np.concatenate( (ax,np.linspace(-2,2,100000)) )
@@ -223,8 +232,12 @@ def main(**kwargs):
         mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,biases=biases)
         ## data to TORCH
         data = get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test,dtype)
+        ##
+        nb_terms = c_pinv.shape[0]
+        legend_mdl = f'SGD solution weight parametrization, number of monomials={nb_terms}, batch-size={M}, iterations={nb_iter}, step size={eta}'
     else:
-        Degree_mdl = 4
+        print('--->training SP mdl')
+        Degree_mdl = 10
         ## Lift data/Kernelize data
         poly_feat = PolynomialFeatures(degree=Degree_mdl)
         Kern_train, Kern_test = poly_feat.fit_transform(X_train), poly_feat.fit_transform(X_test)
@@ -237,9 +250,11 @@ def main(**kwargs):
         mdl_sgd = get_sequential_lifted_mdl(nb_monomials=c_pinv.shape[0],D_out=1, bias=False)
         data = get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test,dtype)
         data.X_train, data.X_test = data.Kern_train, data.Kern_test
+        ##
+        nb_terms = c_pinv.shape[0]
+        legend_mdl = f'SGD solution standard parametrization, number of monomials={nb_terms}, batch-size={M}, iterations={nb_iter}, step size={eta}'
     ## check number of monomials
     nb_monomials = int(scipy.misc.comb(D0+Degree_mdl,Degree_mdl))
-    nb_terms = c_pinv.shape[0]
     if nb_terms != int(scipy.misc.comb(D0+Degree_mdl,Degree_mdl)):
        raise ValueError(f'nb of monomials dont match D0={D0},Degree_mdl={Degree_mdl}, number of monimials fron pinv={nb_terms}, number of monomials analyticall = {nb_monomials}')
     ########################################################################################################################################################
@@ -250,21 +265,21 @@ def main(**kwargs):
     ##
     arg = Maps(reg_type=reg_type_wp)
     keep_training=True
-    #train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params = train_SGD( arg,mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv, reg_lambda_WP)
-    while keep_training:
-        try:
-            train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params = train_SGD(
-                arg,mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv, reg_lambda_WP
-            )
-            keep_training=False
-        except Exception as e:
-            err_msg = str(e)
-            print(f'\nException caught during training with msg: {err_msg}')
-            if WP:
-                w_inits_sgd, b_inits_sgd = get_initialization(init_config)
-                mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,biases=biases)
-            else:
-                mdl_sgd = get_sequential_lifted_mdl(nb_monomials=c_pinv.shape[0],D_out=1, bias=False)
+    train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params = train_SGD( arg,mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv, reg_lambda_WP)
+    # while keep_training:
+    #     try:
+    #         train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params = train_SGD(
+    #             arg,mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv, reg_lambda_WP
+    #         )
+    #         keep_training=False
+    #     except Exception as e:
+    #         err_msg = str(e)
+    #         print(f'\nException caught during training with msg: {err_msg}')
+    #         if WP:
+    #             w_inits_sgd, b_inits_sgd = get_initialization(init_config)
+    #             mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,biases=biases)
+    #         else:
+    #             mdl_sgd = get_sequential_lifted_mdl(nb_monomials=c_pinv.shape[0],D_out=1, bias=False)
     ##
     train_error_WP = (1/N_train)*(mdl_sgd.forward(data.X_train) - data.Y_train).pow(2).sum().data.numpy()
     test_error_WP = (1/N_test)*(mdl_sgd.forward(data.X_test) - Variable(torch.FloatTensor(Y_test)) ).pow(2).sum().data.numpy()
@@ -276,6 +291,7 @@ def main(**kwargs):
     print("--- %s seconds ---" % seconds )
     print("--- %s minutes ---" % minutes )
     print("--- %s hours ---" % hours )
+    print('\a')
     if kwargs['save_bulk_experiment']:
         path_to_save = f'./test_runs/{experiment_name}_reg_{reg_type_wp}_expt_type_{expt_type}/{prefix_experiment}/'
         make_and_check_dir(path_to_save)
@@ -291,6 +307,17 @@ def main(**kwargs):
             )
         path_to_save = f'{path_to_save}/satid_{SLURM_ARRAY_TASK_ID}_sid_{SLURM_JOBID}_{month}_{day}'
         scipy.io.savemat( path_to_save, experiment_results)
+    ##
+    print(f'plotting={kwargs}')
+    if kwargs['plotting']:
+        print('going to print')
+        if D0==1:
+            print(f'print D0={D0}')
+            #f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
+            plot_1D_stuff(NamedDict(data_lb=data_lb,data_ub=data_ub,dtype=dtype,poly_feat=poly_feat,mdl_sgd=mdl_sgd,data=data,legend_mdl=legend_mdl,c_pinv=c_pinv,X_train=X_train)
+                )
+            ##
+            plt.show()
 
 class TestStringMethods(unittest.TestCase):
 
@@ -309,5 +336,5 @@ class TestStringMethods(unittest.TestCase):
                 satid+=1
 
 if __name__ == '__main__':
-    main(save_bulk_experiment=True)
+    main(save_bulk_experiment=True,plotting=True)
     #unittest.main()

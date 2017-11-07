@@ -1,5 +1,4 @@
 import time
-import numpy as np
 import sys
 
 import ast
@@ -17,10 +16,12 @@ from sympy_poly import *
 from poly_checks_on_deep_net_coeffs import *
 from data_file import *
 
+import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import scipy.integrate as integrate
 import scipy
+from sklearn.preprocessing import PolynomialFeatures
 
 #TODO make dtype, DTYPE accross all script
 
@@ -365,6 +366,8 @@ def get_ERM_lambda(arg, mdl,reg_lambda,X,Y,l=2):
             reg = V2W_D3_reg(mdl,l)
         elif arg.reg_type == 'tikhonov':
             reg = standard_tikhonov_reg(mdl,l)
+        elif arg.reg_type == '':
+            reg = 0
         else:
             print('Error, arg.reg_type = {} is not valid'.format(arg.reg_type))
             sys.exit()
@@ -395,15 +398,25 @@ def train_SGD(arg, mdl,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv,reg_lam
         ## LOSS + Regularization
         if reg_lambda != 0:
             batch_loss = get_ERM_lambda(arg, mdl,reg_lambda,X=batch_xs,Y=batch_ys,l=2)
+            #pass
         else:
             batch_loss = (1/M)*(y_pred - batch_ys).pow(2).sum()
+            #print(f'batch_loss = {batch_loss}')
         #pdb.set_trace()
         ## BACKARD PASS
         batch_loss.backward() # Use autograd to compute the backward pass. Now w will have gradients
         ## SGD update
         for W in mdl.parameters():
             delta = eta*W.grad.data
+            #print(f'W.grad.data = {W.grad.data}')
+            #print(f'\ndelta = {delta}')
+
+            #print(f'W.data = {W.data}')
+
             W.data.copy_(W.data - delta) # W - eta*g + A*gdl_eps
+
+            #print(f'W.data = {W.data}')
+            #pdb.set_trace()
         ## stats logger
         if i % logging_freq == 0:
             stats_logger(arg, mdl, data, eta,loss_list,test_loss_list,grad_list,func_diff,erm_lamdas, i,c_pinv, reg_lambda)
@@ -435,13 +448,13 @@ def main(**kwargs):
     debug_sgd = False
     #debug_sgd = True
     ## Hyper Params SGD weight parametrization
-    M = 6
+    M = 3
     eta = 0.002 # eta = 1e-6
     if 'nb_iterations_WP' in kwargs:
         nb_iter = kwargs['nb_iterations_WP']
     else:
         #nb_iter = int(80*1000)
-        nb_iter = int(1.4*10**6)
+        nb_iter = int(1.4*10**1)
     #nb_iter = int(15*1000)
     A = 0.0
     if 'reg_lambda_WP' in kwargs:
@@ -452,7 +465,7 @@ def main(**kwargs):
     print(f'reg_lambda_WP={reg_lambda_WP}')
     print(f'M={M},eta={eta}')
     ## Hyper Params SGD standard parametrization
-    M_standard_sgd = 6
+    M_standard_sgd = 3
     eta_standard_sgd = 0.002 # eta = 1e-6
     #nb_iter_standard_sgd = int(1000)
     nb_iter_standard_sgd = 10
@@ -532,9 +545,12 @@ def main(**kwargs):
         truth_filename='data_gen_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_'
         data_filename='data_numpy_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_.npz'
         ##
+        truth_filename=''
+        data_filename='degree4_fit_2_sin_N_train_5_N_test_200.npz'
+        ##
         #truth_filename='data_gen_type_mdl=WP_D_layers_[2, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_4_N_test_25_lb_-1_ub_1_act_poly_act_degree2_nb_params_4_msg_'
         #data_filename='data_numpy_type_mdl=WP_D_layers_[2, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_4_N_test_25_lb_-1_ub_1_act_poly_act_degree2_nb_params_4_msg_.npz'
-        if truth_filename is not None:
+        if truth_filename is not '':
             mdl_truth_dict = torch.load('./data/'+truth_filename)
             #mdl_truth_dict = torch.load(cwd+'/data'+truth_filename)
             print('mdl_truth_dict: ',mdl_truth_dict)
@@ -589,12 +605,12 @@ def main(**kwargs):
     #aN = 100
     #act = get_relu_poly_act(degree=adegree,lb=alb,ub=aub,N=aN) # ax**2+bx+c
     ##
-    adegree = 2
-    ax = np.concatenate( (np.linspace(-20,20,100), np.linspace(-10,10,1000)) )
-    aX = np.concatenate( (ax,np.linspace(-2,2,100000)) )
-    act, c_pinv_relu = get_relu_poly_act2(aX,degree=adegree) # ax**2+bx+c, #[1, x^1, ..., x^D]
-    print('c_pinv_relu = ', c_pinv_relu)
-    #act = relu
+    adegree = 1
+    # ax = np.concatenate( (np.linspace(-20,20,100), np.linspace(-10,10,1000)) )
+    # aX = np.concatenate( (ax,np.linspace(-2,2,100000)) )
+    # act, c_pinv_relu = get_relu_poly_act2(aX,degree=adegree) # ax**2+bx+c, #[1, x^1, ..., x^D]
+    # print('c_pinv_relu = ', c_pinv_relu)
+    act = relu
     # act = lambda x: x
     # act.__name__ = 'linear'
     ## plot activation
@@ -687,17 +703,20 @@ def main(**kwargs):
     ##
     arg = Maps(reg_type=reg_type_wp)
     keep_training=True
-    while keep_training:
-        try:
-            train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params = train_SGD(
-                arg,mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv, reg_lambda_WP
-            )
-            keep_training=False
-        except Exception as e:
-            err_msg = str(e)
-            print(f'\nExcaption caught turin training with msg: {err_msg}')
-            w_inits_sgd, b_inits_sgd = get_initialization(init_config)
-            mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,biases=biases)
+    train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params = train_SGD(
+        arg,mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv, reg_lambda_WP
+    )
+    # while keep_training:
+    #     try:
+    #         train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params = train_SGD(
+    #             arg,mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv, reg_lambda_WP
+    #         )
+    #         keep_training=False
+    #     except Exception as e:
+    #         err_msg = str(e)
+    #         print(f'\Exception caught during training with msg: {err_msg}')
+    #         w_inits_sgd, b_inits_sgd = get_initialization(init_config)
+    #         mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,biases=biases)
     ##
     print('Standard Parametrization SGD training')
     arg = Maps(reg_type='tikhonov')
@@ -706,15 +725,15 @@ def main(**kwargs):
     )
     print('training ended!')
     ########################################################################################################################################################
-    print('--------- mdl_truth')
-    for W in mdl_truth.parameters():
-        print(W)
-    print('--------- mdl_sgd')
-    for W in mdl_sgd.parameters():
-        print(W)
+    # print('--------- mdl_truth')
+    # for W in mdl_truth.parameters():
+    #     print(W)
+    # print('--------- mdl_sgd')
+    # for W in mdl_sgd.parameters():
+    #     print(W)
     ##
-    if mdl_truth is not None:
-        print_WV_stats(mdl_truth,mdl_sgd)
+    # if mdl_truth is not None:
+    #     print_WV_stats(mdl_truth,mdl_sgd)
     ## print all parameters of WP
     print_all_params(mdl_nn=mdl_sgd)
     #pdb.set_trace()
@@ -997,7 +1016,8 @@ if __name__ == '__main__':
     print('__main__ started')
     #main(experiment_type='quick_run',plotting=True)
     reg_type_wp='V2W_D3'
-    reg_lambda = 0.001
+    reg_type_wp=''
+    reg_lambda = 0
     train_error, test_error, erm_reg = main(experiment_type='serial_multiple_lambdas',reg_lambda_WP=reg_lambda,reg_type_wp=reg_type_wp,plotting=False)
     ##
     #run_type = 'h_add'

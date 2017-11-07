@@ -194,6 +194,7 @@ def save_data_poly_fit_to_f_2_imitate(saving,path_to_save, f_2_imitate,Degree_da
     if saving:
         experiment_data = dict(
             X_train=X_train,Y_train=Y_train, X_test=X_test,Y_test=Y_test,
+            lb=lb,ub=ub
         )
         np.savez( path_to_save, **experiment_data)
         #np.savez( path_to_save, X_train=X_train,Y_train=Y_train, X_test=X_test,Y_test=Y_test)
@@ -364,19 +365,27 @@ def generate_meshgrid_h_gabor(N=60000,start_val=-1,end_val=1):
 
 def main_poly():
     saving=True
-    file_name='degree4_fit_2_sin'
-    path_to_save = f'./data/{file_name}'
-    f_2_imitate = np.sin
+    f_2_imitate = lambda x: np.sin(2*np.pi*x)
     Degree_data_set = 4
     D0 = 1
     lb,ub = 0,1
     N_train, N_test = 5,200
     N_4_func_approx = 5
     ##
-    save_data_poly_fit_to_f_2_imitate(
+    file_name=f'degree{Degree_data_set}_fit_2_sin_N_train_{N_train}_N_test_{N_test}'
+    path_to_save = f'./data/{file_name}'
+    ##
+    X_train,Y_train, X_test,Y_test = save_data_poly_fit_to_f_2_imitate(
         saving,path_to_save, f_2_imitate,Degree_data_set, D0,lb,ub,N_train,N_test,N_4_func_approx,
         noise_train=0,noise_test=0
     )
+    ##
+    plt.plot(X_train,Y_train)
+    plt.plot(X_test,Y_test)
+    x = np.linspace(0,1,50)
+    y = f_2_imitate(x)
+    plt.plot(x,y)
+    plt.show()
 
 ##
 
