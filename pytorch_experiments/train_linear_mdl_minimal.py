@@ -51,51 +51,55 @@ def train_SGD(mdl, M,eta,nb_iter,logging_freq ,dtype, X_train,Y_train):
         for W in mdl.parameters():
             delta = eta*W.grad.data
             W.data.copy_(W.data - delta)
+        ## Manually zero the gradients after updating weights
+        mdl.zero_grad()
         ## train stats
         if i % (nb_iter/10) == 0 or i == 0:
             current_train_loss = (1/N_train)*(mdl.forward(X_train) - Y_train).pow(2).sum().data.numpy()
             print('i = {}, current_loss = {}'.format(i, current_train_loss ) )
-        ## Manually zero the gradients after updating weights
-        mdl.zero_grad()
 ##
 logging_freq = 100
 dtype = torch.FloatTensor
 ## SGD params
 M = 3
-eta = 0.0002
+eta = 0.002
 nb_iter = 20*1000
 ##
+lb,ub = 0,1
 f_target = lambda x: np.sin(2*np.pi*x)
 N_train = 5
-X_train = np.linspace(0,1,N_train)
+X_train = np.linspace(lb,ub,N_train)
 Y_train = f_target(X_train)
 ## degree of mdl
-Degree_mdl = 5
+Degree_mdl = 4
 ## pseudo-inverse solution
 c_pinv = np.polyfit( X_train, Y_train , Degree_mdl )[::-1]
 ## linear mdl to train with SGD
 nb_terms = c_pinv.shape[0]
 mdl_sgd = get_sequential_lifted_mdl(nb_monomials=nb_terms,D_out=1, bias=False)
+mdl_sgd[0].weight.data.normal_(mean=0,std=0.001)
 ## Make polynomial Kernel
 poly_feat = PolynomialFeatures(degree=Degree_mdl)
 Kern_train = poly_feat.fit_transform(X_train.reshape(N_train,1))
 Kern_train_pt, Y_train_pt = Variable(torch.FloatTensor(Kern_train).type(dtype), requires_grad=False), Variable(torch.FloatTensor(Y_train).type(dtype), requires_grad=False)
 train_SGD(mdl_sgd, M,eta,nb_iter,logging_freq ,dtype, Kern_train_pt,Y_train_pt)
-##
-x_horizontal = np.linspace(arg.data_lb,arg.data_ub,1000).reshape(1000,1)
-X_plot = arg.poly_feat.fit_transform(x_horizontal)
+
+#### PLOTTING
+x_horizontal = np.linspace(lb,ub,1000).reshape(1000,1)
+X_plot = poly_feat.fit_transform(x_horizontal)
 X_plot_pytorch = Variable( torch.FloatTensor(X_plot), requires_grad=False)
 ##
 fig1 = plt.figure()
 #plots objs
-p_sgd, = plt.plot(x_horizontal, [ float(f_val) for f_val in arg.mdl_sgd.forward(Kern_train_pt).data.numpy() ])
+p_sgd, = plt.plot(x_horizontal, [ float(f_val) for f_val in mdl_sgd.forward(X_plot_pytorch).data.numpy() ])
 p_pinv, = plt.plot(x_horizontal, np.dot(X_plot,c_pinv))
 p_data, = plt.plot(X_train,Y_train,'ro')
 ## legend
-nb_terms = arg.c_pinv.shape[0]
+nb_terms = c_pinv.shape[0]
+legend_mdl = f'SGD solution standard parametrization, number of monomials={nb_terms}, batch-size={M}, iterations={nb_iter}, step size={eta}'
 plt.legend(
         [p_sgd,p_pinv,p_data],
-        [arg.legend_mdl,f'linear algebra soln, number of monomials={nb_terms}',f'data points = {N_train}']
+        [legend_mdl,f'linear algebra soln, number of monomials={nb_terms}',f'data points = {N_train}']
     )
 ##
 plt.xlabel('x'), plt.ylabel('f(x)')
