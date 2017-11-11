@@ -44,6 +44,41 @@ def get_batch2(X,Y,M,dtype):
 def get_sequential_lifted_mdl(nb_monomials,D_out, bias=False):
     return torch.nn.Sequential(torch.nn.Linear(nb_monomials,D_out,bias=bias))
 
+
+# def get_batch_PTF(X, Y, batch_size):
+#     batch_indices = np.random.choice(
+#         np.arange(len(X)),
+#         size=batch_size,
+#         replace=False)
+#
+#     batch_xs = X[batch_indices, ...]
+#     batch_ys = Y[batch_indices, ...]
+#
+#     return Variable(batch_xs), Variable(batch_ys)
+
+def train_SGD_PTF(model, X_train, Y_train,
+              batch_size, lr, nb_iter, logging_freq, dtype):
+
+    for i in range(nb_iter):
+        model.zero_grad()
+
+        batch_xs, batch_ys = get_batch2(X_train, Y_train, batch_size, dtype)
+
+        y_pred = model(batch_xs).view(-1) # change this to "y_pred = model(batch_xs)" to get the incorrect results
+        loss = (y_pred - batch_ys).pow(2).mean()
+
+        loss.backward()
+
+        for W in model.parameters():
+            W.data.add_(-lr * W.grad.data)
+
+        #if i % logging_freq == 0:
+        if i % (nb_iter/10) == 0:
+            #X, Y = Variable(X_train), Variable(Y_train)
+            X, Y = X_train, Y_train
+            current_train_loss = (model(X).view(-1) - Y).pow(2).mean().data.numpy()
+            print('pt: i = {}, current_loss = {}'.format(i, current_train_loss))
+
 def train_SGD(mdl, M,eta,nb_iter,logging_freq ,dtype, X_train,Y_train, X_test,Y_test):
     ##
     N_train,_ = tuple( X_train.size() )
@@ -65,7 +100,7 @@ def train_SGD(mdl, M,eta,nb_iter,logging_freq ,dtype, X_train,Y_train, X_test,Y_
         ## train stats
         if i % (nb_iter/10) == 0 or i == 0:
             current_train_loss = (1/N_train)*(mdl.forward(X_train) - Y_train).pow(2).sum().data.numpy()
-            print('i = {}, current_loss = {}'.format(i, current_train_loss ) )
+            print(f'pt: i = {i}, current_loss = {current_train_loss}' )
         ## Manually zero the gradients after updating weights
         mdl.zero_grad()
 ##
@@ -74,20 +109,20 @@ dtype = torch.FloatTensor
 ## SGD params
 M = 3
 eta = 0.02
-nb_iter = 150*1000
+nb_iter = 100*1000
 ##
 lb,ub=0,1
-f_target = lambda x: np.sin(2*np.pi*x)
+f_target = lambda x: np.sin(2*np.pi*x).reshape(x.shape[0],1)
 N_train = 5
-X_train = np.linspace(lb,ub,N_train)
+X_train = np.linspace(lb,ub,N_train).reshape(N_train,1)
 Y_train = f_target(X_train)
 N_test = 50
-X_test = np.linspace(lb,ub,N_test)
+X_test = np.linspace(lb,ub,N_test).reshape(N_test,1)
 Y_test = f_target(X_test)
 ## degree of mdl
 Degree_mdl = 4
 ## pseudo-inverse solution
-c_pinv = np.polyfit( X_train, Y_train , Degree_mdl )[::-1]
+c_pinv = np.polyfit( X_train.reshape( (N_train,) ), Y_train , Degree_mdl )[::-1]
 ## linear mdl to train with SGD
 nb_terms = c_pinv.shape[0]
 mdl_sgd = get_sequential_lifted_mdl(nb_monomials=nb_terms,D_out=1, bias=False)
@@ -100,6 +135,7 @@ Kern_train, Kern_test = poly_feat.fit_transform(X_train.reshape(N_train,1)), pol
 Kern_train_pt, Y_train_pt = Variable(torch.FloatTensor(Kern_train).type(dtype), requires_grad=False), Variable(torch.FloatTensor(Y_train).type(dtype), requires_grad=False)
 Kern_test_pt, Y_test_pt = Variable(torch.FloatTensor(Kern_test).type(dtype), requires_grad=False ), Variable(torch.FloatTensor(Y_test).type(dtype), requires_grad=False)
 train_SGD(mdl_sgd, M,eta,nb_iter,logging_freq ,dtype, Kern_train_pt,Y_train_pt, Kern_test_pt,Y_test_pt)
+#train_SGD_PTF(mdl_sgd, Kern_train_pt,Y_train_pt, M,eta,nb_iter,logging_freq, dtype)
 ##
 graph = tf.Graph()
 with graph.as_default():
@@ -126,7 +162,7 @@ with graph.as_default():
             #if i % (nb_iter/10) == 0:
             if i % (nb_iter/10) == 0 or i == 0:
                 current_loss = sess.run(fetches=loss, feed_dict={X: Kern_train, Y: Y_train})
-                print(f'i = {i}, current_loss = {current_loss}')
+                print(f'tf: i = {i}, current_loss = {current_loss}')
             ## train
             batch_xs, batch_ys = get_batch(Kern_train,Y_train,M)
             sess.run(train_step, feed_dict={X: batch_xs, Y: batch_ys})

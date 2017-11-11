@@ -137,7 +137,7 @@ def get_func_pointer_poly(c_mdl,Degree_data_set,D0):
         poly_feat = PolynomialFeatures(degree=Degree_data_set)
         kern = poly_feat.fit_transform(x)
         y = np.dot(kern,c_mdl)
-        return y
+        return y.reshape(y.shape[0],1)
     return f_poly
 
 def get_X_Y_data(f_2_imitate, D0,N,lb,ub):
@@ -148,12 +148,12 @@ def get_X_Y_data(f_2_imitate, D0,N,lb,ub):
     elif D0 == 2:
         ##
         X_cord,Y_cord = generate_meshgrid(N,lb,ub)
-        Z_data = target_f(X_cord,Y_cord)
+        Z_data = f_2_imitate(X_cord,Y_cord)
         ##
         X,Y = make_mesh_grid_to_data_set(X_cord,Y_cord,Z=Z_data)
     else:
         raise ValueError('Not implemented')
-    return X,Y
+    return X.reshape(N,D0),Y.reshape(N,1)
 
 def get_c_fit_function(D0,degree_mdl,X,Y):
     ## evaluate target_f on x_points
@@ -190,6 +190,8 @@ def save_data_poly_fit_to_f_2_imitate(saving,path_to_save, f_2_imitate,Degree_da
     X_train,Y_train = get_X_Y_data(f_2_imitate, D0,N_train,lb,ub)
     X_test,Y_test = get_X_Y_data(f_2_imitate, D0,N_test,lb,ub)
     Y_train, Y_test = f_target(X_train)+noise_train, f_target(X_test)+noise_test
+    Y_train, Y_test = Y_train.reshape(Y_train.shape[0],1), Y_test.reshape(Y_test.shape[0],1)
+    #pdb.set_trace()
     ##
     if saving:
         experiment_data = dict(
@@ -365,7 +367,8 @@ def generate_meshgrid_h_gabor(N=60000,start_val=-1,end_val=1):
 
 def main_poly():
     saving=True
-    f_2_imitate = lambda x: np.sin(2*np.pi*x)
+    #f_2_imitate = lambda x: np.sin(2*np.pi*x)
+    f_2_imitate = lambda x: np.sin(2*np.pi*x).reshape(x.shape[0],1)
     Degree_data_set = 4
     D0 = 1
     lb,ub = 0,1
@@ -379,13 +382,14 @@ def main_poly():
         saving,path_to_save, f_2_imitate,Degree_data_set, D0,lb,ub,N_train,N_test,N_4_func_approx,
         noise_train=0,noise_test=0
     )
+    print(f'X_train.shape={X_train.shape},Y_train={Y_train.shape}, X_test={X_test.shape},Y_test={Y_test.shape}')
     ##
-    plt.plot(X_train,Y_train)
-    plt.plot(X_test,Y_test)
-    x = np.linspace(0,1,50)
-    y = f_2_imitate(x)
-    plt.plot(x,y)
-    plt.show()
+    # plt.plot(X_train,Y_train)
+    # plt.plot(X_test,Y_test)
+    # x = np.linspace(0,1,50)
+    # y = f_2_imitate(x)
+    # plt.plot(x,y)
+    # plt.show()
 
 ##
 

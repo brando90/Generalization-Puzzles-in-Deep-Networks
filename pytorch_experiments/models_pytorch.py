@@ -180,6 +180,7 @@ class NN(torch.nn.Module):
         member variables.
 
         D_layers = [D^(0),D^(1),...,D^(L)]
+        act = activation func
         w_inits = [None,W_f1,...,W_fL]
         b_inits = [None,b_f1,...,b_fL]
         bias = True

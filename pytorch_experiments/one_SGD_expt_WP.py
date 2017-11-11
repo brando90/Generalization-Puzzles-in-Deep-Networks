@@ -97,36 +97,36 @@ def main(**kwargs):
     today_obj = date.today() # contains datetime.date(year, month, day); accessible via .day etc
     day = today_obj.day
     month = calendar.month_name[today_obj.month]
-    ##
-    # truth_filename='data_gen_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_'
-    # data_filename='data_numpy_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_.npz'
-    truth_filename='data_gen_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_'
-    data_filename='data_numpy_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_.npz'
-    ##
+    ## Data file names
+    #truth_filename='data_gen_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_'
+    #data_filename='data_numpy_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_.npz'
+    #truth_filename='data_gen_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_'
+    #data_filename='data_numpy_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_.npz'
     truth_filename=''
     data_filename='degree4_fit_2_sin_N_train_5_N_test_200.npz'
+    ## Folder for experiment
     #experiment_name = 'unit_test'
     #experiment_name = 'linear_unit_test'
     #experiment_name = 'nonlinear_VW_expt1'
-    experiment_name = 'nonlinear_V2W_D3_expt1'
-    experiment_name = 'unit_test_nonlinear_V2W_D3_expt1'
+    #experiment_name = 'nonlinear_V2W_D3_expt1'
+    #experiment_name = 'unit_test_nonlinear_V2W_D3_expt1'
     experiment_name = 'unit_test_SP'
     #experiment_name = 'linear_VW_expt1'
     ## Regularization
-    #reg_type_wp = 'tikhonov'
-    #reg_type_wp = 'VW'
-    #reg_type_wp = 'V2W_D3'
-    reg_type_wp = ''
+    #reg_type = 'tikhonov'
+    #reg_type = 'VW'
+    #reg_type = 'V2W_D3'
+    reg_type = ''
     ## config params
     ## lambdas
     N_lambdas = 50
     lb,ub = 0.01,10000
     one_over_lambdas = np.linspace(lb,ub,N_lambdas)
     lambdas = list( 1/one_over_lambdas )
-    lambdas = N_lambdas*[0]
+    lambdas = N_lambdas*[0.0]
     #nb_iterations = [int(1.4*10**6)]
     #nb_iterations = [int(8*10**4)]
-    nb_iterations = [int(80*1000)]
+    nb_iterations = [int(100*1000)]
     repetitions = len(lambdas)*[15]
     ## iterations
     # N_iterations = 30
@@ -138,23 +138,23 @@ def main(**kwargs):
     #debug, debug_sgd = True, False
     ## Hyper Params SGD weight parametrization
     M = 3
-    eta = 0.002 # eta = 1e-6
+    eta = 0.02 # eta = 1e-6
     A = 0.0
     logging_freq = 50
     # pick the right hyper param
     if len(lambdas) > 1 and len(nb_iterations) > 1:
         raise ValueError('You cannot test both hyper parameters at once.')
     elif len(lambdas) > 1:
-        reg_lambda_WP = get_hp_to_run(hyper_params=lambdas,repetitions=repetitions,satid=SLURM_ARRAY_TASK_ID)
+        reg_lambda = get_hp_to_run(hyper_params=lambdas,repetitions=repetitions,satid=SLURM_ARRAY_TASK_ID)
         nb_iter = nb_iterations[0]
         expt_type = 'LAMBDAS'
-        prefix_experiment = f'it_{nb_iter}/lambda_{reg_lambda_WP}_reg_{reg_type_wp}'
+        prefix_experiment = f'it_{nb_iter}/lambda_{reg_lambda}_reg_{reg_type}'
     else:
-        reg_lambda_WP = lambdas[0]
+        reg_lambda = lambdas[0]
         nb_iter = get_hp_to_run(hyper_params=nb_iterations,repetitions=repetitions,satid=SLURM_ARRAY_TASK_ID)
         expt_type = 'ITERATIONS'
-        prefix_experiment = f'lambda_{reg_lambda_WP}/it_{nb_iter}_reg_{reg_type_wp}'
-    print('reg_lambda_WP = ',reg_lambda_WP)
+        prefix_experiment = f'lambda_{reg_lambda}/it_{nb_iter}_reg_{reg_type}'
+    print('reg_lambda = ',reg_lambda)
     print('nb_iter = ',nb_iter)
     #### Get Data set
     if truth_filename != '':
@@ -237,7 +237,7 @@ def main(**kwargs):
         legend_mdl = f'SGD solution weight parametrization, number of monomials={nb_terms}, batch-size={M}, iterations={nb_iter}, step size={eta}'
     else:
         print('--->training SP mdl')
-        Degree_mdl = 10
+        Degree_mdl = 4
         ## Lift data/Kernelize data
         poly_feat = PolynomialFeatures(degree=Degree_mdl)
         Kern_train, Kern_test = poly_feat.fit_transform(X_train), poly_feat.fit_transform(X_test)
@@ -248,6 +248,8 @@ def main(**kwargs):
             ## TODO: https://stackoverflow.com/questions/10988082/multivariate-polynomial-regression-with-numpy
             c_pinv = np.dot(np.linalg.pinv( Kern_train ),Y_train)
         mdl_sgd = get_sequential_lifted_mdl(nb_monomials=c_pinv.shape[0],D_out=1, bias=False)
+        #mdl_sgd[0].weight.data.fill_(0)
+        ##
         data = get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test,dtype)
         data.X_train, data.X_test = data.Kern_train, data.Kern_test
         ##
@@ -260,16 +262,16 @@ def main(**kwargs):
     ########################################################################################################################################################
     ## some debugging print statements
     print('nb = ', nb_iter)
-    print('reg_lambda_WP = ', reg_lambda_WP)
-    print('reg_type_wp = ', reg_type_wp)
+    print('reg_lambda = ', reg_lambda)
+    print('reg_type = ', reg_type)
     ##
-    arg = Maps(reg_type=reg_type_wp)
+    arg = Maps(reg_type=reg_type)
     keep_training=True
-    train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params = train_SGD( arg,mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv, reg_lambda_WP)
+    train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params = train_SGD( arg,mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv, reg_lambda)
     # while keep_training:
     #     try:
     #         train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params = train_SGD(
-    #             arg,mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv, reg_lambda_WP
+    #             arg,mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv, reg_lambda
     #         )
     #         keep_training=False
     #     except Exception as e:
@@ -283,7 +285,8 @@ def main(**kwargs):
     ##
     train_error_WP = (1/N_train)*(mdl_sgd.forward(data.X_train) - data.Y_train).pow(2).sum().data.numpy()
     test_error_WP = (1/N_test)*(mdl_sgd.forward(data.X_test) - Variable(torch.FloatTensor(Y_test)) ).pow(2).sum().data.numpy()
-    erm_reg_WP = get_ERM_lambda(arg=arg, mdl=mdl_sgd,reg_lambda=reg_lambda_WP,X=data.X_train,Y=data.Y_train).data.numpy()
+    reg = get_regularizer_term(arg, mdl_sgd,reg_lambda,X=data.X_train,Y=data.Y_train,l=2)
+    erm_reg_WP = (1/N_train)*(mdl_sgd.forward(data.X_train) - data.Y_train).pow(2).sum() + reg_lambda*reg
     ## REPORT TIMES
     seconds = (time.time() - start_time)
     minutes = seconds/ 60
@@ -293,12 +296,12 @@ def main(**kwargs):
     print("--- %s hours ---" % hours )
     print('\a')
     if kwargs['save_bulk_experiment']:
-        path_to_save = f'./test_runs/{experiment_name}_reg_{reg_type_wp}_expt_type_{expt_type}/{prefix_experiment}/'
+        path_to_save = f'./test_runs/{experiment_name}_reg_{reg_type}_expt_type_{expt_type}/{prefix_experiment}/'
         make_and_check_dir(path_to_save)
         experiment_results= dict(
             SLURM_JOBID=SLURM_JOBID,SLURM_ARRAY_TASK_ID=SLURM_ARRAY_TASK_ID,
-            reg_type_wp=reg_type_wp,
-            reg_lambda_WP=reg_lambda_WP,nb_iter=nb_iter,
+            reg_type=reg_type,
+            reg_lambda=reg_lambda,nb_iter=nb_iter,
             lambdas=lambdas,nb_iterations=nb_iterations,repetitions=repetitions,
             train_error_WP=train_error_WP,test_error_WP=test_error_WP,erm_reg_WP=erm_reg_WP,
             seconds=seconds,minutes=minutes,hours=hours,

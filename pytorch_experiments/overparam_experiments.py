@@ -17,6 +17,8 @@ from inits import *
 from sympy_poly import *
 from poly_checks_on_deep_net_coeffs import *
 from data_file import *
+from pytorch_over_approx_high_dim import L2_norm_2
+from pytorch_over_approx_high_dim import *
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -59,8 +61,8 @@ def f_target(x):
 def get_f_2_imitate_D0_1(Degree_data_set):
     # TODO
     D0 = 1
-    freq_cos = 2
-    freq_sin = 1
+    freq_cos = 1
+    freq_sin = 4
     #c_target = np.arange(1,nb_monomials_data+1).reshape((nb_monomials_data,1))+np.random.normal(loc=3.0,scale=1.0,size=(nb_monomials_data,1))
     #c_target = get_c(nb_monomials_data) # [D,1]
     #c_target = get_c_fit_function(generate_h_add_1d,D0,Degree_data_set,N=3*N_test,lb=-1,ub=1)
@@ -93,12 +95,15 @@ def get_f_2_imitate_D0_1(Degree_data_set):
         return y
     #f_2_imitate = lambda x: poly(x)+np.exp(-x**2)*np.cos(freq_cos*2*np.pi*x)
     def f_2_imitate(x):
-        N = x.shape[0]
+        if type(x) != float:
+            N = x.shape[0]
+        else:
+            N=1
         #y1 = poly(x)
         #print('y1',y1.shape)
         #y2 = np.exp(-x**2)*np.cos(freq_cos*2*np.pi*x)
         #y2 = np.exp(-x**2)*np.sin(freq_sin*2*np.pi*x)
-        #y2 = np.sin(freq_sin*2*np.pi*x)
+        y2 = np.sin(freq_sin*2*np.pi*x)
         #y2 = np.cos(freq_cos*2*np.pi*x)
         #y2 = np.cos(freq_cos*2*np.pi*x+1.3*np.pi)*np.sin(freq_sin*2*np.pi*x)
         #y2 = 100*np.cos(freq_cos*2*np.pi*x)*np.sin(freq_sin*2*np.pi*x)
@@ -144,34 +149,26 @@ def plot_target_function(c_target,X_train,Y_train,lb,ub,f_2_imitate):
     '''
     Note: training data os govem to visualize the training data set with the model
     '''
-    deg = c_target.shape[0]-1
     ## plotting data (note this is NOT training data)
     N=50000
     x_plot_points = np.linspace(lb,ub,N).reshape(N,1) # [N,1]
-    ## evaluate the model given on plot points
-    poly_feat = PolynomialFeatures(degree=deg)
-    Kern_plot_points = poly_feat.fit_transform(x_plot_points)
-    y_plot_points = np.dot(Kern_plot_points,c_target)
-    #
+    ##
     x_for_f = np.linspace(lb,ub,50000)
-    #pdb.set_trace()
     y_for_f = f_2_imitate( x_for_f )
-    # print(x_for_f)
-    # print(f_2_imitate( x_for_f ))
-    # N=5
-    # lb,ub = -6,6
-    # freq_cos = 0.05
-    # freq_sin = 0.3
-    # f = lambda x: np.cos(freq_cos*2*np.pi*x)*np.sin(freq_sin*2*np.pi*x)
-    # x = np.linspace(lb,ub,N)
-    # print(x)
-    # print(f(x))
-    # pdb.set_trace()
+    ## evaluate the model given on plot points
+    if c_target != None:
+        deg = c_target.shape[0]-1
+        poly_feat = PolynomialFeatures(degree=deg)
+        Kern_plot_points = poly_feat.fit_transform(x_plot_points)
+        y_plot_points = np.dot(Kern_plot_points,c_target)
+    else:
+        deg = 'Unknown/infinity'
+        y_plot_points = f_2_imitate( x_for_f )
     #
     p_mdl, = plt.plot(x_plot_points,y_plot_points)
     p_f_2_imitate, = plt.plot(x_for_f,y_for_f)
     p_training_data, = plt.plot(X_train,Y_train,'ro')
-    plt.legend([p_mdl,p_f_2_imitate,p_training_data], ['Target function f(x) of degree {}'.format(deg),'f trying to imitate','data points'])
+    plt.legend([p_mdl,p_f_2_imitate,p_training_data], [f'Target function f(x) of degree {deg}','f trying to imitate','data points'])
     ##
     plt.xlabel('x')
     plt.ylabel('f(x)')
@@ -205,7 +202,7 @@ def plot_fig4(monomials, train_errors, test_errors, N_train, N_test, target_nb_m
     p_test, = plt.plot(monomials, test_errors,'-xr')
     p_N_train = plt.axvline(x=N_train,color='g',linestyle='--')
     p_nb_monomials = plt.axvline(x=target_nb_monomials,color='c',linestyle='--')
-    plt.legend([p_train,p_test,p_N_train,p_nb_monomials], ['Train error','Test error','# Training data','# of monomials'])
+    plt.legend([p_train,p_test,p_N_train,p_nb_monomials], ['Train error','Test error','# Training data','# of monomials of target function'])
     #plt.ylim(0,100)
     plt.xlabel('Number of monomials' )
     plt.ylabel('Error/loss')
@@ -223,10 +220,11 @@ def my_pinv(X):
     X_my_pinv = np.dot(X.T ,XXt_inv )
     return X_my_pinv
 
-def get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees):
+def get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees,lb,ub,f_target,c_target=None):
     train_errors, test_errors = [], []
     ranks = []
     s_inv_total, s_inv_max = [], []
+    diff_truth = []
     ##
     N_train,D0 = X_train.shape
     ##
@@ -235,10 +233,12 @@ def get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees):
         # get mdl
         Kern_train = poly_feat.fit_transform(X_train)
         if D0==1:
-            c_pinv = np.polyfit(X_train.reshape((N_train,)),Y_train.reshape((N_train,)),degree_mdl)[::-1]
+            #c_pinv = np.polyfit(X_train .reshape((N_train,)),Y_train.reshape((N_train,)),degree_mdl)[::-1]
+            #c_pinv = np.polyfit(X_train.reshape((N_train,)),Y_train.reshape((N_train,)),degree_mdl)
+            Kern_train_pinv = np.linalg.pinv( Kern_train )
+            c_pinv = np.dot(Kern_train_pinv, Y_train)
         else:
             Kern_train_pinv = np.linalg.pinv( Kern_train )
-            Kern_train_pinv = my_pinv(Kern_train)
             c_pinv = np.dot(Kern_train_pinv, Y_train) # c = <K^+,Y>
         #pdb.set_trace()
         #c_pinv = np.polyfit(X_train.reshape((N_train,)),Y_train.reshape((N_train,)),deg=degree_mdl)[::-1]
@@ -263,9 +263,78 @@ def get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees):
         train_error = get_LA_error(X_train,Y_train,c_pinv,poly_feat)
         test_error = get_LA_error(X_test,Y_test,c_pinv,poly_feat)
         #
+        print(f'train_error={train_error},test_error={test_error}')
         train_errors.append( train_error )
         test_errors.append( test_error )
-    return train_errors,test_errors,ranks,s_inv_total,s_inv_max
+        # difference with truth/target function
+        #diff_truth.append( np.linalg.norm(c_target - c_pinv,2) )
+        #f_target= get_func_pointer_poly(c_target,c_target.shape[0]-1,D0)
+        f_pinv =  get_func_pointer_poly(c_pinv,degree_mdl,D0)
+        diff_target_pinv = L2_norm_2(f_target,f_pinv,lb=lb+0.2,ub=ub-0.2)
+        #diff_target_pinv = L2_norm_2(f_target,f_pinv,lb=lb,ub=ub)
+        diff_truth.append( diff_target_pinv )
+        if c_target != None:
+            if c_target.shape[0] == c_pinv.shape[0]:
+                print('>>>> stats about param that matches target func')
+                print( '||c_target - c_pinv||^2 = ',np.linalg.norm(c_target - c_pinv,2) )
+                diff_target_pinv = L2_norm_2(f_target,f_pinv,lb=lb,ub=ub)
+                print(f'diff_target_pinv = {diff_target_pinv}')
+                print(f'train_error = {train_error}')
+                print(f'test_error = {test_error}')
+    return train_errors,test_errors,ranks,s_inv_total,s_inv_max,diff_truth
+
+def get_errors_pinv_mdls_SGD(X_train,Y_train,X_test,Y_test,degrees,lb,ub,f_target,c_target=None,bias=False):
+    train_errors, test_errors = [], []
+    ranks = []
+    s_inv_total, s_inv_max = [], []
+    diff_truth = []
+    ##
+    N_train,D0 = X_train.shape
+    N_test,D_out = Y_test.shape
+    ##
+    M = 8
+    eta = 0.01
+    nb_iter = 50*1000
+    A = 0
+    logging_freq = 100
+    #
+    print(f'X_train.shape ,Y_train.shape ,X_test.shape ,Y_test.shape = {X_train.shape},{Y_train.shape} ,{X_test.shape},{Y_test.shape}')
+    dtype = torch.FloatTensor
+    ##
+    for degree_mdl in degrees:
+        print(f'\ndegree_mdl={degree_mdl}')
+        poly_feat = PolynomialFeatures(degree=degree_mdl)
+        # get mdl
+        Kern_train = poly_feat.fit_transform(X_train)
+        Kern_test = poly_feat.fit_transform(X_test)
+        print(f'Kern_train.shape={Kern_train.shape},Kern_test={Kern_test.shape}')
+        Kern_train_pinv = np.linalg.pinv( Kern_train )
+        c_pinv = np.dot(Kern_train_pinv, Y_train)
+        train_error_pinv = get_LA_error(X_train,Y_train,c_pinv,poly_feat)
+        test_error_pinv = get_LA_error(X_test,Y_test,c_pinv,poly_feat)
+        print(f'train_error_pinv={train_error_pinv}, test_error_pinv={test_error_pinv}')
+        nb_monomials = int(scipy.misc.comb(D0+degree_mdl,degree_mdl))
+        print(f'nb_monomials={nb_monomials}')
+        mdl_sgd = torch.nn.Sequential(torch.nn.Linear(nb_monomials,D_out,bias=bias))
+        print(f'mdl_sgd={mdl_sgd[0].weight.data.size()}')
+        # evluate it on train and test
+        #print(data)
+        ##
+        data = get_data_struct(X_train,Y_train,X_test,Y_test, Kern_train,Kern_test, dtype)
+        data.X_train, data.X_test = data.Kern_train, data.Kern_test
+        output = train_SGD( arg,mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype=torch.FloatTensor,c_pinv=c_pinv,reg_lambda=0)
+        #train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params = output
+        ##
+        train_error = (1/N_train)*( mdl_sgd(data.X_train) - data.Y_train ).pow(2).sum().data.numpy()
+        test_error = (1/N_test)*( mdl_sgd(data.X_test) - data.Y_test ).pow(2).sum().data.numpy()
+        #
+        train_errors.append( train_error )
+        test_errors.append( test_error )
+        print(f'train_error={train_error}, test_error={test_error}')
+        ##
+        #f_pinv =  get_func_pointer_poly(c_pinv,degree_mdl,D0)
+        #diff_target_pinv = L2_norm_2(f_target,f_pinv,lb=lb+0.2,ub=ub-0.2)
+    return train_errors,test_errors,ranks,s_inv_total,s_inv_max,diff_truth
 
 def get_c(nb_monomials_data):
     #pdb.set_trace()
@@ -274,9 +343,28 @@ def get_c(nb_monomials_data):
     #c_target = np.array([ 1.5**d for d in np.arange(0,nb_monomials_data) ]).reshape(nb_monomials_data,1)+np.random.normal(loc=3.0,scale=1.0,size=(nb_monomials_data,1))
     return c_target
 
+def sample_X_D1(lb,ub,eps_train,eps_edge,N_left,N_middle,N_right,D0):
+    ## middle
+    middle = np.linspace(lb+eps_edge,ub-eps_edge,N_middle)
+    ## edges
+    left = np.linspace(lb,lb+eps_train, N_left)
+    right = np.linspace(ub-eps_train,ub, N_right)
+    ##
+    X_train = np.concatenate( (left,middle,right), axis=0)
+    ##
+    N_train = len(X_train)
+    return X_train.reshape( (N_train,D0) )
+
 def my_main(**kwargs):
     ##
-    lb,ub = 1,4
+    lb,ub = 0,1
+    eps_train = 0.0
+    ##
+    eps_edge = 0.05
+    eps_test = eps_train
+    eps_test = 0.2
+    lb_test, ub_test = lb+eps_test, ub-eps_test
+    ##
     start_time = time.time()
     plotting = kwargs['plotting'] if 'plotting' in kwargs else False
     freq = -1
@@ -290,16 +378,25 @@ def my_main(**kwargs):
         N_train, N_test = X_train.shape[0], X_test.shape[0]
     else:
         ## properties of Data set
-        D0 = 2
-        N_train, N_test = 49,81
+        D0 = 1
+        N_test = 1000
+        N_train = 11
+        #N_left,N_middle,N_right = 3,4,3
+        #N_train = N_left+N_middle+N_right
         print(f'D0 = {D0}, N_train = {N_train}, N_test = {N_test}')
         ## get function to imitate and X input points
-        Degree_data_set = 50
+        Degree_data_set = N_train-1
+        Degree_data_set = 2*(N_train-1)
         nb_monomials_data = get_nb_monomials(nb_variables=D0,degree=Degree_data_set)
+        nb_monomials_data = N_train
         print(f'> Degree_data_set={Degree_data_set}, nb_monomials_data={nb_monomials_data}')
         if D0 == 1:
             #X_train, X_test = 2*np.random.rand(N_train,D0)-1, 2*np.random.rand(N_test,D0)-1
-            X_train, X_test = np.linspace(lb,ub,N_train).reshape(N_train,D0), np.linspace(lb,ub,N_test).reshape(N_test,D0)
+            #X_train = (ub-lb)*np.random.rand(N_train,D0)
+            #X_test = (lb_test+ub_test)*np.random.rand(N_test,D0)-1
+            X_train = np.linspace(lb,ub,N_train).reshape(N_train,D0)
+            X_test = np.linspace(lb_test,ub_test,N_test).reshape(N_test,D0)
+            #X_train = sample_X_D1(lb,ub,eps_train,eps_edge,N_left=N_left,N_middle=N_middle,N_right=N_right,D0=D0)
             f_2_imitate = get_f_2_imitate_D0_1(Degree_data_set)
         elif D0 == 2:
             X_cord_train,Y_cord_train = generate_meshgrid(N_train,lb,ub)
@@ -312,24 +409,31 @@ def my_main(**kwargs):
             # TODO
             raise ValueError(f'Not implemented D0={D0}')
         ## get actual (polynomial) target function
-        X_data,Y_data = get_X_Y_data(f_2_imitate, D0=D0, N=50176, lb=lb,ub=ub)
-        c_target = get_c_fit_function(D0,Degree_data_set, X_data,Y_data) # [Deg,1] sin with period k
+        N_data = N_train
+        #X_data,Y_data = get_X_Y_data(f_2_imitate, D0=D0, N=N_data, lb=lb,ub=ub)
+        #X_data,Y_data = X_train, Y_train
+        #c_target = get_c_fit_function(D0,Degree_data_set, X_data,Y_data) # [Deg,1] sin with period k
+        #f_target= get_func_pointer_poly(c_target,c_target.shape[0]-1,D0)
+        c_target = None
         ## get noise for target Y
         mu_noise, std_noise = 0,0
         noise_train, noise_test = 0,0
         ## get target Y
-        f_target = get_func_pointer_poly(c_mdl,Degree_data_set)
+        #f_target = get_func_pointer_poly(c_target,Degree_data_set,D0)
+
+        f_target = f_2_imitate
         #Y_train, Y_test = get_target_Y_SP_poly(X_train,X_test, Degree_data_set, c_target, noise_train=noise_train,noise_test=noise_test)
         Y_train, Y_test = f_target(X_train)+noise_train, f_target(X_test)+noise_test
     ## print
-    print('c_target = ',c_target)
-    print('c_target.shape = ',c_target.shape)
-    print('nb_monomials_data = {} \n'.format(nb_monomials_data) )
+    #print('c_target = ',c_target)
+    #print('c_target.shape = ',c_target.shape)
+    #print('nb_monomials_data = {} \n'.format(nb_monomials_data) )
     ## get errors from models
     step_deg=1
-    smallest_deg,largest_deg = 1,25
+    smallest_deg,largest_deg = 10,30
     degrees = list(range(smallest_deg,largest_deg,step_deg))
-    train_errors,test_errors,ranks,s_inv_total,s_inv_max = get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees)
+    #train_errors,test_errors,ranks,s_inv_total,s_inv_max,diff_truth = get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees, lb,ub,f_target,c_target)
+    train_errors,test_errors,ranks,s_inv_total,s_inv_max,diff_truth = get_errors_pinv_mdls_SGD(X_train,Y_train,X_test,Y_test,degrees, lb,ub,f_target, c_target=c_target,bias=False)
     ##
     print('train_errors = ', train_errors)
     print('test_errors = ', test_errors)
@@ -355,19 +459,22 @@ def my_main(**kwargs):
     #i = np.linalg.inv(Kern_mdl_truth)
     #c_target_deg_truth = np.dot(i,Y_train)
     #c_target_deg_truth = np.linalg.solve(Kern_mdl_truth,Y_train)
-    y_truth = np.dot(Kern_mdl_truth,c_target)
+    y_truth = f_target(X_train)
     y_mdl_deg_truth = np.dot(Kern_mdl_truth,c_target_deg_truth)
     print('|| <X_train,c_target> - <X_train,c_target_deg_truth> ||^2 = {}'.format( np.linalg.norm(y_truth-Y_train) ) )
     print( '|| <X_train,c_target> - <X_train,c_target_deg_truth> ||^2 = {}'.format( np.linalg.norm(y_truth-y_mdl_deg_truth) ) )
-    print('||c_truth - c_target_deg_truth||^2 = {}'.format( np.linalg.norm(c_target - c_target_deg_truth) ))
+    if c_target != None:
+        print('||c_truth - c_target_deg_truth||^2 = {}'.format( np.linalg.norm(c_target - c_target_deg_truth) ))
     if plotting:
         if D0==1:
             ## plot target func
+            #pdb.set_trace()
             plot_target_function(c_target,X_train,Y_train,lb=lb,ub=ub,f_2_imitate=f_2_imitate)
             ## plot models to check
             c_targets_2_plot = {}
             low_mdl,middle_mdl,high_mdl =int(largest_deg/6),int(largest_deg/2),largest_deg
             #low_mdl,middle_mdl,high_mdl = 21,22,23
+            low_mdl,middle_mdl,high_mdl = 2,5,100
             ##
             c_targets_2_plot[Degree_data_set] = get_c_fit_data(X_train,Y_train,Degree_data_set)
             ##
@@ -380,6 +487,10 @@ def my_main(**kwargs):
             plot_poly_with_params(c_targets_2_plot[low_mdl],X_train,Y_train,lb=lb,ub=ub)
             plot_poly_with_params(c_targets_2_plot[middle_mdl],X_train,Y_train,lb=lb,ub=ub)
             plot_poly_with_params(c_targets_2_plot[high_mdl],X_train,Y_train,lb=lb,ub=ub)
+            ##
+            fig = plt.figure()
+            plt_diff_truth, = plt.plot(monomials,diff_truth)
+            plt.legend([plt_diff_truth],['difference of model (pinv) vs c_target'])
         elif D0==2:
             #
             _,_,Z_cord_train = make_meshgrid_data_from_training_data(X_data=X_train, Y_data=Y_train) # meshgrid for trainign points visualization
@@ -421,6 +532,8 @@ def my_main(**kwargs):
         ##
         plt.show()
     ##
+    if c_target == None:
+        c_target = 'None'
     if 'file_name' not in kwargs:
         experiment_data = dict(monomials=monomials,train_errors=train_errors,test_errors=test_errors,
                 N_train=N_train,N_test=N_test,

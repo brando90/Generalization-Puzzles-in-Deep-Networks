@@ -282,6 +282,7 @@ def stats_logger(arg, mdl, data, eta,loss_list,test_loss_list,grad_list,func_dif
     loss_list.append( float(current_train_loss) )
     ##
     y_pred_test = mdl.forward(data.X_test)
+    #pdb.set_trace()
     current_test_loss = (1/N_test)*(y_pred_test - data.Y_test).pow(2).sum().data.numpy()
     test_loss_list.append( float(current_test_loss) )
     ## log: GEN DIFF/FUNC DIFF
@@ -290,8 +291,10 @@ def stats_logger(arg, mdl, data, eta,loss_list,test_loss_list,grad_list,func_dif
     gen_diff = (1/N_test)*(y_test_sgd - y_test_pinv).pow(2).sum().data.numpy()
     func_diff.append( float(gen_diff) )
     ## ERM + regularization
-    erm_reg = get_ERM_lambda(arg,mdl,reg_lambda,X=data.X_train,Y=data.Y_train,l=2).data.numpy()
-    erm_lamdas.append( float(erm_reg) )
+    #erm_reg = get_ERM_lambda(arg,mdl,reg_lambda,X=data.X_train,Y=data.Y_train,l=2).data.numpy()
+    reg = get_regularizer_term(arg, mdl,reg_lambda,X=data.X_train,Y=data.Y_train,l=2)
+    erm_reg = (1/N_train)*(y_pred_train - data.Y_train).pow(2).sum() + reg_lambda*reg
+    erm_lamdas.append( float(erm_reg.data.numpy()) )
     ##
     #func_diff_stand_weight( (1/N_test)*(y_test_sgd - y_test_pinv).pow(2).sum().data.numpy() )
     ## collect param stats
@@ -352,7 +355,7 @@ def V2W_D3_reg(mdl,l):
         R += torch.matmul(V,W_p[:,i])
     return R
 
-def get_ERM_lambda(arg, mdl,reg_lambda,X,Y,l=2):
+def get_regularizer_term(arg, mdl,reg_lambda,X,Y,l=2):
     M, _ = tuple( X.size() )
     ## compute regularization
     #reg = standard_tickhonov_reg(mdl,l)
@@ -373,10 +376,7 @@ def get_ERM_lambda(arg, mdl,reg_lambda,X,Y,l=2):
             sys.exit()
     else: # SP
         reg = standard_tikhonov_reg(mdl,l)
-    ##
-    y_pred = mdl.forward(X)
-    batch_loss = (1/M)*(y_pred - Y).pow(2).sum() + reg*reg_lambda
-    return batch_loss
+    return reg
 
 def train_SGD(arg, mdl,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv,reg_lambda):
     '''
@@ -388,20 +388,24 @@ def train_SGD(arg, mdl,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv,reg_lam
     test_loss_list = []
     #func_current_mdl_to_other_mdl = []
     ##
+    #pdb.set_trace()
     N_train, _ = tuple( data.X_train.size() )
+    print(f'reg_lambda={reg_lambda}')
     for i in range(nb_iter):
         # Forward pass: compute predicted Y using operations on Variables
         batch_xs, batch_ys = get_batch2(data.X_train,data.Y_train,M,dtype) # [M, D], [M, 1]
         ## FORWARD PASS
         #pdb.set_trace()
         y_pred = mdl.forward(batch_xs)
+        #print(f'y_pred={y_pred.data.size()} batch_ys={batch_ys.data.size()}')
         ## LOSS + Regularization
         if reg_lambda != 0:
-            batch_loss = get_ERM_lambda(arg, mdl,reg_lambda,X=batch_xs,Y=batch_ys,l=2)
-            #pass
+            reg = get_regularizer_term(arg, mdl,reg_lambda,X=batch_xs,Y=batch_ys,l=2)
+            batch_loss = (1/M)*(y_pred - batch_ys).pow(2).sum() + reg
         else:
             batch_loss = (1/M)*(y_pred - batch_ys).pow(2).sum()
             #print(f'batch_loss = {batch_loss}')
+        #print(f'batch_xs.shape={batch_xs}, batch_ys={batch_ys}')
         #pdb.set_trace()
         ## BACKARD PASS
         batch_loss.backward() # Use autograd to compute the backward pass. Now w will have gradients
@@ -850,7 +854,9 @@ def main(**kwargs):
     print(' J(f_SP) = ', train_error_SP )
     print(' J(f_pinv) = ', train_error_pinv )
     ## Errors with Regularization
-    erm_reg_WP = get_ERM_lambda(arg=arg, mdl=mdl_sgd,reg_lambda=reg_lambda_WP,X=data.X_train,Y=data.Y_train).data.numpy()
+    #erm_reg_WP = get_ERM_lambda(arg=arg, mdl=mdl_sgd,reg_lambda=reg_lambda_WP,X=data.X_train,Y=data.Y_train).data.numpy()
+    reg = get_regularizer_term(arg, mdl_sgd,reg_lambda_WP,X=data.X_train,Y=data.Y_train,l=2)
+    erm_reg = (1/N_train)*(mdl_sgd.forward(data.X_train) - data.Y_train).pow(2).sum() + reg_lambda*reg
     print(' ERM_lambda(f_WP) = ', erm_reg_WP )
     #print(' J(c_rls) = ',(1/N)*(np.linalg.norm(Y-(1/N)*(np.linalg.norm(Y-np.dot( poly_kernel_matrix( x_true,D_sgd-1 ),c_rls))**2) )**2) )
     ## REPORT TIMES
