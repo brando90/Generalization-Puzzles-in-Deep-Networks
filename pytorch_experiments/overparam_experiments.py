@@ -5,6 +5,8 @@ import sys
 
 import ast
 
+import tensorflow as tf
+
 import torch
 from torch.autograd import Variable
 import torch.nn.functional as F
@@ -47,6 +49,54 @@ SLURM_JOBID = 6
 # SLURM_JOBID = cmd_args.SLURM_JOBID
 
 ##
+
+def get_batch(X,Y,M):
+    N = len(Y)
+    valid_indices = np.array( range(N) )
+    batch_indices = np.random.choice(valid_indices,size=M,replace=False)
+    batch_xs = X[batch_indices,:]
+    batch_ys = Y[batch_indices]
+    return batch_xs, batch_ys
+
+def train_tf(nb_monomials,Kern_train,Y_train, Kern_test,Y_test, eta,nb_iter,M):
+    N_train,_ = Y_train.shape
+    ##
+    graph = tf.Graph()
+    with graph.as_default():
+        X = tf.placeholder(tf.float32, [None, nb_monomials])
+        Y = tf.placeholder(tf.float32, [None,1])
+        w = tf.Variable( tf.zeros([nb_monomials,1]) )
+        #w = tf.Variable( tf.truncated_normal([Degree_mdl,1],mean=0.0,stddev=1.0) )
+        ##
+        f = tf.matmul(X,w) # [N,1] = [N,D] x [D,1]
+        #loss = tf.reduce_sum(tf.square(Y - f))
+        loss = tf.reduce_sum( tf.reduce_mean(tf.square(Y-f), 0))
+        l2loss_tf = (1/N_train)*2*tf.nn.l2_loss(Y-f)
+        ##
+        learning_rate = eta
+        #global_step = tf.Variable(0, trainable=False)
+        #learning_rate = tf.train.exponential_decay(learning_rate=eta, global_step=global_step,decay_steps=nb_iter/2, decay_rate=1, staircase=True)
+        train_step = tf.train.GradientDescentOptimizer(learning_rate=learning_rate).minimize(loss)
+        with tf.Session(graph=graph) as sess:
+            Y_train = Y_train.reshape(N_train,1)
+            tf.global_variables_initializer().run()
+            # Train
+            for i in range(nb_iter):
+                #if i % (nb_iter/10) == 0:
+                #if i % (nb_iter/10) == 0 or i == 0:
+                if True:
+                    current_loss = sess.run(fetches=loss, feed_dict={X: Kern_train, Y: Y_train})
+                    print(f'tf: i = {i}, current_loss = {current_loss}')
+                ## train
+                batch_xs, batch_ys = get_batch(Kern_train,Y_train,M)
+                sess.run(train_step, feed_dict={X: batch_xs, Y: batch_ys})
+            ## prepare tf plot point
+            #x_horizontal = np.linspace(lb,ub,1000).reshape(1000,1)
+            #Kern_plot = poly_feat.fit_transform(x_horizontal)
+            #Y_tf = sess.run(f,feed_dict={X:Kern_plot, Y:Y_train})
+            train_error = sess.run(fetches=loss, feed_dict={X: Kern_train, Y: Y_train})
+            test_error = sess.run(fetches=loss, feed_dict={X: Kern_test, Y: Y_test})
+            return train_error, test_error
 
 def g():
     Y_pinv = np.dot(poly_feat.fit_transform(X_test),c_pinv)
@@ -196,7 +246,7 @@ def plot_poly_with_params(c_target,X_train,Y_train,lb,ub):
     plt.ylabel('f(x)')
     plt.title('Function of degree {}'.format(deg))
 
-def plot_fig4(monomials, train_errors, test_errors, N_train, N_test, target_nb_monomials):
+def plot_fig4(monomials, train_errors, test_errors, N_train, N_test, target_nb_monomials,alg):
     fig1 = plt.figure()
     p_train, = plt.plot(monomials, train_errors,'-ob')
     p_test, = plt.plot(monomials, test_errors,'-xr')
@@ -206,7 +256,7 @@ def plot_fig4(monomials, train_errors, test_errors, N_train, N_test, target_nb_m
     #plt.ylim(0,100)
     plt.xlabel('Number of monomials' )
     plt.ylabel('Error/loss')
-    plt.title('No-overfitting on sythetic, # of training points = {}, # of test points = {} '.format(N_train,N_test))
+    plt.title(f'Alg {alg}, No-overfitting on sythetic, # of training points = {N_train}, # of test points = {N_test} ')
 
 def get_LA_error(X,Y,c,poly_feat):
     N = X.shape[0]
@@ -292,9 +342,9 @@ def get_errors_pinv_mdls_SGD(X_train,Y_train,X_test,Y_test,degrees,lb,ub,f_targe
     N_train,D0 = X_train.shape
     N_test,D_out = Y_test.shape
     ##
-    M = 8
+    M = 3
     eta = 0.01
-    nb_iter = 50*1000
+    nb_iter = 10
     A = 0
     logging_freq = 100
     #
@@ -316,6 +366,8 @@ def get_errors_pinv_mdls_SGD(X_train,Y_train,X_test,Y_test,degrees,lb,ub,f_targe
         nb_monomials = int(scipy.misc.comb(D0+degree_mdl,degree_mdl))
         print(f'nb_monomials={nb_monomials}')
         mdl_sgd = torch.nn.Sequential(torch.nn.Linear(nb_monomials,D_out,bias=bias))
+        #mdl_sgd[0].weight.data.copy_( torch.FloatTensor(c_pinv) )
+        mdl_sgd[0].weight.data.fill_(0)
         print(f'mdl_sgd={mdl_sgd[0].weight.data.size()}')
         # evluate it on train and test
         #print(data)
@@ -332,8 +384,56 @@ def get_errors_pinv_mdls_SGD(X_train,Y_train,X_test,Y_test,degrees,lb,ub,f_targe
         test_errors.append( test_error )
         print(f'train_error={train_error}, test_error={test_error}')
         ##
-        #f_pinv =  get_func_pointer_poly(c_pinv,degree_mdl,D0)
+        f_pinv =  get_func_pointer_poly(c_pinv,degree_mdl,D0)
         #diff_target_pinv = L2_norm_2(f_target,f_pinv,lb=lb+0.2,ub=ub-0.2)
+        #diff_truth.append(-1)
+        ##
+        rank_kern_train = matrix_rank(Kern_train)
+        ranks.append(rank_kern_train)
+    return train_errors,test_errors,ranks,s_inv_total,s_inv_max,diff_truth
+
+def get_errors_pinv_mdls_SGD_TF(X_train,Y_train,X_test,Y_test,degrees,lb,ub,f_target,c_target=None,bias=False):
+    train_errors, test_errors = [], []
+    ranks = []
+    s_inv_total, s_inv_max = [], []
+    diff_truth = []
+    ##
+    N_train,D0 = X_train.shape
+    N_test,D_out = Y_test.shape
+    ##
+    M = 7
+    eta = 0.1
+    nb_iter = 100*1000
+    A = 0
+    logging_freq = 100
+    #
+    print(f'X_train.shape ,Y_train.shape ,X_test.shape ,Y_test.shape = {X_train.shape},{Y_train.shape} ,{X_test.shape},{Y_test.shape}')
+    dtype = torch.FloatTensor
+    ##
+    for degree_mdl in degrees:
+        print(f'\ndegree_mdl={degree_mdl}')
+        poly_feat = PolynomialFeatures(degree=degree_mdl)
+        # get mdl
+        Kern_train = poly_feat.fit_transform(X_train)
+        Kern_test = poly_feat.fit_transform(X_test)
+        print(f'Kern_train.shape={Kern_train.shape},Kern_test={Kern_test.shape}')
+        Kern_train_pinv = np.linalg.pinv( Kern_train )
+        c_pinv = np.dot(Kern_train_pinv, Y_train)
+        train_error_pinv = get_LA_error(X_train,Y_train,c_pinv,poly_feat)
+        test_error_pinv = get_LA_error(X_test,Y_test,c_pinv,poly_feat)
+        print(f'train_error_pinv={train_error_pinv}, test_error_pinv={test_error_pinv}')
+        nb_monomials = int(scipy.misc.comb(D0+degree_mdl,degree_mdl))
+        ##
+        train_error,test_error = train_tf(nb_monomials, Kern_train,Y_train, Kern_test,Y_test, eta,nb_iter,M)
+        ##
+        train_errors.append( train_error )
+        test_errors.append( test_error )
+        print(f'train_error={train_error}, test_error={test_error}')
+        ##
+        f_pinv =  get_func_pointer_poly(c_pinv,degree_mdl,D0)
+        ##
+        rank_kern_train = matrix_rank(Kern_train)
+        ranks.append(rank_kern_train)
     return train_errors,test_errors,ranks,s_inv_total,s_inv_max,diff_truth
 
 def get_c(nb_monomials_data):
@@ -380,7 +480,7 @@ def my_main(**kwargs):
         ## properties of Data set
         D0 = 1
         N_test = 1000
-        N_train = 11
+        N_train = 10
         #N_left,N_middle,N_right = 3,4,3
         #N_train = N_left+N_middle+N_right
         print(f'D0 = {D0}, N_train = {N_train}, N_test = {N_test}')
@@ -429,11 +529,13 @@ def my_main(**kwargs):
     #print('c_target.shape = ',c_target.shape)
     #print('nb_monomials_data = {} \n'.format(nb_monomials_data) )
     ## get errors from models
-    step_deg=1
-    smallest_deg,largest_deg = 10,30
+    step_deg=2
+    smallest_deg,largest_deg = 9,10
     degrees = list(range(smallest_deg,largest_deg,step_deg))
     #train_errors,test_errors,ranks,s_inv_total,s_inv_max,diff_truth = get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees, lb,ub,f_target,c_target)
+    train_errors_pinv,test_errors_pinv,_,_,_,_ = get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees, lb,ub,f_target,c_target)
     train_errors,test_errors,ranks,s_inv_total,s_inv_max,diff_truth = get_errors_pinv_mdls_SGD(X_train,Y_train,X_test,Y_test,degrees, lb,ub,f_target, c_target=c_target,bias=False)
+    #train_errors,test_errors,ranks,s_inv_total,s_inv_max,diff_truth = get_errors_pinv_mdls_SGD_TF(X_train,Y_train,X_test,Y_test,degrees, lb,ub,f_target, c_target=c_target,bias=False)
     ##
     print('train_errors = ', train_errors)
     print('test_errors = ', test_errors)
@@ -488,9 +590,10 @@ def my_main(**kwargs):
             plot_poly_with_params(c_targets_2_plot[middle_mdl],X_train,Y_train,lb=lb,ub=ub)
             plot_poly_with_params(c_targets_2_plot[high_mdl],X_train,Y_train,lb=lb,ub=ub)
             ##
-            fig = plt.figure()
-            plt_diff_truth, = plt.plot(monomials,diff_truth)
-            plt.legend([plt_diff_truth],['difference of model (pinv) vs c_target'])
+            if len(diff_truth) != 0:
+                fig = plt.figure()
+                plt_diff_truth, = plt.plot(monomials,diff_truth)
+                plt.legend([plt_diff_truth],['difference of model (pinv) vs c_target'])
         elif D0==2:
             #
             _,_,Z_cord_train = make_meshgrid_data_from_training_data(X_data=X_train, Y_data=Y_train) # meshgrid for trainign points visualization
@@ -509,7 +612,8 @@ def my_main(**kwargs):
             #TODO
             raise ValueError("not implemented yet")
         ## plot errors
-        plot_fig4(monomials,train_errors,test_errors,N_train,N_test,nb_monomials_data)
+        plot_fig4(monomials,train_errors,test_errors,N_train,N_test,nb_monomials_data,alg='SGD')
+        plot_fig4(monomials,train_errors_pinv,test_errors_pinv,N_train,N_test,nb_monomials_data,alg='pinv')
         ## plot ranks
         fig1 = plt.figure()
         p_rank, = plt.plot(monomials,ranks,'c')

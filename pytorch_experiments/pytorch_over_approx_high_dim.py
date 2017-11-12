@@ -425,9 +425,13 @@ def train_SGD(arg, mdl,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv,reg_lam
         if i % logging_freq == 0:
             stats_logger(arg, mdl, data, eta,loss_list,test_loss_list,grad_list,func_diff,erm_lamdas, i,c_pinv, reg_lambda)
         ## train stats
-        if i % (nb_iter/10) == 0 or i == 0:
+        #if i % (nb_iter/10) == 0 or i == 0:
+        if True:
             current_train_loss = (1/N_train)*(mdl.forward(data.X_train) - data.Y_train).pow(2).sum().data.numpy()
-            print('i = {}, current_loss = {}'.format(i, current_train_loss ) )
+            print('-------------')
+            print(f'i = {i}, current_train_loss = {current_train_loss}')
+            print(f'W.data = {W.data}')
+            print(f'W.grad.data = {W.grad.data}')
         ## Manually zero the gradients after updating weights
         mdl.zero_grad()
     return loss_list,test_loss_list,grad_list,func_diff,erm_lamdas,nb_module_params
