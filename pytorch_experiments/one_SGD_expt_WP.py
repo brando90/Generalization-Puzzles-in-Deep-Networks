@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #SBATCH --mem=7000
 #SBATCH --time=0-06:00
-#SBATCH --array=1-750
+#SBATCH --array=1-300
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
 '''
@@ -102,8 +102,10 @@ def main(**kwargs):
     #data_filename='data_numpy_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_.npz'
     #truth_filename='data_gen_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_'
     #data_filename='data_numpy_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_.npz'
+    #truth_filename=''
+    #data_filename='degree4_fit_2_sin_N_train_5_N_test_200.npz'
     truth_filename=''
-    data_filename='degree4_fit_2_sin_N_train_5_N_test_200.npz'
+    data_filename='sin_freq_sin_4_N_train_7_N_test_200_lb_train,ub_train_(0, 1)_lb_test,ub_test_(0.2, 0.8).npz'
     ## Folder for experiment
     #experiment_name = 'unit_test'
     #experiment_name = 'linear_unit_test'
@@ -118,42 +120,59 @@ def main(**kwargs):
     #reg_type = 'V2W_D3'
     reg_type = ''
     ## config params
-    ## lambdas
-    N_lambdas = 50
-    lb,ub = 0.01,10000
-    one_over_lambdas = np.linspace(lb,ub,N_lambdas)
-    lambdas = list( 1/one_over_lambdas )
-    lambdas = N_lambdas*[0.0]
-    #nb_iterations = [int(1.4*10**6)]
-    #nb_iterations = [int(8*10**4)]
-    nb_iterations = [int(100*1000)]
-    repetitions = len(lambdas)*[15]
-    ## iterations
+    ## LAMBDAS
+    # expt_type = 'LAMBDAS'
+    # N_lambdas = 50
+    # lb,ub = 0.01,10000
+    # one_over_lambdas = np.linspace(lb,ub,N_lambdas)
+    # lambdas = list( 1/one_over_lambdas )
+    # lambdas = N_lambdas*[0.0]
+    # nb_iterations = [int(1.4*10**6)]
+    # nb_iterations = [int(8*10**4)]
+    # nb_iterations = [int(100*1000)]
+    # repetitions = len(lambdas)*[15]
+    ## ITERATIONS
+    # expt_type = 'ITERATIONS'
     # N_iterations = 30
     # lb,ub = 1,60*10**4
     # lambdas = [0]
     # nb_iterations = [ int(i) for i in np.linspace(lb,ub,N_iterations)]
     # repetitions = len(nb_iterations)*[10]
+    ## SP DEGREE/MONOMIALS
+    expt_type = 'SP_fig4'
+    step_deg=1
+    lb_deg,ub_deg = 1,100
+    degrees = list(range(lb_deg,ub_deg+1,step_deg))
+    lambdas = [0]
+    nb_iter = 1600*1000
+    #nb_iter = 1*100
+    nb_iterations = [nb_iter]
+    repetitions = len(degrees)*[3]
     ##
     #debug, debug_sgd = True, False
     ## Hyper Params SGD weight parametrization
-    M = 3
-    eta = 0.02 # eta = 1e-6
+    M = 5
+    eta = 0.1 # eta = 1e-6
     A = 0.0
-    logging_freq = 50
-    # pick the right hyper param
-    if len(lambdas) > 1 and len(nb_iterations) > 1:
-        raise ValueError('You cannot test both hyper parameters at once.')
-    elif len(lambdas) > 1:
+    logging_freq = 100
+    ## pick the right hyper param
+    if expt_type == 'LAMBDAS':
+        degrees=[]
         reg_lambda = get_hp_to_run(hyper_params=lambdas,repetitions=repetitions,satid=SLURM_ARRAY_TASK_ID)
         nb_iter = nb_iterations[0]
-        expt_type = 'LAMBDAS'
         prefix_experiment = f'it_{nb_iter}/lambda_{reg_lambda}_reg_{reg_type}'
-    else:
+    elif expt_type == 'ITERATIONS':
+        degrees=[]
         reg_lambda = lambdas[0]
         nb_iter = get_hp_to_run(hyper_params=nb_iterations,repetitions=repetitions,satid=SLURM_ARRAY_TASK_ID)
-        expt_type = 'ITERATIONS'
         prefix_experiment = f'lambda_{reg_lambda}/it_{nb_iter}_reg_{reg_type}'
+    elif expt_type == 'SP_fig4':
+        reg_lambda = lambdas[0]
+        Degree_mdl = get_hp_to_run(hyper_params=degrees,repetitions=repetitions,satid=SLURM_ARRAY_TASK_ID)
+        print(f'\n--Degree_mdl={Degree_mdl} \n--degrees={degrees} \n--SLURM_ARRAY_TASK_ID={SLURM_ARRAY_TASK_ID} \n')
+        prefix_experiment = f'fig4_expt_lambda_{reg_lambda}_it_{nb_iter}/deg_{Degree_mdl}'
+    else:
+        raise ValueError(f'Experiment type expt_type={expt_type} does not exist, try a different expt_type.')
     print('reg_lambda = ',reg_lambda)
     print('nb_iter = ',nb_iter)
     #### Get Data set
@@ -237,7 +256,6 @@ def main(**kwargs):
         legend_mdl = f'SGD solution weight parametrization, number of monomials={nb_terms}, batch-size={M}, iterations={nb_iter}, step size={eta}'
     else:
         print('--->training SP mdl')
-        Degree_mdl = 4
         ## Lift data/Kernelize data
         poly_feat = PolynomialFeatures(degree=Degree_mdl)
         Kern_train, Kern_test = poly_feat.fit_transform(X_train), poly_feat.fit_transform(X_test)
@@ -302,7 +320,7 @@ def main(**kwargs):
             SLURM_JOBID=SLURM_JOBID,SLURM_ARRAY_TASK_ID=SLURM_ARRAY_TASK_ID,
             reg_type=reg_type,
             reg_lambda=reg_lambda,nb_iter=nb_iter,
-            lambdas=lambdas,nb_iterations=nb_iterations,repetitions=repetitions,
+            lambdas=lambdas,nb_iterations=nb_iterations,repetitions=repetitions,degrees=degrees,
             train_error_WP=train_error_WP,test_error_WP=test_error_WP,erm_reg_WP=erm_reg_WP,
             seconds=seconds,minutes=minutes,hours=hours,
             truth_filename=truth_filename,data_filename=data_filename,
@@ -312,6 +330,7 @@ def main(**kwargs):
         scipy.io.savemat( path_to_save, experiment_results)
     ##
     print(f'plotting={kwargs}')
+    print(f'lb_test=')
     if kwargs['plotting']:
         print('going to print')
         if D0==1:
@@ -339,5 +358,5 @@ class TestStringMethods(unittest.TestCase):
                 satid+=1
 
 if __name__ == '__main__':
-    main(save_bulk_experiment=True,plotting=True)
+    main(save_bulk_experiment=True,plotting=False)
     #unittest.main()

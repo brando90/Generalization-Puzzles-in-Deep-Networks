@@ -105,13 +105,13 @@ start_time = time.time()
 logging_freq = 100
 dtype = torch.FloatTensor
 ## SGD params
-M = 7
-eta = 0.01
-nb_iter = 100*1000
+M = 5
+eta = 0.1
+nb_iter = 800*1000
 ##
 lb,ub=0,1
 f_name='sin'
-f_name='cos'
+#f_name='cos'
 if f_name == 'sin':
     freq_sin = 4
     f_target = lambda x: np.sin(2*np.pi*freq_sin*x).reshape(x.shape[0],1)
@@ -122,14 +122,14 @@ elif f_name == 'cos':
     func_properties = f'freq_cos={freq_cos}'
 else:
     raise ValueError('Function does not exist')
-N_train = 10
+N_train = 7
 X_train = np.linspace(lb,ub,N_train).reshape(N_train,1)
 Y_train = f_target(X_train)
 N_test = 200
 X_test = np.linspace(lb,ub,N_test).reshape(N_test,1)
 Y_test = f_target(X_test)
 ## degree of mdl
-Degree_mdl = 9
+Degree_mdl = 15
 ## pseudo-inverse solution
 c_pinv = np.polyfit( X_train.reshape( (N_train,) ), Y_train , Degree_mdl )[::-1]
 ## linear mdl to train with SGD

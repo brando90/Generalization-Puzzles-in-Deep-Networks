@@ -480,7 +480,7 @@ def my_main(**kwargs):
         ## properties of Data set
         D0 = 1
         N_test = 1000
-        N_train = 10
+        N_train = 7
         #N_left,N_middle,N_right = 3,4,3
         #N_train = N_left+N_middle+N_right
         print(f'D0 = {D0}, N_train = {N_train}, N_test = {N_test}')
