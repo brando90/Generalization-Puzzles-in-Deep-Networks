@@ -320,7 +320,7 @@ def main(**kwargs):
         experiment_results= dict(
             SLURM_JOBID=SLURM_JOBID,SLURM_ARRAY_TASK_ID=SLURM_ARRAY_TASK_ID,
             reg_type=reg_type,
-            reg_lambda=reg_lambda,nb_iter=nb_iter,
+            reg_lambda=reg_lambda,nb_iter=nb_iter,Degree_mdl=Degree_mdl,
             lambdas=lambdas,nb_iterations=nb_iterations,repetitions=repetitions,degrees=degrees,
             train_error_WP=train_error_WP,test_error_WP=test_error_WP,erm_reg_WP=erm_reg_WP,
             seconds=seconds,minutes=minutes,hours=hours,

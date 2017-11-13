@@ -26,15 +26,17 @@ expt_type_dirname = 'unit_test_reg_VW_expt_type_LAMBDAS'
 expt_type_dirname = 'unit_test_reg_VW_expt_type_ITERATIONS'
 expt_type_dirname = 'nonlinear_VW_expt1_reg_VW_expt_type_LAMBDAS' ## the name for experiments, for lambdas its the #iters for that set of lambdas, for iters its the specific lambda tried for that experiment
 expt_type_dirname = 'nonlinear_V2W_D3_expt1_reg_V2W_D3_expt_type_LAMBDAS'
+expt_type_dirname = 'expt_test_SP_reg__expt_type_SP_fig4'
 #expt_type_dirname = 'linear_VW_expt1_reg_VW_expt_type_LAMBDAS'
 #expt_type_dirname = 'linear_VW_expt1_reg_VW_expt_type_ITERATIONS'
 #set_experiments_dirname = 'lambda_80000'
 #set_experiments_dirname = 'lambda_0'
 #set_experiments_dirname = 'it_12000'
 #set_experiments_dirname = 'it_80000'
-set_experiments_dirname = 'it_1400000'
-set_experiments_dirname = 'it_4199999'
+#set_experiments_dirname = 'it_1400000'
+#set_experiments_dirname = 'it_4199999'
 #set_experiments_dirname = 'it_60000'
+set_experiments_dirname = 'fig4_expt_lambda_0_it_1600000'
 ##
 path = f'./test_runs/{expt_type_dirname}/{set_experiments_dirname}'
 print(f'path = {path}')
@@ -48,6 +50,9 @@ if 'LAMBDAS' in expt_type_dirname:
 elif 'ITERATIONS' in expt_type_dirname:
     varying_hp = 'nb_iter'
     prefix_hp = f'experiment_iterations_{month}_{day}_'
+elif 'SP_fig4' in expt_type_dirname:
+    varying_hp = 'Degree_mdl'
+    prefix_hp = f'experiment_degrees_{month}_{day}_'
 else:
     raise ValueError(f'Look at path {expt_type_dirname}, contains neither LAMBDAS nor ITERATIONS.')
 ## go through the experiments and collect statistics
@@ -60,6 +65,7 @@ for dirpath, dirnames, filenames in os.walk(path):
             path_to_file = f'{dirpath}/{single_run_fname}'
             expt_result = scipy.io.loadmat(path_to_file)
             ##
+            pdb.set_trace()
             hp = float(expt_result[varying_hp])
             train_error, test_error = expt_result['train_error_WP'], expt_result['test_error_WP']
             seconds = expt_result['seconds']
