@@ -112,7 +112,8 @@ def main(**kwargs):
     #experiment_name = 'nonlinear_VW_expt1'
     #experiment_name = 'nonlinear_V2W_D3_expt1'
     #experiment_name = 'unit_test_nonlinear_V2W_D3_expt1'
-    experiment_name = 'unit_test_SP'
+    #experiment_name = 'unit_test_SP'
+    experiment_name = 'expt_test_SP'
     #experiment_name = 'linear_VW_expt1'
     ## Regularization
     #reg_type = 'tikhonov'
