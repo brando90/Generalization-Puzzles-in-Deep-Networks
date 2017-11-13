@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #SBATCH --mem=7000
 #SBATCH --time=0-06:00
-#SBATCH --array=1-300
+#SBATCH --array=1-480
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
 '''
@@ -142,13 +142,13 @@ def main(**kwargs):
     ## SP DEGREE/MONOMIALS
     expt_type = 'SP_fig4'
     step_deg=1
-    lb_deg,ub_deg = 1,100
+    lb_deg,ub_deg = 1,48
     degrees = list(range(lb_deg,ub_deg+1,step_deg))
     lambdas = [0]
     nb_iter = 1600*1000
     #nb_iter = 1*100
     nb_iterations = [nb_iter]
-    repetitions = len(degrees)*[3]
+    repetitions = len(degrees)*[10]
     ##
     #debug, debug_sgd = True, False
     ## Hyper Params SGD weight parametrization
