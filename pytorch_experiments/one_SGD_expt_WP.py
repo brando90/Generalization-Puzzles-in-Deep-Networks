@@ -115,9 +115,9 @@ def main(**kwargs):
     #experiment_name = 'nonlinear_V2W_D3_expt1'
     #experiment_name = 'unit_test_nonlinear_V2W_D3_expt1'
     #experiment_name = 'unit_test_SP'
-    experiment_name = 'expt_test_SP_sin_4_N_train_7_N_train_11_N_test_100_eps_test_0p2_M_5'
-    #experiment_name = 'expt_test_SP_sin_4_N_train_7_N_train_11_N_test_100_eps_test_0p2_M_7'
-    #experiment_name = 'expt_test_SP_sin_4_N_train_11_N_train_11_N_test_100_eps_test_0p2'
+    experiment_name = 'expt_test_SP_sin_4_N_train_7_N_test_100_eps_test_0p2_M_5'
+    #experiment_name = 'expt_test_SP_sin_4_N_train_7_N_test_100_eps_test_0p2_M_7'
+    #experiment_name = 'expt_test_SP_sin_4_N_train_11_N_test_100_eps_test_0p2'
     #experiment_name = 'linear_VW_expt1'
     ## Regularization
     #reg_type = 'tikhonov'
