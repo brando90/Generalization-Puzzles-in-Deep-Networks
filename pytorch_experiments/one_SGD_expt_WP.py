@@ -115,9 +115,7 @@ def main(**kwargs):
     #experiment_name = 'nonlinear_V2W_D3_expt1'
     #experiment_name = 'unit_test_nonlinear_V2W_D3_expt1'
     #experiment_name = 'unit_test_SP'
-    experiment_name = 'expt_test_SP_sin_4_N_train_7_N_test_100_eps_test_0p2_M_5'
-    #experiment_name = 'expt_test_SP_sin_4_N_train_7_N_test_100_eps_test_0p2_M_7'
-    #experiment_name = 'expt_test_SP_sin_4_N_train_11_N_test_100_eps_test_0p2'
+    experiment_name = 'expt_test_SP_sin_4_N_train_7_N_test_100_eps_test_0p2'
     #experiment_name = 'linear_VW_expt1'
     ## Regularization
     #reg_type = 'tikhonov'
@@ -320,7 +318,7 @@ def main(**kwargs):
     print("--- %s hours ---" % hours )
     print('\a')
     if kwargs['save_bulk_experiment']:
-        path_to_save = f'./test_runs/{experiment_name}_reg_{reg_type}_expt_type_{expt_type}/{prefix_experiment}/'
+        path_to_save = f'./test_runs/{experiment_name}_reg_{reg_type}_expt_type_{expt_type}_N_train_{N_train}_M_{M}/{prefix_experiment}/'
         make_and_check_dir(path_to_save)
         experiment_results= dict(
             SLURM_JOBID=SLURM_JOBID,SLURM_ARRAY_TASK_ID=SLURM_ARRAY_TASK_ID,
