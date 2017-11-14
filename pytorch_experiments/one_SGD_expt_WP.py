@@ -104,10 +104,10 @@ def main(**kwargs):
     #data_filename='data_numpy_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_.npz'
     #truth_filename=''
     #data_filename='degree4_fit_2_sin_N_train_5_N_test_200.npz'
-    #truth_filename=''
-    #data_filename='sin_freq_sin_4_N_train_7_N_test_200_lb_train,ub_train_(0, 1)_lb_test,ub_test_(0.2, 0.8).npz'
     truth_filename=''
-    data_filename='sin_freq_sin_4_N_train_11_N_test_100_lb_train,ub_train_(0, 1)_lb_test,ub_test_(0.2, 0.8)'
+    data_filename='sin_freq_sin_4_N_train_7_N_test_200_lb_train,ub_train_(0, 1)_lb_test,ub_test_(0.2, 0.8).npz'
+    #truth_filename=''
+    #data_filename='sin_freq_sin_4_N_train_11_N_test_100_lb_train,ub_train_(0, 1)_lb_test,ub_test_(0.2, 0.8).npz'
     ## Folder for experiment
     #experiment_name = 'unit_test'
     #experiment_name = 'linear_unit_test'
@@ -115,7 +115,9 @@ def main(**kwargs):
     #experiment_name = 'nonlinear_V2W_D3_expt1'
     #experiment_name = 'unit_test_nonlinear_V2W_D3_expt1'
     #experiment_name = 'unit_test_SP'
-    experiment_name = 'unit_expt_test_SP_sin_4_N_train_11_N_train_11_N_test_100_eps_test_0p2'
+    experiment_name = 'expt_test_SP_sin_4_N_train_7_N_train_11_N_test_100_eps_test_0p2_M_5'
+    #experiment_name = 'expt_test_SP_sin_4_N_train_7_N_train_11_N_test_100_eps_test_0p2_M_7'
+    #experiment_name = 'expt_test_SP_sin_4_N_train_11_N_train_11_N_test_100_eps_test_0p2'
     #experiment_name = 'linear_VW_expt1'
     ## Regularization
     #reg_type = 'tikhonov'
@@ -154,7 +156,7 @@ def main(**kwargs):
     ##
     #debug, debug_sgd = True, False
     ## Hyper Params SGD weight parametrization
-    M = 5
+    M = 7
     eta = 0.1 # eta = 1e-6
     A = 0.0
     logging_freq = 100
