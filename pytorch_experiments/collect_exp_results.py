@@ -9,6 +9,34 @@ import calendar
 
 import pdb
 
+#from one_SGD_expt_WP import get_hp_to_run
+
+def get_hp_to_run(hyper_params,repetitions,satid):
+    '''
+    Returns the hyper parameter the current satid (SLURM_ARRAY_TASK_ID) corresponds to.
+
+    The way it works is by counting up from sum_i(repetitions[i]), once the current satid
+    is larger than the current counter, then it figures out that it belongs to the previous batch
+    of repeitions corresponding to that HP. So it picks the hyper_parm and runs it.
+    '''
+    if satid == 0:
+        raise ValueError(f'The SLURM_ARRAY_TASK_ID = {satid} is illegal. Start your job at 1 please.')
+    start_next_bundle_batch_jobs=1
+    for hp_job_nb in range(len(hyper_params)):
+        # print('----')
+        # print('hp_job_nb = ', hp_job_nb)
+        # print('start_next_bundle_batch_jobs ', start_next_bundle_batch_jobs)
+        start_next_bundle_batch_jobs+=repetitions[hp_job_nb]
+        # print('start_next_bundle_batch_jobs ', start_next_bundle_batch_jobs)
+        if start_next_bundle_batch_jobs > satid:
+            # print('---- DONE')
+            # print('hp_job_nb = ', hp_job_nb)
+            # print('start_next_bundle_batch_jobs ', start_next_bundle_batch_jobs)
+            # print('satid ',satid)
+            # print('----')
+            return hyper_params[hp_job_nb]
+    raise ValueError('There is something wrong with the number of jobs you submitted compared.')
+
 def make_second_entry_numpy_array(experiment_results):
     return [ np.array(results_list) for hp,results_list in experiment_results ]
 
@@ -47,12 +75,15 @@ print(f'Does path = {path}, exist? Answer: {path_exists}')
 if 'LAMBDAS' in expt_type_dirname:
     varying_hp = 'reg_lambda_WP'
     prefix_hp = f'experiment_lambdas_{month}_{day}_'
+    get_hp = lambda varying_hp,expt_result: float(expt_result[varying_hp])
 elif 'ITERATIONS' in expt_type_dirname:
     varying_hp = 'nb_iter'
     prefix_hp = f'experiment_iterations_{month}_{day}_'
+    get_hp = lambda varying_hp,expt_result: float(expt_result[varying_hp])
 elif 'SP_fig4' in expt_type_dirname:
     varying_hp = 'Degree_mdl'
     prefix_hp = f'experiment_degrees_{month}_{day}_'
+    get_hp = lambda varying_hp,expt_result: float(expt_result[varying_hp][0][0])
 else:
     raise ValueError(f'Look at path {expt_type_dirname}, contains neither LAMBDAS nor ITERATIONS.')
 ## go through the experiments and collect statistics
@@ -65,10 +96,18 @@ for dirpath, dirnames, filenames in os.walk(path):
             path_to_file = f'{dirpath}/{single_run_fname}'
             expt_result = scipy.io.loadmat(path_to_file)
             ##
-            pdb.set_trace()
-            hp = float(expt_result[varying_hp])
+            #SLURM_ARRAY_TASK_ID
+            #pdb.set_trace()
+            hp = get_hp(varying_hp,expt_result)
+            #hp = expt_result[varying_hp][0][0]
+            #pdb.set_trace()
+            # SLURM_ARRAY_TASK_ID = int( expt_result['SLURM_ARRAY_TASK_ID'][0][0] )
+            # repetitions = expt_result['repetitions'][0]
+            # degrees = expt_result['degrees'][0]
+            # hp = get_hp_to_run(hyper_params=degrees,repetitions=repetitions,satid=SLURM_ARRAY_TASK_ID)
             train_error, test_error = expt_result['train_error_WP'], expt_result['test_error_WP']
             seconds = expt_result['seconds']
+            print(f'\ndirpath={dirpath}')
             print(f'varying_hp = {varying_hp}')
             print(f'hp = {hp}')
             print(f'train_error, test_error = {train_error},{test_error}')
@@ -120,6 +159,9 @@ print(f'file_name = {prefix_hp}_{SLURM_JOBID}')
 if varying_hp == 'reg_lambda_WP':
     one_over_lambdas = 1/hps
     scipy.io.savemat( path_to_save, dict(one_over_lambdas=one_over_lambdas, train_means=train_means,train_stds=train_stds, test_means=test_means,test_stds=test_stds) )
-else:
+elif varying_hp == 'nb_iter':
     iterations = hps
     scipy.io.savemat( path_to_save, dict(iterations=iterations, train_means=train_means,train_stds=train_stds, test_means=test_means,test_stds=test_stds) )
+else:
+    degrees = hps
+    scipy.io.savemat( path_to_save, dict(degrees=degrees, train_means=train_means,train_stds=train_stds, test_means=test_means,test_stds=test_stds) )

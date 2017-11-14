@@ -52,7 +52,6 @@ def train_SGD(mdl, M,eta,nb_iter,logging_freq ,dtype, X_train,Y_train, X_test,Y_
     train_errors = []
     ##
     N_train,_ = tuple( X_train.size() )
-    #print(N_train)
     for i in range(nb_iter):
         for W in mdl.parameters():
             W_before_update = np.copy( W.data.numpy() )
@@ -71,7 +70,7 @@ def train_SGD(mdl, M,eta,nb_iter,logging_freq ,dtype, X_train,Y_train, X_test,Y_
             W.data -= delta
         ## train stats
         current_train_loss = (1/N_train)*(mdl.forward(X_train) - Y_train).pow(2).sum().data.numpy()
-        if i % (nb_iter/50) == 0 or i == 0:
+        if i % (nb_iter/10) == 0 or i == 0:
         #if True:
             print('\n-------------')
             print(f'i = {i}, current_train_loss = {current_train_loss}')
@@ -105,13 +104,13 @@ start_time = time.time()
 logging_freq = 100
 dtype = torch.FloatTensor
 ## SGD params
-M = 5
-eta = 0.1
-nb_iter = 800*1000
+M = 13
+eta = 0.01
+nb_iter = 300*1000
 ##
 lb,ub=0,1
 f_name='sin'
-#f_name='cos'
+f_name='cos'
 if f_name == 'sin':
     freq_sin = 4
     f_target = lambda x: np.sin(2*np.pi*freq_sin*x).reshape(x.shape[0],1)
@@ -122,16 +121,24 @@ elif f_name == 'cos':
     func_properties = f'freq_cos={freq_cos}'
 else:
     raise ValueError('Function does not exist')
-N_train = 7
+N_train = 17
 X_train = np.linspace(lb,ub,N_train).reshape(N_train,1)
 Y_train = f_target(X_train)
-N_test = 200
-X_test = np.linspace(lb,ub,N_test).reshape(N_test,1)
+N_test = 100
+eps_test = 0.2
+X_test = np.linspace(lb+eps_test,ub-eps_test,N_test).reshape(N_test,1)
 Y_test = f_target(X_test)
 ## degree of mdl
-Degree_mdl = 15
+Degree_mdl = 16
 ## pseudo-inverse solution
-c_pinv = np.polyfit( X_train.reshape( (N_train,) ), Y_train , Degree_mdl )[::-1]
+poly_feat = PolynomialFeatures(degree=Degree_mdl)
+Kern_train = poly_feat.fit_transform(X_train)
+Kern_train_pinv = np.linalg.pinv( Kern_train )
+c_pinv = np.dot(Kern_train_pinv, Y_train)
+train_error_c_pinv = (1/N_train)*(np.linalg.norm(Y_train - np.dot(Kern_train,c_pinv) )**2)
+print(f'Kern_train={Kern_train}')
+print(f'train_error_c_pinv={train_error_c_pinv}')
+#_pinv = np.polyfit( X_train.reshape( (N_train,) ), Y_train , Degree_mdl )[::-1]
 ## linear mdl to train with SGD
 nb_terms = c_pinv.shape[0]
 mdl_sgd = get_sequential_lifted_mdl(nb_monomials=nb_terms,D_out=1, bias=False)
@@ -143,6 +150,10 @@ poly_feat = PolynomialFeatures(degree=Degree_mdl)
 Kern_train, Kern_test = poly_feat.fit_transform(X_train.reshape(N_train,1)), poly_feat.fit_transform(X_test.reshape(N_test,1))
 Kern_train_pt, Y_train_pt = Variable(torch.FloatTensor(Kern_train).type(dtype), requires_grad=False), Variable(torch.FloatTensor(Y_train).type(dtype), requires_grad=False)
 Kern_test_pt, Y_test_pt = Variable(torch.FloatTensor(Kern_test).type(dtype), requires_grad=False ), Variable(torch.FloatTensor(Y_test).type(dtype), requires_grad=False)
+
+train_error_c_pinv = (1/N_train)*(np.linalg.norm(Y_train.data.numpy() - np.dot(Kern_train_pt.data.numpy(),c_pinv) )**2)
+print(f'train_error_c_pinv = {train_error_c_pinv}')
+pdb.set_trace()
 grad_list,train_errors = train_SGD(mdl_sgd, M,eta,nb_iter,logging_freq ,dtype, Kern_train_pt,Y_train_pt, Kern_test_pt,Y_test_pt,c_pinv)
 #train_SGD_PTF(mdl_sgd, Kern_train_pt,Y_train_pt, M,eta,nb_iter,logging_freq, dtype)
 ##

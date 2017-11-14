@@ -31,7 +31,7 @@ import scipy.io
 
 import argparse
 
-SLURM_JOBID = 6
+SLURM_JOBID = 7
 
 # def get_argument_parser():
 #     parser = argparse.ArgumentParser()
@@ -112,7 +112,8 @@ def get_f_2_imitate_D0_1(Degree_data_set):
     # TODO
     D0 = 1
     freq_cos = 1
-    freq_sin = 4
+    #freq_sin = 4
+    freq_sin = 8
     #c_target = np.arange(1,nb_monomials_data+1).reshape((nb_monomials_data,1))+np.random.normal(loc=3.0,scale=1.0,size=(nb_monomials_data,1))
     #c_target = get_c(nb_monomials_data) # [D,1]
     #c_target = get_c_fit_function(generate_h_add_1d,D0,Degree_data_set,N=3*N_test,lb=-1,ub=1)
@@ -401,7 +402,7 @@ def get_errors_pinv_mdls_SGD_TF(X_train,Y_train,X_test,Y_test,degrees,lb,ub,f_ta
     N_train,D0 = X_train.shape
     N_test,D_out = Y_test.shape
     ##
-    M = 7
+    M = 5
     eta = 0.1
     nb_iter = 100*1000
     A = 0
@@ -446,9 +447,15 @@ def get_c(nb_monomials_data):
 def sample_X_D1(lb,ub,eps_train,eps_edge,N_left,N_middle,N_right,D0):
     ## middle
     middle = np.linspace(lb+eps_edge,ub-eps_edge,N_middle)
+    #middle = ( ub-eps_train - (lb+eps_train))*np.random.rand(N_middle,D0)+(lb+eps_train)
+    #middle = middle.reshape((N_middle,))
     ## edges
     left = np.linspace(lb,lb+eps_train, N_left)
     right = np.linspace(ub-eps_train,ub, N_right)
+    #left = eps_train*np.random.rand(N_left,D0)+lb
+    #left = left.reshape((N_left,))
+    #right = eps_train*np.random.rand(N_right,D0)+(ub-eps_train)
+    #right = right.reshape((N_right,))
     ##
     X_train = np.concatenate( (left,middle,right), axis=0)
     ##
@@ -456,13 +463,14 @@ def sample_X_D1(lb,ub,eps_train,eps_edge,N_left,N_middle,N_right,D0):
     return X_train.reshape( (N_train,D0) )
 
 def my_main(**kwargs):
+    SGD = kwargs['SGD']
     ##
-    lb,ub = 0,1
+    lb,ub = -1,1
     eps_train = 0.0
     ##
     eps_edge = 0.05
     eps_test = eps_train
-    eps_test = 0.2
+    eps_test = 0.4
     lb_test, ub_test = lb+eps_test, ub-eps_test
     ##
     start_time = time.time()
@@ -479,9 +487,9 @@ def my_main(**kwargs):
     else:
         ## properties of Data set
         D0 = 1
-        N_test = 1000
-        N_train = 7
-        #N_left,N_middle,N_right = 3,4,3
+        N_test = 500
+        N_train = 36
+        #N_left,N_middle,N_right = 100,20,100
         #N_train = N_left+N_middle+N_right
         print(f'D0 = {D0}, N_train = {N_train}, N_test = {N_test}')
         ## get function to imitate and X input points
@@ -492,7 +500,7 @@ def my_main(**kwargs):
         print(f'> Degree_data_set={Degree_data_set}, nb_monomials_data={nb_monomials_data}')
         if D0 == 1:
             #X_train, X_test = 2*np.random.rand(N_train,D0)-1, 2*np.random.rand(N_test,D0)-1
-            #X_train = (ub-lb)*np.random.rand(N_train,D0)
+            #X_train = (ub-lb)*np.random.rand(N_train,D0) + lb
             #X_test = (lb_test+ub_test)*np.random.rand(N_test,D0)-1
             X_train = np.linspace(lb,ub,N_train).reshape(N_train,D0)
             X_test = np.linspace(lb_test,ub_test,N_test).reshape(N_test,D0)
@@ -529,16 +537,17 @@ def my_main(**kwargs):
     #print('c_target.shape = ',c_target.shape)
     #print('nb_monomials_data = {} \n'.format(nb_monomials_data) )
     ## get errors from models
-    step_deg=2
-    smallest_deg,largest_deg = 9,10
+    step_deg=1
+    smallest_deg,largest_deg = 1,100
     degrees = list(range(smallest_deg,largest_deg,step_deg))
-    #train_errors,test_errors,ranks,s_inv_total,s_inv_max,diff_truth = get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees, lb,ub,f_target,c_target)
-    train_errors_pinv,test_errors_pinv,_,_,_,_ = get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees, lb,ub,f_target,c_target)
-    train_errors,test_errors,ranks,s_inv_total,s_inv_max,diff_truth = get_errors_pinv_mdls_SGD(X_train,Y_train,X_test,Y_test,degrees, lb,ub,f_target, c_target=c_target,bias=False)
+    train_errors_pinv,test_errors_pinv,ranks,s_inv_total,s_inv_max,diff_truth = get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees, lb,ub,f_target,c_target)
+    #train_errors_pinv,test_errors_pinv,_,_,_,_ = get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees, lb,ub,f_target,c_target)
+    if SGD:
+        train_errors,test_errors,ranks,s_inv_total,s_inv_max,diff_truth = get_errors_pinv_mdls_SGD(X_train,Y_train,X_test,Y_test,degrees, lb,ub,f_target, c_target=c_target,bias=False)
     #train_errors,test_errors,ranks,s_inv_total,s_inv_max,diff_truth = get_errors_pinv_mdls_SGD_TF(X_train,Y_train,X_test,Y_test,degrees, lb,ub,f_target, c_target=c_target,bias=False)
     ##
-    print('train_errors = ', train_errors)
-    print('test_errors = ', test_errors)
+    #print('train_errors = ', train_errors)
+    #print('test_errors = ', test_errors)
     ## plot them
     monomials = [ get_nb_monomials(nb_variables=D0,degree=d) for d in degrees ]
     ## REPORT TIMES
@@ -576,7 +585,7 @@ def my_main(**kwargs):
             c_targets_2_plot = {}
             low_mdl,middle_mdl,high_mdl =int(largest_deg/6),int(largest_deg/2),largest_deg
             #low_mdl,middle_mdl,high_mdl = 21,22,23
-            low_mdl,middle_mdl,high_mdl = 2,5,100
+            low_mdl,middle_mdl,high_mdl = 12,25,100
             ##
             c_targets_2_plot[Degree_data_set] = get_c_fit_data(X_train,Y_train,Degree_data_set)
             ##
@@ -612,8 +621,9 @@ def my_main(**kwargs):
             #TODO
             raise ValueError("not implemented yet")
         ## plot errors
-        plot_fig4(monomials,train_errors,test_errors,N_train,N_test,nb_monomials_data,alg='SGD')
-        plot_fig4(monomials,train_errors_pinv,test_errors_pinv,N_train,N_test,nb_monomials_data,alg='pinv')
+        if SGD:
+            plot_fig4(monomials,train_errors,test_errors,N_train,N_test,nb_monomials_data,alg=f'SGD, eps_test={eps_test} ')
+        plot_fig4(monomials,train_errors_pinv,test_errors_pinv,N_train,N_test,nb_monomials_data,alg=f'pinv, eps_test={eps_test} ')
         ## plot ranks
         fig1 = plt.figure()
         p_rank, = plt.plot(monomials,ranks,'c')
@@ -634,31 +644,36 @@ def my_main(**kwargs):
         # plt.ylabel('1/singular values')
         # plt.title('1/singular values statistics of data set')
         ##
+        print(f'\a N<2*sqrt(N_train), ={2*(N_train**0.5)}')
         plt.show()
     ##
     if c_target == None:
         c_target = 'None'
     if 'file_name' not in kwargs:
+        if not SGD:
+            train_errors, test_errors = train_errors_pinv, test_errors_pinv
         experiment_data = dict(monomials=monomials,train_errors=train_errors,test_errors=test_errors,
                 N_train=N_train,N_test=N_test,
                 Degree_data_set=Degree_data_set,c_target=c_target,nb_monomials_data=nb_monomials_data,
                 mu_noise=mu_noise,std_noise=std_noise,
                 X_train=X_train, X_test=X_test, Y_train=Y_train, Y_test=Y_test,
-                title_fig='Training data size: {}'.format(N_train))
+                title_fig=f'Training data size: {N_train}' )
     else:
         new_data = dict(degrees=degrees,monomials=monomials,
             train_errors=train_errors,test_errors=test_errors)
         experiment_data = {**mat_dict,**new_data}
     ##
     if kwargs['save_overparam_experiment']:
-        path_to_save = '../plotting/results/overfit_param_pinv_{}.mat'.format(SLURM_JOBID)
+        print('SAVING EXPT')
+        path_to_save = f'../plotting/results/overfit_param_pinv_{SLURM_JOBID}.mat'
         scipy.io.savemat( path_to_save, experiment_data)
+    ##
 
 if __name__ == '__main__':
     ##
     start_time = time.time()
     ##
-    my_main(plotting=True,save_overparam_experiment=True)
+    my_main(plotting=True,save_overparam_experiment=True,SGD=False)
     ##
     #my_main(plotting=False,save_overparam_experiment=True,mat_load=True,file_name='../plotting/results/overfit_param_pinv_tommy_email2.mat')
     ##

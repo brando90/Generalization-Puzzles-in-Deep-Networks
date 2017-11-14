@@ -399,7 +399,7 @@ def main_poly():
     eps_test = 0.2
     lb_test,ub_test = 0+eps_test,1-eps_test
     ##
-    N_train, N_test = 7,200
+    N_train, N_test = 11,100
     ##
     #file_name=f'degree{Degree_data_set}_fit_2_sin_N_train_{N_train}_N_test_{N_test}'
     file_name=f'sin_freq_sin_{freq_sin}_N_train_{N_train}_N_test_{N_test}_lb_train,ub_train_{lb_train,ub_train}_lb_test,ub_test_{lb_test,ub_test}'
