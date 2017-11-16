@@ -1,0 +1,135 @@
+/home/slurm/slurmd/job9699836/slurm_script:268: RankWarning: Polyfit may be poorly conditioned
+  c_pinv = np.polyfit( X_train.reshape((N_train,)) , Y_train.reshape((N_train,)) , Degree_mdl )[::-1]
+/home/brando90/home_simulation_research/overparametrized_experiments/pytorch_experiments
+SLURM_ARRAY_TASK_ID =  41
+SLURM_JOBID =  9699836
+
+--Degree_mdl=7 
+--degrees=[3, 4, 5, 6, 7, 8] 
+--SLURM_ARRAY_TASK_ID=41 
+
+reg_lambda =  0
+nb_iter =  800000
+N_train=7, N_test=200
+--->training SP mdl
+nb =  800000
+reg_lambda =  0
+reg_type =  
+reg_lambda=0
+-------------
+i = 0, current_train_loss = [ 0.42543319]
+W.data = 
+1.00000e-03 *
+  0.0000  8.2479  8.2479  7.7896  7.3314  6.7841  6.1477  5.4685
+[torch.FloatTensor of size 1x8]
+
+W.grad.data = 
+1.00000e-02 *
+  0.0000 -8.2479 -8.2479 -7.7896 -7.3314 -6.7841 -6.1477 -5.4685
+[torch.FloatTensor of size 1x8]
+
+-------------
+i = 80000, current_train_loss = [ 0.35714424]
+W.data = 
+ -0.2700   2.8361  -5.4460  -5.2142   6.4381  10.7191   3.5493 -12.5230
+[torch.FloatTensor of size 1x8]
+
+W.grad.data = 
+1.00000e-03 *
+  0.0076 -0.1387  0.0739  0.7866 -0.3205 -0.9673 -0.4654  1.0155
+[torch.FloatTensor of size 1x8]
+
+-------------
+i = 160000, current_train_loss = [ 0.33891481]
+W.data = 
+ -0.3033   3.1419  -3.8771 -11.7177   7.5046  17.1713   7.1860 -19.0296
+[torch.FloatTensor of size 1x8]
+
+W.grad.data = 
+1.00000e-04 *
+  0.0188  0.2580 -3.6868  8.2571 -0.1469 -7.0307 -4.4900  6.7748
+[torch.FloatTensor of size 1x8]
+
+-------------
+i = 240000, current_train_loss = [ 0.32382476]
+W.data = 
+ -0.3071   2.7279  -0.3858 -18.3182   7.2262  22.4083  10.7127 -23.9929
+[torch.FloatTensor of size 1x8]
+
+W.grad.data = 
+1.00000e-04 *
+ -0.0092  0.6603 -4.7743  8.2323  0.6667 -6.2034 -4.3459  5.8042
+[torch.FloatTensor of size 1x8]
+
+-------------
+i = 320000, current_train_loss = [ 0.30958399]
+W.data = 
+ -0.3031   2.1334   3.5491 -24.8394   6.6158  27.2252  14.1616 -28.4738
+[torch.FloatTensor of size 1x8]
+
+W.grad.data = 
+1.00000e-04 *
+ -0.0014  0.7772 -4.9518  8.1045  0.8740 -5.8801 -4.2343  5.4469
+[torch.FloatTensor of size 1x8]
+
+-------------
+i = 400000, current_train_loss = [ 0.29600498]
+W.data = 
+ -0.2972   1.5029   7.5290 -31.2269   5.9247  31.8668  17.5193 -32.7520
+[torch.FloatTensor of size 1x8]
+
+W.grad.data = 
+1.00000e-04 *
+ -0.0213  0.7710 -4.9328  7.9071  0.8658 -5.7612 -4.2151  5.1596
+[torch.FloatTensor of size 1x8]
+
+-------------
+i = 480000, current_train_loss = [ 0.2830162]
+W.data = 
+ -0.2911   0.8748  11.4570 -37.4779   5.2047  36.4140  20.7995 -36.9159
+[torch.FloatTensor of size 1x8]
+
+W.grad.data = 
+1.00000e-04 *
+ -0.0241  0.7820 -4.8579  7.7444  0.9094 -5.5364 -4.0153  5.1352
+[torch.FloatTensor of size 1x8]
+
+-------------
+i = 560000, current_train_loss = [ 0.27073506]
+W.data = 
+ -0.2844   0.2451  15.3279 -43.5773   4.5449  40.7125  23.9972 -40.9023
+[torch.FloatTensor of size 1x8]
+
+W.grad.data = 
+1.00000e-04 *
+  0.0034  0.7849 -4.7772  7.4558  0.7716 -5.4699 -3.9011  5.1225
+[torch.FloatTensor of size 1x8]
+
+-------------
+i = 640000, current_train_loss = [ 0.25897405]
+W.data = 
+ -0.2783  -0.3513  19.0505 -49.5194   3.9091  44.9850  27.1358 -44.8696
+[torch.FloatTensor of size 1x8]
+
+W.grad.data = 
+1.00000e-04 *
+ -0.0072  0.7274 -4.5655  7.4288  0.8454 -5.3409 -3.9104  4.7970
+[torch.FloatTensor of size 1x8]
+
+-------------
+i = 720000, current_train_loss = [ 0.24768476]
+W.data = 
+ -0.2727  -0.9365  22.7083 -55.3272   3.2024  49.2462  30.1941 -48.7544
+[torch.FloatTensor of size 1x8]
+
+W.grad.data = 
+1.00000e-04 *
+ -0.0049  0.7415 -4.5243  7.2425  0.8569 -5.1512 -3.7339  4.7743
+[torch.FloatTensor of size 1x8]
+
+--- 407.36669969558716 seconds ---
+--- 6.789444994926453 minutes ---
+--- 0.11315741658210755 hours ---
+
+plotting={'save_bulk_experiment': True, 'plotting': False}
+lb_test=
