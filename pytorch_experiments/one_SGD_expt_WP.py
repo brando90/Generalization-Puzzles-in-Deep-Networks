@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #SBATCH --mem=7000
-#SBATCH --time=0-06:00
-#SBATCH --array=1-480
+#SBATCH --time=0-11:00
+#SBATCH --array=1-240
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
 '''
@@ -122,7 +122,7 @@ def main(**kwargs):
     #experiment_name = 'unit_expt_test_SP_sin_4_N_train_7_N_test_100_eps_test_0p2_init_zero'
     #experiment_name = 'unit_expt_test_SP_sin_4_N_train_7_N_test_100_eps_test_0p2_init_zero_reg__expt_type_SP_fig4_N_train_7_M_7'
     #experiment_name = 'linear_VW_expt1'
-    experiment_name = 'unit_poly_degree26'
+    experiment_name = 'poly_degree26_step_size0p01'
     ## Regularization
     #reg_type = 'tikhonov'
     #reg_type = 'VW'
@@ -154,16 +154,16 @@ def main(**kwargs):
     degrees = list(range(lb_deg,ub_deg+1,step_deg))
     lambdas = [0]
     #nb_iter = 1600*1000
-    nb_iter = 160*10
+    nb_iter = 47407407
     #nb_iter = 1*100
     nb_iterations = [nb_iter]
-    repetitions = len(degrees)*[1]
+    repetitions = len(degrees)*[5]
     ##
     #debug, debug_sgd = True, False
     ## Hyper Params SGD weight parametrization
-    M = 14
+    M = 7
     #eta = 0.00000000001 # eta = 1e-6
-    eta = 0.00000000001
+    eta = 0.01
     A = 0.0
     logging_freq = 100
     ## pick the right hyper param
@@ -396,5 +396,5 @@ class TestStringMethods(unittest.TestCase):
                 satid+=1
 
 if __name__ == '__main__':
-    main(save_bulk_experiment=True,plotting=True)
+    main(save_bulk_experiment=True,plotting=False)
     #unittest.main()
