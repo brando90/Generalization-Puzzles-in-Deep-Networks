@@ -688,7 +688,7 @@ if __name__ == '__main__':
     ##
     start_time = time.time()
     ##
-    my_main(plotting=True,save_overparam_experiment=True,SGD=False,save_data_set=False)
+    my_main(plotting=True,save_overparam_experiment=True,SGD=False,save_data_set=True)
     ##
     #my_main(plotting=False,save_overparam_experiment=True,mat_load=True,file_name='../plotting/results/overfit_param_pinv_tommy_email2.mat')
     ##
