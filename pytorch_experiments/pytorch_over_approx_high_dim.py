@@ -986,7 +986,7 @@ def main(**kwargs):
         plt.ylabel('Error/loss')
         plt.legend([p_train_WP,p_test_WP],[p_train_WP_legend,p_test_WP_legend])
         plt.title('Train,Test vs Iterations, reg_lambda_WP = {}'.format(reg_lambda_WP))
-        #
+        # PLOT ERM+train+test
         fig1 = plt.figure()
         p_train_WP, = plt.plot(iterations_axis, train_loss_list_WP,color='m')
         p_test_WP, = plt.plot(iterations_axis, test_loss_list_WP,color='r')

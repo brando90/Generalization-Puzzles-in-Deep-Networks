@@ -29,16 +29,44 @@ def plot_1D_stuff(arg):
     plt.title('SGD vs minimum norm solution curves')
 
 def plot_iter_vs_error(arg):
-    start = 1
-    iterations_axis = np.arange(1,nb_iter,step=logging_freq)[start:]
-    ##
-    train_loss_list, test_loss_list, erm_lamdas = np.array(train_loss_list)[start:], np.array(test_loss_list)[start:], np.array(erm_lamdas)[start:]
-    p_train_WP_legend = f'Train error reg_lambda = {reg_lambda}'
-    p_test_WP_legend = f'Test error reg_lambda = {reg_lambda}'
-    p_erm_reg_WP_legend = f'Error+Regularization, reg_lambda_WP = {reg_lambda}'
-    ##
+    ## TODO fix put into arguments better
+    # start = 1
+    # iterations_axis = np.arange(1,nb_iter,step=logging_freq)[start:]
+    # ##
+    # train_loss_list, test_loss_list, erm_lamdas = np.array(train_loss_list)[start:], np.array(test_loss_list)[start:], np.array(erm_lamdas)[start:]
+    # p_train_WP_legend = f'Train error reg_lambda = {reg_lambda}'
+    # p_test_WP_legend = f'Test error reg_lambda = {reg_lambda}'
+    # p_erm_reg_WP_legend = f'Error+Regularization, reg_lambda_WP = {reg_lambda}'
+    # ##
+    # fig1 = plt.figure()
+    # ##
+    # p_train_WP, = plt.plot(iterations_axis, train_loss_list_WP,color='m')
+    # p_test_WP, = plt.plot(iterations_axis, test_loss_list_WP,color='r')
+    # p_erm_reg_WP, = plt.plot(iterations_axis, erm_lamdas_WP,color='g')
+    pass
+
+def plot_iter_vs_all_errors(iterations_axis, train_loss_list,test_loss_list,erm_lamdas, reg_lambda):
+    # PLOT ERM+train+test
     fig1 = plt.figure()
+    p_train_WP, = plt.plot(iterations_axis, train_loss_list,color='m')
+    p_test_WP, = plt.plot(iterations_axis, test_loss_list,color='r')
+    p_erm_reg_WP, = plt.plot(iterations_axis, erm_lamdas,color='g')
+    plt.xlabel('iterations' )
+    plt.ylabel('Error/loss')
+    ## legends
+    p_train_WP_legend = f'Train error, Weight Parametrization (WP), reg_lambda = {reg_lambda}'
+    p_test_WP_legend = f'Test error, Weight Parametrization (WP) reg_lambda = {reg_lambda}'
+    p_erm_reg_WP_legend = f'Error+Regularization, Weight Parametrization (WP) reg_lambda = {reg_lambda}'
     ##
-    p_train_WP, = plt.plot(iterations_axis, train_loss_list_WP,color='m')
-    p_test_WP, = plt.plot(iterations_axis, test_loss_list_WP,color='r')
-    p_erm_reg_WP, = plt.plot(iterations_axis, erm_lamdas_WP,color='g')
+    plt.legend([p_erm_reg_WP,p_train_WP,p_test_WP],[p_erm_reg_WP_legend,p_train_WP_legend,p_test_WP_legend])
+    plt.title(f'Loss+Regularization,Train,Test vs Iterations, reg_lambda = {reg_lambda}')
+
+def plot_iter_vs_grads_norm2_4_current_layer(iterations_axis,grads, layer):
+    p_grad_legend = f'grad norm(2) for layer = {layer}'
+    ##plots
+    fig1 = plt.figure()
+    p_erm_reg_WP, = plt.plot(iterations_axis, grads,color='g')
+    plt.legend([p_erm_reg_WP],[p_grad_legend])
+    plt.xlabel('iterations' )
+    plt.ylabel('Gradient norm')
+    plt.title(f' Iterations vs Gradients')

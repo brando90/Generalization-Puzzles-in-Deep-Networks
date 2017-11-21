@@ -183,13 +183,14 @@ def save_data_poly_fit_to_f_2_imitate(saving,path_to_save, f_2_imitate,Degree_da
     nb_monomials_data = get_nb_monomials(nb_variables=D0,degree=Degree_data_set)
     print(f'> Degree_data_set={Degree_data_set}, nb_monomials_data={nb_monomials_data}')
     ##
-    X,Y = get_X_Y_data(f_2_imitate, D0,N_4_func_approx,lb_train,ub_train)
+    X,_ = get_X_Y_data(f_2_imitate, D0,N_4_func_approx,lb_train,ub_train)
+    Y = f_2_imitate(X_data)
     c_target = get_c_fit_function(D0,Degree_data_set,X,Y)
     f_target = get_func_pointer_poly(c_target,Degree_data_set,D0)
     ##
-    X_train,Y_train = get_X_Y_data(f_2_imitate, D0,N_train,lb_train,ub_train)
+    X_train,_ = get_X_Y_data(f_2_imitate, D0,N_train,lb_train,ub_train)
     X_test,Y_test = get_X_Y_data(f_2_imitate, D0,N_test,lb_test,ub_test)
-    Y_train, Y_test = f_target(X_train)+noise_train, f_target(X_test)+noise_test
+    Y_train, _ = f_target(X_train)+noise_train, f_target(X_test)+noise_test
     Y_train, Y_test = Y_train.reshape(Y_train.shape[0],1), Y_test.reshape(Y_test.shape[0],1)
     #pdb.set_trace()
     ##
@@ -391,7 +392,7 @@ def main_poly():
     #f_2_imitate = lambda x: np.sin(2*np.pi*x)
     freq_sin = 4
     f_2_imitate = lambda x: np.sin(2*np.pi*freq_sin*x).reshape(x.shape[0],1)
-    Degree_data_set = 4
+    Degree_data_set = 26
     D0 = 1
     ##
     eps_train = 0
@@ -399,23 +400,23 @@ def main_poly():
     eps_test = 0.2
     lb_test,ub_test = 0+eps_test,1-eps_test
     ##
-    N_train, N_test = 11,100
+    N_train, N_test = 14,100
     ##
-    #file_name=f'degree{Degree_data_set}_fit_2_sin_N_train_{N_train}_N_test_{N_test}'
-    file_name=f'sin_freq_sin_{freq_sin}_N_train_{N_train}_N_test_{N_test}_lb_train,ub_train_{lb_train,ub_train}_lb_test,ub_test_{lb_test,ub_test}'
+    file_name=f'degree{Degree_data_set}_fit_2_sin_{freq_sin}_N_train_{N_train}_N_test_{N_test}'
+    #file_name=f'sin_freq_sin_{freq_sin}_N_train_{N_train}_N_test_{N_test}_lb_train,ub_train_{lb_train,ub_train}_lb_test,ub_test_{lb_test,ub_test}'
     path_to_save = f'./data/{file_name}'
     print(f'path_to_save = {path_to_save}')
     ##
-    # X_train,Y_train, X_test,Y_test = save_data_poly_fit_to_f_2_imitate(
-    #     saving,path_to_save, f_2_imitate,Degree_data_set, D0,lb,ub,N_train,N_test,N_4_func_approx,
-    #     noise_train=0,noise_test=0
-    # )
-    X_train,Y_train, X_test,Y_test = save_data_f_2_imitate(
-        saving,path_to_save, f_2_imitate, D0,
-        lb_train,ub_train,lb_test,ub_test,
-        N_train,N_test,
+    X_train,Y_train, X_test,Y_test = save_data_poly_fit_to_f_2_imitate(
+        saving,path_to_save, f_2_imitate,Degree_data_set, D0,lb,ub,N_train,N_test,N_4_func_approx,
         noise_train=0,noise_test=0
     )
+    # X_train,Y_train, X_test,Y_test = save_data_f_2_imitate(
+    #     saving,path_to_save, f_2_imitate, D0,
+    #     lb_train,ub_train,lb_test,ub_test,
+    #     N_train,N_test,
+    #     noise_train=0,noise_test=0
+    # )
     print(f'X_train.shape={X_train.shape},Y_train={Y_train.shape}, X_test={X_test.shape},Y_test={Y_test.shape}')
     ##
     # plt.plot(X_train,Y_train)

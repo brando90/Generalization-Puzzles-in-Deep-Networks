@@ -1,5 +1,6 @@
 import numpy as np
 from sklearn.preprocessing import PolynomialFeatures
+from numpy.polynomial.hermite import hermvander
 
 import torch
 from torch.autograd import Variable
@@ -51,12 +52,15 @@ def train_SGD(mdl, M,eta,nb_iter,logging_freq ,dtype, X_train,Y_train):
         for W in mdl.parameters():
             delta = eta*W.grad.data
             W.data.copy_(W.data - delta)
-        ## Manually zero the gradients after updating weights
-        mdl.zero_grad()
         ## train stats
         if i % (nb_iter/10) == 0 or i == 0:
             current_train_loss = (1/N_train)*(mdl.forward(X_train) - Y_train).pow(2).sum().data.numpy()
-            print('i = {}, current_loss = {}'.format(i, current_train_loss ) )
+            print('\n-------------')
+            print(f'i = {i}, current_train_loss = {current_train_loss}\n')
+            print(f'eta*W.grad.data = {eta*W.grad.data}')
+            print(f'W.grad.data = {W.grad.data}')
+        ## Manually zero the gradients after updating weights
+        mdl.zero_grad()
 ##
 logging_freq = 100
 dtype = torch.FloatTensor
@@ -79,14 +83,18 @@ nb_terms = c_pinv.shape[0]
 mdl_sgd = get_sequential_lifted_mdl(nb_monomials=nb_terms,D_out=1, bias=False)
 mdl_sgd[0].weight.data.normal_(mean=0,std=0.001)
 ## Make polynomial Kernel
-poly_feat = PolynomialFeatures(degree=Degree_mdl)
-Kern_train = poly_feat.fit_transform(X_train.reshape(N_train,1))
+#poly_feat = PolynomialFeatures(degree=Degree_mdl)
+#Kern_train = poly_feat.fit_transform(X_train.reshape(N_train,1))
+Kern_train = hermvander(X_train,Degree_mdl)
+Kern_train = Kern_train.reshape(N_train,Kern_train.shape[1])
 Kern_train_pt, Y_train_pt = Variable(torch.FloatTensor(Kern_train).type(dtype), requires_grad=False), Variable(torch.FloatTensor(Y_train).type(dtype), requires_grad=False)
 train_SGD(mdl_sgd, M,eta,nb_iter,logging_freq ,dtype, Kern_train_pt,Y_train_pt)
 
 #### PLOTTING
 x_horizontal = np.linspace(lb,ub,1000).reshape(1000,1)
-X_plot = poly_feat.fit_transform(x_horizontal)
+#X_plot = poly_feat.fit_transform(x_horizontal)
+X_plot = hermvander(x_horizontal,Degree_mdl)
+X_plot = X_plot.reshape(1000,X_plot.shape[2])
 X_plot_pytorch = Variable( torch.FloatTensor(X_plot), requires_grad=False)
 ##
 fig1 = plt.figure()

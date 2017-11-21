@@ -48,13 +48,18 @@ today_obj = date.today() # contains datetime.date(year, month, day); accessible 
 day = today_obj.day
 month = calendar.month_name[today_obj.month]
 ##
-SLURM_JOBID = 1
+SLURM_JOBID = 7
 ## the name for lambdas or iterations, depending of type of experiment
 expt_type_dirname = 'unit_test_reg_VW_expt_type_LAMBDAS'
 expt_type_dirname = 'unit_test_reg_VW_expt_type_ITERATIONS'
 expt_type_dirname = 'nonlinear_VW_expt1_reg_VW_expt_type_LAMBDAS' ## the name for experiments, for lambdas its the #iters for that set of lambdas, for iters its the specific lambda tried for that experiment
 expt_type_dirname = 'nonlinear_V2W_D3_expt1_reg_V2W_D3_expt_type_LAMBDAS'
 expt_type_dirname = 'expt_test_SP_reg__expt_type_SP_fig4'
+#expt_type_dirname = 'expt_test_SP_sin_4_N_train_7_N_test_100_eps_test_0p2_reg__expt_type_SP_fig4_N_train_7_M_5'
+#expt_type_dirname = 'expt_test_SP_sin_4_N_train_7_N_test_100_eps_test_0p2_reg__expt_type_SP_fig4_N_train_7_M_7'
+#expt_type_dirname = 'expt_test_SP_sin_4_N_train_7_N_test_100_eps_test_0p2_init_zero_reg__expt_type_SP_fig4_N_train_7_M_5'
+#expt_type_dirname = 'expt_test_SP_sin_4_N_train_7_N_test_100_eps_test_0p2_init_zero_reg__expt_type_SP_fig4_N_train_7_M_7'
+#expt_type_dirname = 'unit_expt_test_SP_sin_4_N_train_7_N_test_100_eps_test_0p2_init_zero_reg__expt_type_SP_fig4_N_train_7_M_7'
 #expt_type_dirname = 'linear_VW_expt1_reg_VW_expt_type_LAMBDAS'
 #expt_type_dirname = 'linear_VW_expt1_reg_VW_expt_type_ITERATIONS'
 #set_experiments_dirname = 'lambda_80000'
@@ -65,6 +70,8 @@ expt_type_dirname = 'expt_test_SP_reg__expt_type_SP_fig4'
 #set_experiments_dirname = 'it_4199999'
 #set_experiments_dirname = 'it_60000'
 set_experiments_dirname = 'fig4_expt_lambda_0_it_1600000'
+#set_experiments_dirname = 'fig4_expt_lambda_0_it_1600000'
+#set_experiments_dirname = 'fig4_expt_lambda_0_it_200'
 ##
 path = f'./test_runs/{expt_type_dirname}/{set_experiments_dirname}'
 print(f'path = {path}')
@@ -107,29 +114,34 @@ for dirpath, dirnames, filenames in os.walk(path):
             # hp = get_hp_to_run(hyper_params=degrees,repetitions=repetitions,satid=SLURM_ARRAY_TASK_ID)
             train_error, test_error = expt_result['train_error_WP'], expt_result['test_error_WP']
             seconds = expt_result['seconds']
-            print(f'\ndirpath={dirpath}')
+            print()
+            print(f'i={i}')
+            print(f'dirpath={dirpath}')
             print(f'varying_hp = {varying_hp}')
             print(f'hp = {hp}')
             print(f'train_error, test_error = {train_error},{test_error}')
+            print(f'len(filenames)={len(filenames)}')
             ##
             if hp not in train_errors:
                 train_errors[hp] = np.zeros(len(filenames))
                 test_errors[hp] = np.zeros(len(filenames))
                 duration_secs[hp] = np.zeros(len(filenames))
-            else:
-                train_errors[hp][i] = train_error
-                test_errors[hp][i] = test_error
-                duration_secs[hp][i] = seconds
-        #pdb.set_trace()
-#pdb.set_trace()
+            train_errors[hp][i] = train_error
+            test_errors[hp][i] = test_error
+            duration_secs[hp][i] = seconds
+
 ##
 train_errors = list( train_errors.items() )
 test_errors = list( test_errors.items() )
 duration_secs = list( duration_secs.items() )
 ## sort based on hp param
-train_errors.sort(key=lambda x: x[0],reverse=True)
-test_errors.sort(key=lambda x: x[0],reverse=True)
-duration_secs.sort(key=lambda x: x[0],reverse=True)
+if 'LAMBDAS' in expt_type_dirname:
+    reverse_sort = True
+else:
+    reverse_sort = False
+train_errors.sort(key=lambda x: x[0],reverse=reverse_sort)
+test_errors.sort(key=lambda x: x[0],reverse=reverse_sort)
+duration_secs.sort(key=lambda x: x[0],reverse=reverse_sort)
 
 ## get [[erro_1],...,[error_K]]
 hps = np.array([ hp for hp,_ in train_errors ])

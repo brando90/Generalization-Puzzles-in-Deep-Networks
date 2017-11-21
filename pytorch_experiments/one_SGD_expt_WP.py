@@ -34,6 +34,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import scipy.integrate as integrate
 import scipy
+from numpy.polynomial.hermite import hermvander
 
 from maps import NamedDict
 
@@ -87,7 +88,8 @@ def get_hp_to_run(hyper_params,repetitions,satid):
     raise ValueError('There is something wrong with the number of jobs you submitted compared.')
 
 def main(**kwargs):
-    WP=False
+    #MDL_2_TRAIN='WP'
+    MDL_2_TRAIN='SP'
     ##
     start_time = time.time()
     np.set_printoptions(suppress=True) #Whether or not suppress printing of small floating point values using scientific notation (default False).
@@ -104,10 +106,12 @@ def main(**kwargs):
     #data_filename='data_numpy_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_.npz'
     #truth_filename=''
     #data_filename='degree4_fit_2_sin_N_train_5_N_test_200.npz'
-    truth_filename=''
-    data_filename='sin_freq_sin_4_N_train_7_N_test_200_lb_train,ub_train_(0, 1)_lb_test,ub_test_(0.2, 0.8).npz'
+    #truth_filename=''
+    #data_filename='sin_freq_sin_4_N_train_7_N_test_200_lb_train,ub_train_(0, 1)_lb_test,ub_test_(0.2, 0.8).npz'
     #truth_filename=''
     #data_filename='sin_freq_sin_4_N_train_11_N_test_100_lb_train,ub_train_(0, 1)_lb_test,ub_test_(0.2, 0.8).npz'
+    truth_filename=''
+    data_filename='poly_degree26_fit_2_sin_4_N_train_14_N_test_100_lb_train,ub_train_(0, 1)_lb_test,ub_test_(0.2, 0.8).npz'
     ## Folder for experiment
     #experiment_name = 'unit_test'
     #experiment_name = 'linear_unit_test'
@@ -115,8 +119,10 @@ def main(**kwargs):
     #experiment_name = 'nonlinear_V2W_D3_expt1'
     #experiment_name = 'unit_test_nonlinear_V2W_D3_expt1'
     #experiment_name = 'unit_test_SP'
-    experiment_name = 'expt_test_SP_sin_4_N_train_7_N_test_100_eps_test_0p2'
+    #experiment_name = 'unit_expt_test_SP_sin_4_N_train_7_N_test_100_eps_test_0p2_init_zero'
+    #experiment_name = 'unit_expt_test_SP_sin_4_N_train_7_N_test_100_eps_test_0p2_init_zero_reg__expt_type_SP_fig4_N_train_7_M_7'
     #experiment_name = 'linear_VW_expt1'
+    experiment_name = 'unit_poly_degree26'
     ## Regularization
     #reg_type = 'tikhonov'
     #reg_type = 'VW'
@@ -147,15 +153,17 @@ def main(**kwargs):
     lb_deg,ub_deg = 1,48
     degrees = list(range(lb_deg,ub_deg+1,step_deg))
     lambdas = [0]
-    nb_iter = 1600*1000
+    #nb_iter = 1600*1000
+    nb_iter = 160*10
     #nb_iter = 1*100
     nb_iterations = [nb_iter]
-    repetitions = len(degrees)*[10]
+    repetitions = len(degrees)*[1]
     ##
     #debug, debug_sgd = True, False
     ## Hyper Params SGD weight parametrization
-    M = 7
-    eta = 0.1 # eta = 1e-6
+    M = 14
+    #eta = 0.00000000001 # eta = 1e-6
+    eta = 0.00000000001
     A = 0.0
     logging_freq = 100
     ## pick the right hyper param
@@ -198,7 +206,7 @@ def main(**kwargs):
     N_test,_ = X_test.shape
     print(f'N_train={N_train}, N_test={N_test}')
     ## activation function
-    if WP:
+    if MDL_2_TRAIN=='WP':
         print('--->training WP mdl')
         adegree = 2
         ax = np.concatenate( (np.linspace(-20,20,100), np.linspace(-10,10,1000)) )
@@ -258,25 +266,31 @@ def main(**kwargs):
         ##
         nb_terms = c_pinv.shape[0]
         legend_mdl = f'SGD solution weight parametrization, number of monomials={nb_terms}, batch-size={M}, iterations={nb_iter}, step size={eta}'
-    else:
+    elif MDL_2_TRAIN=='SP':
         print('--->training SP mdl')
         ## Lift data/Kernelize data
         poly_feat = PolynomialFeatures(degree=Degree_mdl)
         Kern_train, Kern_test = poly_feat.fit_transform(X_train), poly_feat.fit_transform(X_test)
+        #Kern_train, Kern_test = hermvander(X_train,Degree_mdl), hermvander(X_test,Degree_mdl)
+        #Kern_train, Kern_test = Kern_train.reshape(N_train,Kern_train.shape[2]), Kern_test.reshape(N_test,Kern_test.shape[2])
         ## LA models
         if D0 == 1:
-            c_pinv = np.polyfit( X_train.reshape((N_train,)) , Y_train.reshape((N_train,)) , Degree_mdl )[::-1]
+            #c_pinv = np.polyfit( X_train.reshape((N_train,)) , Y_train.reshape((N_train,)) , Degree_mdl )[::-1]
+            #pdb.set_trace()
+            c_pinv = np.dot(np.linalg.pinv( Kern_train ),Y_train)
         else:
             ## TODO: https://stackoverflow.com/questions/10988082/multivariate-polynomial-regression-with-numpy
             c_pinv = np.dot(np.linalg.pinv( Kern_train ),Y_train)
         mdl_sgd = get_sequential_lifted_mdl(nb_monomials=c_pinv.shape[0],D_out=1, bias=False)
-        #mdl_sgd[0].weight.data.fill_(0)
+        mdl_sgd[0].weight.data.fill_(0)
         ##
         data = get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test,dtype)
         data.X_train, data.X_test = data.Kern_train, data.Kern_test
         ##
         nb_terms = c_pinv.shape[0]
         legend_mdl = f'SGD solution standard parametrization, number of monomials={nb_terms}, batch-size={M}, iterations={nb_iter}, step size={eta}'
+    else:
+        raise ValueError(f'Not implemented yet. {MDL_2_TRAIN}')
     ## check number of monomials
     nb_monomials = int(scipy.misc.comb(D0+Degree_mdl,Degree_mdl))
     if nb_terms != int(scipy.misc.comb(D0+Degree_mdl,Degree_mdl)):
@@ -289,6 +303,7 @@ def main(**kwargs):
     ##
     arg = Maps(reg_type=reg_type)
     keep_training=True
+    print(f'mdl_sgd[0].weight={mdl_sgd[0].weight}')
     train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params = train_SGD( arg,mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv, reg_lambda)
     # while keep_training:
     #     try:
@@ -304,11 +319,22 @@ def main(**kwargs):
     #             mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,biases=biases)
     #         else:
     #             mdl_sgd = get_sequential_lifted_mdl(nb_monomials=c_pinv.shape[0],D_out=1, bias=False)
-    ##
+    ## errors for PINV mdls
+    train_error_pinv = (1/N_train)*(np.linalg.norm(Y_train-np.dot(Kern_train,c_pinv))**2)
+    test_error_pinv = (1/N_test)*(np.linalg.norm(Y_test-np.dot(Kern_test,c_pinv))**2)
+    ## errors for MDL_SGD
     train_error_WP = (1/N_train)*(mdl_sgd.forward(data.X_train) - data.Y_train).pow(2).sum().data.numpy()
     test_error_WP = (1/N_test)*(mdl_sgd.forward(data.X_test) - Variable(torch.FloatTensor(Y_test)) ).pow(2).sum().data.numpy()
     reg = get_regularizer_term(arg, mdl_sgd,reg_lambda,X=data.X_train,Y=data.Y_train,l=2)
     erm_reg_WP = (1/N_train)*(mdl_sgd.forward(data.X_train) - data.Y_train).pow(2).sum() + reg_lambda*reg
+    ##
+    print('----')
+    print(f'train_error_pinv={train_error_pinv}')
+    print(f'test_error_pinv={test_error_pinv}')
+    print()
+    print(f'train_error_WP={train_error_WP}')
+    print(f'test_error_WP={test_error_WP}')
+    print(f'erm_reg_WP={erm_reg_WP}')
     ## REPORT TIMES
     seconds = (time.time() - start_time)
     minutes = seconds/ 60
@@ -340,8 +366,16 @@ def main(**kwargs):
         if D0==1:
             print(f'print D0={D0}')
             #f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
-            plot_1D_stuff(NamedDict(data_lb=data_lb,data_ub=data_ub,dtype=dtype,poly_feat=poly_feat,mdl_sgd=mdl_sgd,data=data,legend_mdl=legend_mdl,c_pinv=c_pinv,X_train=X_train)
-                )
+            plot_1D_stuff(NamedDict(data_lb=data_lb,data_ub=data_ub,dtype=dtype,poly_feat=poly_feat,mdl_sgd=mdl_sgd,data=data,legend_mdl=legend_mdl,c_pinv=c_pinv,X_train=X_train))
+            ## get iterations
+            start = 0
+            iterations_axis = np.arange(1,nb_iter,step=logging_freq)[start:]
+            ## iterations vs ALL errors
+            plot_iter_vs_all_errors(iterations_axis=iterations_axis, train_loss_list=train_loss_list_WP,test_loss_list=test_loss_list_WP,erm_lamdas=erm_lamdas_WP, reg_lambda=reg_lambda)
+            ## iterations vs gradient norm
+            layer=0
+            grads=grad_list_weight_sgd[layer]
+            plot_iter_vs_grads_norm2_4_current_layer(iterations_axis=iterations_axis, grads=grads, layer=layer)
             ##
             plt.show()
 
@@ -362,5 +396,5 @@ class TestStringMethods(unittest.TestCase):
                 satid+=1
 
 if __name__ == '__main__':
-    main(save_bulk_experiment=True,plotting=False)
+    main(save_bulk_experiment=True,plotting=True)
     #unittest.main()

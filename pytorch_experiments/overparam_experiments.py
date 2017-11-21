@@ -110,10 +110,13 @@ def f_target(x):
 
 def get_f_2_imitate_D0_1(Degree_data_set):
     # TODO
+    func_params = {}
+    ##
     D0 = 1
     freq_cos = 1
     #freq_sin = 4
-    freq_sin = 8
+    freq_sin = 4
+    func_params['freq_sin'] = freq_sin
     #c_target = np.arange(1,nb_monomials_data+1).reshape((nb_monomials_data,1))+np.random.normal(loc=3.0,scale=1.0,size=(nb_monomials_data,1))
     #c_target = get_c(nb_monomials_data) # [D,1]
     #c_target = get_c_fit_function(generate_h_add_1d,D0,Degree_data_set,N=3*N_test,lb=-1,ub=1)
@@ -163,7 +166,7 @@ def get_f_2_imitate_D0_1(Degree_data_set):
         y=y2.reshape((N,D0))
         #y=y1
         return y
-    return f_2_imitate
+    return f_2_imitate, func_params
 
 def get_f_2_imitate_D0_2():
     #
@@ -207,7 +210,7 @@ def plot_target_function(c_target,X_train,Y_train,lb,ub,f_2_imitate):
     x_for_f = np.linspace(lb,ub,50000)
     y_for_f = f_2_imitate( x_for_f )
     ## evaluate the model given on plot points
-    if c_target != None:
+    if c_target is not None:
         deg = c_target.shape[0]-1
         poly_feat = PolynomialFeatures(degree=deg)
         Kern_plot_points = poly_feat.fit_transform(x_plot_points)
@@ -324,7 +327,7 @@ def get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees,lb,ub,f_target,c_
         diff_target_pinv = L2_norm_2(f_target,f_pinv,lb=lb+0.2,ub=ub-0.2)
         #diff_target_pinv = L2_norm_2(f_target,f_pinv,lb=lb,ub=ub)
         diff_truth.append( diff_target_pinv )
-        if c_target != None:
+        if c_target is not None:
             if c_target.shape[0] == c_pinv.shape[0]:
                 print('>>>> stats about param that matches target func')
                 print( '||c_target - c_pinv||^2 = ',np.linalg.norm(c_target - c_pinv,2) )
@@ -465,12 +468,12 @@ def sample_X_D1(lb,ub,eps_train,eps_edge,N_left,N_middle,N_right,D0):
 def my_main(**kwargs):
     SGD = kwargs['SGD']
     ##
-    lb,ub = -1,1
+    lb,ub = 0,1
     eps_train = 0.0
     ##
     eps_edge = 0.05
     eps_test = eps_train
-    eps_test = 0.4
+    eps_test = 0.2
     lb_test, ub_test = lb+eps_test, ub-eps_test
     ##
     start_time = time.time()
@@ -487,16 +490,15 @@ def my_main(**kwargs):
     else:
         ## properties of Data set
         D0 = 1
-        N_test = 500
-        N_train = 36
+        N_test = 100
+        N_train = 14
         #N_left,N_middle,N_right = 100,20,100
         #N_train = N_left+N_middle+N_right
         print(f'D0 = {D0}, N_train = {N_train}, N_test = {N_test}')
         ## get function to imitate and X input points
-        Degree_data_set = N_train-1
+        #Degree_data_set = N_train-1
         Degree_data_set = 2*(N_train-1)
         nb_monomials_data = get_nb_monomials(nb_variables=D0,degree=Degree_data_set)
-        nb_monomials_data = N_train
         print(f'> Degree_data_set={Degree_data_set}, nb_monomials_data={nb_monomials_data}')
         if D0 == 1:
             #X_train, X_test = 2*np.random.rand(N_train,D0)-1, 2*np.random.rand(N_test,D0)-1
@@ -505,34 +507,47 @@ def my_main(**kwargs):
             X_train = np.linspace(lb,ub,N_train).reshape(N_train,D0)
             X_test = np.linspace(lb_test,ub_test,N_test).reshape(N_test,D0)
             #X_train = sample_X_D1(lb,ub,eps_train,eps_edge,N_left=N_left,N_middle=N_middle,N_right=N_right,D0=D0)
-            f_2_imitate = get_f_2_imitate_D0_1(Degree_data_set)
+            f_2_imitate,func_params = get_f_2_imitate_D0_1(Degree_data_set)
         elif D0 == 2:
             X_cord_train,Y_cord_train = generate_meshgrid(N_train,lb,ub)
             X_train, _ = make_mesh_grid_to_data_set(X_cord_train,Y_cord_train,Z=None)
             X_cord_test,Y_cord_test = generate_meshgrid(N_test,lb,ub)
             X_test, _ = make_mesh_grid_to_data_set(X_cord_test,Y_cord_test,Z=None)
             ##
-            f_2_imitate = get_f_2_imitate_D0_2()
+            f_2_imitate,func_params = get_f_2_imitate_D0_2()
         else:
             # TODO
             raise ValueError(f'Not implemented D0={D0}')
         ## get actual (polynomial) target function
-        N_data = N_train
-        #X_data,Y_data = get_X_Y_data(f_2_imitate, D0=D0, N=N_data, lb=lb,ub=ub)
-        #X_data,Y_data = X_train, Y_train
-        #c_target = get_c_fit_function(D0,Degree_data_set, X_data,Y_data) # [Deg,1] sin with period k
-        #f_target= get_func_pointer_poly(c_target,c_target.shape[0]-1,D0)
-        c_target = None
+        N_data = Degree_data_set
+        X_data,_ = get_X_Y_data(f_2_imitate, D0=D0, N=N_data, lb=lb,ub=ub)
+        Y_data = f_2_imitate(X_data)
+        #N_data = N_train
+        #X_data,Y_data = X_train, f_2_imitate(X_train)
+        c_target = get_c_fit_function(D0,Degree_data_set, X_data,Y_data) # [Deg,1] sin with period k
+        if c_target is None:
+            nb_monomials_data = '?'
+        #c_target = None
         ## get noise for target Y
         mu_noise, std_noise = 0,0
         noise_train, noise_test = 0,0
         ## get target Y
-        #f_target = get_func_pointer_poly(c_target,Degree_data_set,D0)
-
-        f_target = f_2_imitate
+        f_target = get_func_pointer_poly(c_target,Degree_data_set,D0)
+        #f_target = f_2_imitate
         #Y_train, Y_test = get_target_Y_SP_poly(X_train,X_test, Degree_data_set, c_target, noise_train=noise_train,noise_test=noise_test)
         Y_train, Y_test = f_target(X_train)+noise_train, f_target(X_test)+noise_test
     ## print
+    if kwargs['save_data_set']:
+        freq_sin=func_params['freq_sin']
+        #file_name=''
+        file_name=f'poly_degree{Degree_data_set}_fit_2_sin_{freq_sin}_N_train_{N_train}_N_test_{N_test}_lb_train,ub_train_{lb,ub}_lb_test,ub_test_{lb_test,ub_test}'
+        path_to_save=f'./data/{file_name}'
+        print(f'path_to_save = {path_to_save}')
+        experiment_data = dict(
+            X_train=X_train,Y_train=Y_train, X_test=X_test,Y_test=Y_test,
+            lb=lb,ub=ub,lb_test=lb_test,ub_test=ub_test
+        )
+        np.savez( path_to_save, **experiment_data)
     #print('c_target = ',c_target)
     #print('c_target.shape = ',c_target.shape)
     #print('nb_monomials_data = {} \n'.format(nb_monomials_data) )
@@ -574,7 +589,7 @@ def my_main(**kwargs):
     y_mdl_deg_truth = np.dot(Kern_mdl_truth,c_target_deg_truth)
     print('|| <X_train,c_target> - <X_train,c_target_deg_truth> ||^2 = {}'.format( np.linalg.norm(y_truth-Y_train) ) )
     print( '|| <X_train,c_target> - <X_train,c_target_deg_truth> ||^2 = {}'.format( np.linalg.norm(y_truth-y_mdl_deg_truth) ) )
-    if c_target != None:
+    if c_target is not None:
         print('||c_truth - c_target_deg_truth||^2 = {}'.format( np.linalg.norm(c_target - c_target_deg_truth) ))
     if plotting:
         if D0==1:
@@ -647,7 +662,7 @@ def my_main(**kwargs):
         print(f'\a N<2*sqrt(N_train), ={2*(N_train**0.5)}')
         plt.show()
     ##
-    if c_target == None:
+    if c_target is None:
         c_target = 'None'
     if 'file_name' not in kwargs:
         if not SGD:
@@ -673,7 +688,7 @@ if __name__ == '__main__':
     ##
     start_time = time.time()
     ##
-    my_main(plotting=True,save_overparam_experiment=True,SGD=False)
+    my_main(plotting=True,save_overparam_experiment=True,SGD=False,save_data_set=False)
     ##
     #my_main(plotting=False,save_overparam_experiment=True,mat_load=True,file_name='../plotting/results/overfit_param_pinv_tommy_email2.mat')
     ##
