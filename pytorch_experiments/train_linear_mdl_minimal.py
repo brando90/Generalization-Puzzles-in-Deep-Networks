@@ -20,7 +20,10 @@ def get_batch2(X,Y,M,dtype):
     #X,Y = X.data.numpy(), Y.data.numpy()
     X,Y = X, Y
     N = X.size()[0]
-    batch_indices = torch.LongTensor( np.random.randint(0,N,size=M) ).type(dtype) # without replacement
+    if dtype ==  torch.cuda.FloatTensor:
+        batch_indices = torch.LongTensor( np.random.randint(0,N,size=M) ).type(dtype) # without replacement
+    else:
+        batch_indices = torch.cuda.LongTensor( np.random.randint(0,N,size=M) ) # without replacement
     pdb.set_trace()
     batch_xs = torch.index_select(X,0,batch_indices)
     batch_ys = torch.index_select(Y,0,batch_indices)
