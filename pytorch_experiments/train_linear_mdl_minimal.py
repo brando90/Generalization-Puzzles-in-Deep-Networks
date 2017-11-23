@@ -86,7 +86,8 @@ def train_SGD(mdl, M,eta,nb_iter,logging_freq ,dtype, X_train,Y_train):
     return final_sgd_error
 ##
 logging_freq = 100
-dtype = torch.FloatTensor
+dtype = torch.cuda.FloatTensor
+#dtype = torch.FloatTensor
 ## SGD params
 M = 8
 eta = 0.1
