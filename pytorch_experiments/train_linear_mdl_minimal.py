@@ -5,6 +5,8 @@ import numpy as np
 from sklearn.preprocessing import PolynomialFeatures
 from numpy.polynomial.hermite import hermvander
 
+import random
+
 import torch
 from torch.autograd import Variable
 
@@ -20,10 +22,13 @@ def get_batch2(X,Y,M,dtype):
     #X,Y = X.data.numpy(), Y.data.numpy()
     X,Y = X, Y
     N = X.size()[0]
+    #indices = np.random.randint(0,N,size=M)
+    #indices = [ random.randint(0,N) for i i range(M)]
+    indices = np.random.random_integers(N,size=(M,))
     if dtype ==  torch.cuda.FloatTensor:
-        batch_indices = torch.cuda.LongTensor( np.random.randint(0,N,size=M) )# without replacement
+        batch_indices = torch.cuda.LongTensor( indices )# without replacement
     else:
-        batch_indices = torch.LongTensor( np.random.randint(0,N,size=M) ).type(dtype)  # without replacement
+        batch_indices = torch.LongTensor( indices ).type(dtype)  # without replacement
     pdb.set_trace()
     batch_xs = torch.index_select(X,0,batch_indices)
     batch_ys = torch.index_select(Y,0,batch_indices)
