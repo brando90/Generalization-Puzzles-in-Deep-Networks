@@ -12,7 +12,7 @@ from maps import NamedDict
 
 from plotting_utils import *
 
-def get_batch2(X,Y,M):
+def get_batch2(X,Y,M,dtype):
     '''
     get batch for pytorch model
     '''
@@ -20,7 +20,8 @@ def get_batch2(X,Y,M):
     #X,Y = X.data.numpy(), Y.data.numpy()
     X,Y = X, Y
     N = X.size()[0]
-    batch_indices = torch.LongTensor( np.random.randint(0,N,size=M) ) # without replacement
+    batch_indices = torch.LongTensor( np.random.randint(0,N,size=M) ).type(dtype) # without replacement
+    pdb.set_trace()
     batch_xs = torch.index_select(X,0,batch_indices)
     batch_ys = torch.index_select(Y,0,batch_indices)
     return Variable(batch_xs, requires_grad=False), Variable(batch_ys, requires_grad=False)
@@ -49,7 +50,7 @@ def train_SGD(mdl, M,eta,nb_iter,logging_freq ,dtype, X_train,Y_train):
     #print(N_train)
     for i in range(nb_iter):
         # Forward pass: compute predicted Y using operations on Variables
-        batch_xs, batch_ys = get_batch2(X_train,Y_train,M) # [M, D], [M, 1]
+        batch_xs, batch_ys = get_batch2(X_train,Y_train,M,dtype) # [M, D], [M, 1]
         ## FORWARD PASS
         y_pred = mdl.forward(batch_xs)
         ## Check vectors have same dimension
@@ -78,7 +79,7 @@ def train_SGD(mdl, M,eta,nb_iter,logging_freq ,dtype, X_train,Y_train):
 ##
 logging_freq = 100
 dtype = torch.cuda.FloatTensor
-dtype = torch.FloatTensor
+#dtype = torch.FloatTensor
 ## SGD params
 M = 8
 eta = 0.1
@@ -128,20 +129,20 @@ print('\a')
 #### PLOTTING
 X_plot_pytorch = Variable( torch.FloatTensor(X_plot), requires_grad=False)
 ##
-fig1 = plt.figure()
+#fig1 = plt.figure()
 #plots objs
-p_sgd, = plt.plot(x_horizontal, [ float(f_val) for f_val in mdl_sgd.forward(X_plot_pytorch).data.numpy() ])
-p_pinv, = plt.plot(x_horizontal, np.dot(X_plot,c_pinv))
-p_data, = plt.plot(X_train,Y_train,'ro')
+#p_sgd, = plt.plot(x_horizontal, [ float(f_val) for f_val in mdl_sgd.forward(X_plot_pytorch).data.numpy() ])
+#p_pinv, = plt.plot(x_horizontal, np.dot(X_plot,c_pinv))
+#p_data, = plt.plot(X_train,Y_train,'ro')
 ## legend
-nb_terms = c_pinv.shape[0]
-legend_mdl = f'SGD solution standard parametrization, number of monomials={nb_terms}, batch-size={M}, iterations={nb_iter}, step size={eta}'
-plt.legend(
-        [p_sgd,p_pinv,p_data],
-        [legend_mdl,f'linear algebra soln, number of monomials={nb_terms}',f'data points = {N_train}']
-    )
+#nb_terms = c_pinv.shape[0]
+#legend_mdl = f'SGD solution standard parametrization, number of monomials={nb_terms}, batch-size={M}, iterations={nb_iter}, step size={eta}'
+#plt.legend(
+#        [p_sgd,p_pinv,p_data],
+#        [legend_mdl,f'linear algebra soln, number of monomials={nb_terms}',f'data points = {N_train}']
+#    )
 ##
-plt.xlabel('x'), plt.ylabel('f(x)')
+#plt.xlabel('x'), plt.ylabel('f(x)')
 #plt.show()
 ## REPORT TIMES
 seconds = (time.time() - start_time)
@@ -150,4 +151,4 @@ hours = minutes/ 60
 print("--- %s seconds ---" % seconds )
 print("--- %s minutes ---" % minutes )
 print("--- %s hours ---" % hours )
-plt.show()
+#plt.show()
