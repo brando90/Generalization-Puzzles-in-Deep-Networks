@@ -115,7 +115,7 @@ def get_f_2_imitate_D0_1(Degree_data_set):
     D0 = 1
     freq_cos = 1
     #freq_sin = 4
-    freq_sin = 4
+    freq_sin = 2.0
     func_params['freq_sin'] = freq_sin
     #c_target = np.arange(1,nb_monomials_data+1).reshape((nb_monomials_data,1))+np.random.normal(loc=3.0,scale=1.0,size=(nb_monomials_data,1))
     #c_target = get_c(nb_monomials_data) # [D,1]
@@ -468,12 +468,12 @@ def sample_X_D1(lb,ub,eps_train,eps_edge,N_left,N_middle,N_right,D0):
 def my_main(**kwargs):
     SGD = kwargs['SGD']
     ##
-    lb,ub = 0,1
+    lb,ub = -1,1
     eps_train = 0.0
     ##
     eps_edge = 0.05
     eps_test = eps_train
-    eps_test = 0.2
+    eps_test = 0.55
     lb_test, ub_test = lb+eps_test, ub-eps_test
     ##
     start_time = time.time()
@@ -490,8 +490,8 @@ def my_main(**kwargs):
     else:
         ## properties of Data set
         D0 = 1
-        N_test = 100
-        N_train = 14
+        N_test = 200
+        N_train = 12
         #N_left,N_middle,N_right = 100,20,100
         #N_train = N_left+N_middle+N_right
         print(f'D0 = {D0}, N_train = {N_train}, N_test = {N_test}')
@@ -532,8 +532,8 @@ def my_main(**kwargs):
         mu_noise, std_noise = 0,0
         noise_train, noise_test = 0,0
         ## get target Y
-        f_target = get_func_pointer_poly(c_target,Degree_data_set,D0)
-        #f_target = f_2_imitate
+        #f_target = get_func_pointer_poly(c_target,Degree_data_set,D0)
+        f_target = f_2_imitate
         #Y_train, Y_test = get_target_Y_SP_poly(X_train,X_test, Degree_data_set, c_target, noise_train=noise_train,noise_test=noise_test)
         Y_train, Y_test = f_target(X_train)+noise_train, f_target(X_test)+noise_test
     ## print

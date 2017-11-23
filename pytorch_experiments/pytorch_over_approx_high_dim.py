@@ -25,6 +25,20 @@ from sklearn.preprocessing import PolynomialFeatures
 
 #TODO make dtype, DTYPE accross all script
 
+def check_vectors_have_same_dimensions(Y,Y_):
+    '''
+    Checks that vector Y and Y_ have the same dimensions. If they don't
+    then there might be an error that could be caused due to wrong broadcasting.
+    '''
+    DY = tuple( Y.size() )
+    DY_ = tuple( Y_.size() )
+    if len(DY) != len(DY_):
+        return True
+    for i in range(len(DY)):
+        if DY[i] != DY_[i]:
+            return True
+    return False
+
 def extract_list_filename(str):
     lbsplit = str.split('[')
     rbsplit = lbsplit[1].split(']')
@@ -398,6 +412,9 @@ def train_SGD(arg, mdl,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv,reg_lam
         #pdb.set_trace()
         y_pred = mdl.forward(batch_xs)
         #print(f'y_pred={y_pred.data.size()} batch_ys={batch_ys.data.size()}')
+        ## Check vectors have same dimension
+        if vectors_dims_dont_match(batch_ys,y_pred):
+            raise ValueError('You vectors don\'t have matching dimensions. It will lead to errors.')
         ## LOSS + Regularization
         if reg_lambda != 0:
             reg = get_regularizer_term(arg, mdl,reg_lambda,X=batch_xs,Y=batch_ys,l=2)

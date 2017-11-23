@@ -1,3 +1,6 @@
+import time
+start_time = time.time()
+
 import numpy as np
 from sklearn.preprocessing import PolynomialFeatures
 from numpy.polynomial.hermite import hermvander
@@ -35,8 +38,23 @@ def get_batch2(X,Y,M,dtype):
 def get_sequential_lifted_mdl(nb_monomials,D_out, bias=False):
     return torch.nn.Sequential(torch.nn.Linear(nb_monomials,D_out,bias=bias))
 
+def vectors_dims_dont_match(Y,Y_):
+    '''
+    Checks that vector Y and Y_ have the same dimensions. If they don't
+    then there might be an error that could be caused due to wrong broadcasting.
+    '''
+    DY = tuple( Y.size() )
+    DY_ = tuple( Y_.size() )
+    if len(DY) != len(DY_):
+        return True
+    for i in range(len(DY)):
+        if DY[i] != DY_[i]:
+            return True
+    return False
+
 def train_SGD(mdl, M,eta,nb_iter,logging_freq ,dtype, X_train,Y_train):
     ##
+    #pdb.set_trace()
     N_train,_ = tuple( X_train.size() )
     #print(N_train)
     for i in range(nb_iter):
@@ -44,6 +62,9 @@ def train_SGD(mdl, M,eta,nb_iter,logging_freq ,dtype, X_train,Y_train):
         batch_xs, batch_ys = get_batch2(X_train,Y_train,M,dtype) # [M, D], [M, 1]
         ## FORWARD PASS
         y_pred = mdl.forward(batch_xs)
+        ## Check vectors have same dimension
+        if vectors_dims_dont_match(batch_ys,y_pred):
+            raise ValueError('You vectors don\'t have matching dimensions. It will lead to errors.')
         ## LOSS + Regularization
         batch_loss = (1/M)*(y_pred - batch_ys).pow(2).sum()
         ## BACKARD PASS
@@ -61,40 +82,57 @@ def train_SGD(mdl, M,eta,nb_iter,logging_freq ,dtype, X_train,Y_train):
             print(f'W.grad.data = {W.grad.data}')
         ## Manually zero the gradients after updating weights
         mdl.zero_grad()
+    final_sgd_error = current_train_loss
+    return final_sgd_error
 ##
 logging_freq = 100
 dtype = torch.FloatTensor
 ## SGD params
-M = 3
-eta = 0.002
-nb_iter = 20*1000
+M = 8
+eta = 0.1
+nb_iter = 200*1000
 ##
-lb,ub = 0,1
-f_target = lambda x: np.sin(2*np.pi*x)
-N_train = 5
+lb,ub = -1,1
+freq_sin = 2
+f_target = lambda x: np.sin(2*np.pi*freq_sin*x)
+N_train = 12
 X_train = np.linspace(lb,ub,N_train)
-Y_train = f_target(X_train)
+Y_train = f_target(X_train).reshape(N_train,1)
+x_horizontal = np.linspace(lb,ub,1000).reshape(1000,1)
 ## degree of mdl
-Degree_mdl = 4
+Degree_mdl = N_train-1
 ## pseudo-inverse solution
-c_pinv = np.polyfit( X_train, Y_train , Degree_mdl )[::-1]
+## Standard
+poly_feat = PolynomialFeatures(degree=Degree_mdl)
+Kern_train = poly_feat.fit_transform(X_train.reshape(N_train,1))
+X_plot = poly_feat.fit_transform(x_horizontal)
+## Hermite
+# Kern_train = hermvander(X_train,Degree_mdl)
+# Kern_train = Kern_train.reshape(N_train,Kern_train.shape[1])
+# X_plot = hermvander(x_horizontal,Degree_mdl)
+# X_plot = X_plot.reshape(1000,X_plot.shape[2])
+##
+Kern_train_pinv = np.linalg.pinv( Kern_train )
+c_pinv = np.dot(Kern_train_pinv, Y_train)
+##
+condition_number_hessian = np.linalg.cond(Kern_train)
 ## linear mdl to train with SGD
 nb_terms = c_pinv.shape[0]
 mdl_sgd = get_sequential_lifted_mdl(nb_monomials=nb_terms,D_out=1, bias=False)
 mdl_sgd[0].weight.data.normal_(mean=0,std=0.001)
+mdl_sgd[0].weight.data.fill_(0)
 ## Make polynomial Kernel
-#poly_feat = PolynomialFeatures(degree=Degree_mdl)
-#Kern_train = poly_feat.fit_transform(X_train.reshape(N_train,1))
-Kern_train = hermvander(X_train,Degree_mdl)
-Kern_train = Kern_train.reshape(N_train,Kern_train.shape[1])
 Kern_train_pt, Y_train_pt = Variable(torch.FloatTensor(Kern_train).type(dtype), requires_grad=False), Variable(torch.FloatTensor(Y_train).type(dtype), requires_grad=False)
-train_SGD(mdl_sgd, M,eta,nb_iter,logging_freq ,dtype, Kern_train_pt,Y_train_pt)
+final_sgd_error = train_SGD(mdl_sgd, M,eta,nb_iter,logging_freq ,dtype, Kern_train_pt,Y_train_pt)
+## PRINT ERRORS
+train_error_pinv = (1/N_train)*(np.linalg.norm(Y_train-np.dot(Kern_train,c_pinv))**2)
+print('\n-----------------')
+print(f'train_error_pinv = {train_error_pinv}')
+print(f'final_sgd_error = {final_sgd_error}')
 
+print(f'condition_number_hessian = {condition_number_hessian}')
+print('\a')
 #### PLOTTING
-x_horizontal = np.linspace(lb,ub,1000).reshape(1000,1)
-#X_plot = poly_feat.fit_transform(x_horizontal)
-X_plot = hermvander(x_horizontal,Degree_mdl)
-X_plot = X_plot.reshape(1000,X_plot.shape[2])
 X_plot_pytorch = Variable( torch.FloatTensor(X_plot), requires_grad=False)
 ##
 fig1 = plt.figure()
@@ -111,4 +149,12 @@ plt.legend(
     )
 ##
 plt.xlabel('x'), plt.ylabel('f(x)')
+#plt.show()
+## REPORT TIMES
+seconds = (time.time() - start_time)
+minutes = seconds/ 60
+hours = minutes/ 60
+print("--- %s seconds ---" % seconds )
+print("--- %s minutes ---" % minutes )
+print("--- %s hours ---" % hours )
 plt.show()
