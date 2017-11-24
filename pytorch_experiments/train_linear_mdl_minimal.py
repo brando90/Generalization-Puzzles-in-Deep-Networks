@@ -14,7 +14,30 @@ from maps import NamedDict
 
 from plotting_utils import *
 
+def index_batch(X,batch_indices,dtype):
+    '''
+    returns the batch indexed/sliced batch
+    '''
+    if len(X.shape) == 1: # i.e. dimension (M,) just a vector
+        batch_xs = torch.FloatTensor(X[batch_indices]).type(dtype)
+    else:
+        batch_xs = torch.FloatTensor(X[batch_indices,:]).type(dtype)
+    return batch_xs
+
 def get_batch2(X,Y,M,dtype):
+    '''
+    get batch for pytorch model
+    '''
+    # TODO fix and make it nicer, there is pytorch forum question
+    X,Y = X.data.numpy(), Y.data.numpy()
+    N = len(Y)
+    valid_indices = np.array( range(N) )
+    batch_indices = np.random.choice(valid_indices,size=M,replace=False)
+    batch_xs = index_batch(X,batch_indices,dtype)
+    batch_ys = index_batch(Y,batch_indices,dtype)
+    return Variable(batch_xs, requires_grad=False), Variable(batch_ys, requires_grad=False)
+
+def get_batch3(X,Y,M,dtype):
     '''
     get batch for pytorch model
     '''
@@ -23,13 +46,12 @@ def get_batch2(X,Y,M,dtype):
     X,Y = X, Y
     N = X.size()[0]
     #indices = np.random.randint(0,N,size=M)
-    #indices = [ random.randint(0,N) for i i range(M)]
+    #indices = [ random.randint(0,N) for in i range(M)]
     indices = np.random.random_integers(N,size=(M,))
     if dtype ==  torch.cuda.FloatTensor:
         batch_indices = torch.cuda.LongTensor( indices )# without replacement
     else:
         batch_indices = torch.LongTensor( indices ).type(dtype)  # without replacement
-    pdb.set_trace()
     batch_xs = torch.index_select(X,0,batch_indices)
     batch_ys = torch.index_select(Y,0,batch_indices)
     return Variable(batch_xs, requires_grad=False), Variable(batch_ys, requires_grad=False)
@@ -74,7 +96,8 @@ def train_SGD(mdl, M,eta,nb_iter,logging_freq ,dtype, X_train,Y_train):
             W.data.copy_(W.data - delta)
         ## train stats
         if i % (nb_iter/10) == 0 or i == 0:
-            X_train_, Y_train_ = Variable(X_train), Variable(Y_train)
+            #X_train_, Y_train_ = Variable(X_train), Variable(Y_train)
+            X_train_, Y_train_ = X_train, Y_train
             current_train_loss = (1/N_train)*(mdl.forward(X_train_) - Y_train_).pow(2).sum().data.numpy()
             print('\n-------------')
             print(f'i = {i}, current_train_loss = {current_train_loss}\n')
@@ -86,8 +109,8 @@ def train_SGD(mdl, M,eta,nb_iter,logging_freq ,dtype, X_train,Y_train):
     return final_sgd_error
 ##
 logging_freq = 100
-dtype = torch.cuda.FloatTensor
-#dtype = torch.FloatTensor
+#dtype = torch.cuda.FloatTensor
+dtype = torch.FloatTensor
 ## SGD params
 M = 8
 eta = 0.1
@@ -124,7 +147,7 @@ mdl_sgd[0].weight.data.normal_(mean=0,std=0.001)
 mdl_sgd[0].weight.data.fill_(0)
 ## Make polynomial Kernel
 Kern_train_pt, Y_train_pt = Variable(torch.FloatTensor(Kern_train).type(dtype), requires_grad=False), Variable(torch.FloatTensor(Y_train).type(dtype), requires_grad=False)
-Kern_train_pt, Y_train_pt = torch.FloatTensor(Kern_train).type(dtype), torch.FloatTensor(Y_train).type(dtype)
+#Kern_train_pt, Y_train_pt = torch.FloatTensor(Kern_train).type(dtype), torch.FloatTensor(Y_train).type(dtype)
 final_sgd_error = train_SGD(mdl_sgd, M,eta,nb_iter,logging_freq ,dtype, Kern_train_pt,Y_train_pt)
 ## PRINT ERRORS
 train_error_pinv = (1/N_train)*(np.linalg.norm(Y_train-np.dot(Kern_train,c_pinv))**2)

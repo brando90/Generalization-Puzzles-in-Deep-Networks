@@ -115,17 +115,17 @@ def get_f_2_imitate_D0_1(Degree_data_set):
     D0 = 1
     freq_cos = 1
     #freq_sin = 4
-    freq_sin = 2.0
+    freq_sin = 4.0
     func_params['freq_sin'] = freq_sin
     #c_target = np.arange(1,nb_monomials_data+1).reshape((nb_monomials_data,1))+np.random.normal(loc=3.0,scale=1.0,size=(nb_monomials_data,1))
     #c_target = get_c(nb_monomials_data) # [D,1]
-    #c_target = get_c_fit_function(generate_h_add_1d,D0,Degree_data_set,N=3*N_test,lb=-1,ub=1)
-    #c_target = get_c_fit_function(generate_h_gabor_1d,D0,Degree_data_set,N=3*N_test,lb=-1,ub=1)
+    #c_target = get_c_fit_data(generate_h_add_1d,D0,Degree_data_set,N=3*N_test,lb=-1,ub=1)
+    #c_target = get_c_fit_data(generate_h_gabor_1d,D0,Degree_data_set,N=3*N_test,lb=-1,ub=1)
     # freq = max(freq_sin, freq_cos)
     # f_2_imitate = lambda x: np.cos(freq_cos*2*np.pi*x)
-    # c_target = get_c_fit_function(f_2_imitate, D0,Degree_data_set, N=20000, lb=lb,ub=ub) # [Deg,1] sin with period k
-    #c_target = get_c_fit_function(lambda x: np.exp( -(x**2) )*np.cos(4*np.pi*(x)),  D0,Degree_data_set, N=3*N_test, lb=lb,ub=ub)
-    #c_target = get_c_fit_function(lambda x: np.exp( -(x**2) )*( np.cos(freq_sin*np.pi*(x)) + np.sin(freq_cos*np.pi*(x)) ),  D0,Degree_data_set, N=30*N_test, lb=lb,ub=ub)
+    # c_target = get_c_fit_data(f_2_imitate, D0,Degree_data_set, N=20000, lb=lb,ub=ub) # [Deg,1] sin with period k
+    #c_target = get_c_fit_data(lambda x: np.exp( -(x**2) )*np.cos(4*np.pi*(x)),  D0,Degree_data_set, N=3*N_test, lb=lb,ub=ub)
+    #c_target = get_c_fit_data(lambda x: np.exp( -(x**2) )*( np.cos(freq_sin*np.pi*(x)) + np.sin(freq_cos*np.pi*(x)) ),  D0,Degree_data_set, N=30*N_test, lb=lb,ub=ub)
     ##
     def poly(x):
         N = x.shape[0]
@@ -187,17 +187,6 @@ def get_target_Y_SP_poly(X_train,X_test,Degree_data_set,c_target,noise_train=0,n
     ## add noise to target
     Y_train, Y_test = Y_train+noise_train, Y_test+noise_test
     return Y_train, Y_test
-
-def get_c_fit_data(X,Y,degree_mdl):
-    N,D0 = X.shape
-    ## copy that f with the target degree polynomial
-    poly_feat = PolynomialFeatures(degree=degree_mdl)
-    Kern = poly_feat.fit_transform(X)
-    if D0==1:
-        c_target  = np.polyfit( X.reshape((N,)) , Y.reshape((N,)) , degree_mdl )[::-1]
-    else:
-        c_target = np.dot(np.linalg.pinv( Kern ), Y)
-    return c_target
 
 def plot_target_function(c_target,X_train,Y_train,lb,ub,f_2_imitate):
     '''
@@ -468,12 +457,12 @@ def sample_X_D1(lb,ub,eps_train,eps_edge,N_left,N_middle,N_right,D0):
 def my_main(**kwargs):
     SGD = kwargs['SGD']
     ##
-    lb,ub = -1,1
+    lb,ub = 0,1
     eps_train = 0.0
     ##
     eps_edge = 0.05
     eps_test = eps_train
-    eps_test = 0.55
+    eps_test = 0.2
     lb_test, ub_test = lb+eps_test, ub-eps_test
     ##
     start_time = time.time()
@@ -491,7 +480,7 @@ def my_main(**kwargs):
         ## properties of Data set
         D0 = 1
         N_test = 200
-        N_train = 12
+        N_train = 14
         #N_left,N_middle,N_right = 100,20,100
         #N_train = N_left+N_middle+N_right
         print(f'D0 = {D0}, N_train = {N_train}, N_test = {N_test}')
@@ -524,7 +513,7 @@ def my_main(**kwargs):
         Y_data = f_2_imitate(X_data)
         #N_data = N_train
         #X_data,Y_data = X_train, f_2_imitate(X_train)
-        c_target = get_c_fit_function(D0,Degree_data_set, X_data,Y_data) # [Deg,1] sin with period k
+        c_target = get_c_fit_data(X_data,Y_data,Degree_data_set) # [Deg,1] sin with period k
         if c_target is None:
             nb_monomials_data = '?'
         #c_target = None
@@ -553,7 +542,7 @@ def my_main(**kwargs):
     #print('nb_monomials_data = {} \n'.format(nb_monomials_data) )
     ## get errors from models
     step_deg=1
-    smallest_deg,largest_deg = 1,100
+    smallest_deg,largest_deg = 1,60
     degrees = list(range(smallest_deg,largest_deg,step_deg))
     train_errors_pinv,test_errors_pinv,ranks,s_inv_total,s_inv_max,diff_truth = get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees, lb,ub,f_target,c_target)
     #train_errors_pinv,test_errors_pinv,_,_,_,_ = get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees, lb,ub,f_target,c_target)
@@ -688,7 +677,7 @@ if __name__ == '__main__':
     ##
     start_time = time.time()
     ##
-    my_main(plotting=True,save_overparam_experiment=True,SGD=False,save_data_set=True)
+    my_main(plotting=True,save_overparam_experiment=True,SGD=False,save_data_set=False)
     ##
     #my_main(plotting=False,save_overparam_experiment=True,mat_load=True,file_name='../plotting/results/overfit_param_pinv_tommy_email2.mat')
     ##

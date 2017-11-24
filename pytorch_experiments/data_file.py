@@ -155,22 +155,17 @@ def get_X_Y_data(f_2_imitate, D0,N,lb,ub):
         raise ValueError('Not implemented')
     return X.reshape(N,D0),Y.reshape(N,1)
 
-def get_c_fit_function(D0,degree_mdl,X,Y):
+def get_c_fit_data(X,Y,degree_mdl):
+    N,D0 = X.shape
     ## evaluate target_f on x_points
+    poly_feat = PolynomialFeatures(degree=degree_mdl)
+    Kern = poly_feat.fit_transform(X)
     if D0 == 1:
         ## copy that f with the target degree polynomial
-        #poly_feat = PolynomialFeatures(degree=degree_mdl)
-        #Kern = poly_feat.fit_transform(X)
-        #c_target = np.dot(np.linalg.pinv( Kern ), Y)
-        N,_ = X.shape
-        print(X.shape)
-        print(Y.shape)
-        print(N)
-        c_target = np.polyfit(X.reshape((N,)),Y.reshape((N,)),degree_mdl)[::-1]
+        c_target = np.dot(np.linalg.pinv( Kern ), Y)
+        #c_target = np.polyfit(X.reshape((N,)),Y.reshape((N,)),degree_mdl)[::-1]
     elif D0 == 2:
         ## LA models
-        poly_feat = PolynomialFeatures(degree=degree_mdl)
-        Kern = poly_feat.fit_transform(X)
         c_target = np.dot(np.linalg.pinv( Kern ), Y)
     else:
         # TODO
