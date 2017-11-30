@@ -20,6 +20,15 @@ from matplotlib import cm
 import scipy
 import scipy.io
 
+##
+
+
+def get_chebyshev_nodes(lb,ub,N):
+    k = np.arange(1,N+1)
+    chebyshev_nodes = 0.5*(lb+ub)+0.5*(ub-lb)*np.cos((np.pi*2*k-1)/(2*N))
+    return chebyshev_nodes
+##
+
 def get_nb_monomials(nb_variables,degree):
     return int(scipy.misc.comb(nb_variables+degree,degree))
 

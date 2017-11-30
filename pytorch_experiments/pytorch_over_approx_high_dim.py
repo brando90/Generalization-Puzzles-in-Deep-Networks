@@ -25,7 +25,7 @@ from sklearn.preprocessing import PolynomialFeatures
 
 #TODO make dtype, DTYPE accross all script
 
-def check_vectors_have_same_dimensions(Y,Y_):
+def vectors_dims_dont_match(Y,Y_):
     '''
     Checks that vector Y and Y_ have the same dimensions. If they don't
     then there might be an error that could be caused due to wrong broadcasting.

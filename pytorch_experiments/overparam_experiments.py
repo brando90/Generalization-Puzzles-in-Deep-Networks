@@ -115,7 +115,7 @@ def get_f_2_imitate_D0_1(Degree_data_set):
     D0 = 1
     freq_cos = 1
     #freq_sin = 4
-    freq_sin = 4.0
+    freq_sin = 2.3
     func_params['freq_sin'] = freq_sin
     #c_target = np.arange(1,nb_monomials_data+1).reshape((nb_monomials_data,1))+np.random.normal(loc=3.0,scale=1.0,size=(nb_monomials_data,1))
     #c_target = get_c(nb_monomials_data) # [D,1]
@@ -457,12 +457,12 @@ def sample_X_D1(lb,ub,eps_train,eps_edge,N_left,N_middle,N_right,D0):
 def my_main(**kwargs):
     SGD = kwargs['SGD']
     ##
-    lb,ub = 0,1
+    lb,ub = -1,1
     eps_train = 0.0
     ##
     eps_edge = 0.05
     eps_test = eps_train
-    eps_test = 0.2
+    eps_test = 0.5
     lb_test, ub_test = lb+eps_test, ub-eps_test
     ##
     start_time = time.time()
@@ -479,8 +479,8 @@ def my_main(**kwargs):
     else:
         ## properties of Data set
         D0 = 1
-        N_test = 200
-        N_train = 14
+        N_test = 100
+        N_train = 12
         #N_left,N_middle,N_right = 100,20,100
         #N_train = N_left+N_middle+N_right
         print(f'D0 = {D0}, N_train = {N_train}, N_test = {N_test}')
@@ -495,6 +495,8 @@ def my_main(**kwargs):
             #X_test = (lb_test+ub_test)*np.random.rand(N_test,D0)-1
             X_train = np.linspace(lb,ub,N_train).reshape(N_train,D0)
             X_test = np.linspace(lb_test,ub_test,N_test).reshape(N_test,D0)
+            #
+            #X_train = get_chebyshev_nodes(lb,ub,N_train).reshape(N_train,D0)
             #X_train = sample_X_D1(lb,ub,eps_train,eps_edge,N_left=N_left,N_middle=N_middle,N_right=N_right,D0=D0)
             f_2_imitate,func_params = get_f_2_imitate_D0_1(Degree_data_set)
         elif D0 == 2:
@@ -522,14 +524,22 @@ def my_main(**kwargs):
         noise_train, noise_test = 0,0
         ## get target Y
         #f_target = get_func_pointer_poly(c_target,Degree_data_set,D0)
+        #f_target.name = 'poly'
         f_target = f_2_imitate
+        f_target.name = 'true_target'
         #Y_train, Y_test = get_target_Y_SP_poly(X_train,X_test, Degree_data_set, c_target, noise_train=noise_train,noise_test=noise_test)
         Y_train, Y_test = f_target(X_train)+noise_train, f_target(X_test)+noise_test
     ## print
     if kwargs['save_data_set']:
         freq_sin=func_params['freq_sin']
         #file_name=''
-        file_name=f'poly_degree{Degree_data_set}_fit_2_sin_{freq_sin}_N_train_{N_train}_N_test_{N_test}_lb_train,ub_train_{lb,ub}_lb_test,ub_test_{lb_test,ub_test}'
+        if f_target.name == 'poly':
+            file_name=f'poly_degree{Degree_data_set}_fit_2_sin_{freq_sin}_N_train_{N_train}_N_test_{N_test}_lb_train,ub_train_{lb,ub}_lb_test,ub_test_{lb_test,ub_test}'
+        elif f_target.name == 'true_target':
+            file_name=f'f_target_fit_2_sin_{freq_sin}_N_train_{N_train}_N_test_{N_test}_lb_train,ub_train_{lb,ub}_lb_test,ub_test_{lb_test,ub_test}'
+            #file_name=f'f_target_fit_2_sin_{freq_sin}_N_train_{N_train}_N_test_{N_test}_lb_train,ub_train_{lb,ub}_lb_test,ub_test_{lb_test,ub_test}_cheby_nodes'
+        else:
+            raise ValueError(f'Unknown name for target func {f_target.name}')
         path_to_save=f'./data/{file_name}'
         print(f'path_to_save = {path_to_save}')
         experiment_data = dict(
@@ -542,7 +552,7 @@ def my_main(**kwargs):
     #print('nb_monomials_data = {} \n'.format(nb_monomials_data) )
     ## get errors from models
     step_deg=1
-    smallest_deg,largest_deg = 1,60
+    smallest_deg,largest_deg = 1,100
     degrees = list(range(smallest_deg,largest_deg,step_deg))
     train_errors_pinv,test_errors_pinv,ranks,s_inv_total,s_inv_max,diff_truth = get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees, lb,ub,f_target,c_target)
     #train_errors_pinv,test_errors_pinv,_,_,_,_ = get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees, lb,ub,f_target,c_target)
@@ -677,7 +687,7 @@ if __name__ == '__main__':
     ##
     start_time = time.time()
     ##
-    my_main(plotting=True,save_overparam_experiment=True,SGD=False,save_data_set=False)
+    my_main(plotting=True,save_overparam_experiment=True,SGD=False,save_data_set=True)
     ##
     #my_main(plotting=False,save_overparam_experiment=True,mat_load=True,file_name='../plotting/results/overfit_param_pinv_tommy_email2.mat')
     ##

@@ -14,6 +14,11 @@ from maps import NamedDict
 
 from plotting_utils import *
 
+def get_chebyshev_nodes(lb,ub,N):
+    k = np.arange(1,N+1)
+    chebyshev_nodes = 0.5*(lb+ub)+0.5*(ub-lb)*np.cos((np.pi*2*k-1)/(2*N))
+    return chebyshev_nodes
+
 def index_batch(X,batch_indices,dtype):
     '''
     returns the batch indexed/sliced batch
@@ -108,6 +113,7 @@ def train_SGD(mdl, M,eta,nb_iter,logging_freq ,dtype, X_train,Y_train):
     final_sgd_error = current_train_loss
     return final_sgd_error
 ##
+D0=1
 logging_freq = 100
 #dtype = torch.cuda.FloatTensor
 dtype = torch.FloatTensor
@@ -117,10 +123,11 @@ eta = 0.1
 nb_iter = 200*10
 ##
 lb,ub = -1,1
-freq_sin = 2
+freq_sin = 2.3
 f_target = lambda x: np.sin(2*np.pi*freq_sin*x)
-N_train = 12
-X_train = np.linspace(lb,ub,N_train)
+N_train = 16
+#X_train = np.linspace(lb,ub,N_train)
+X_train = get_chebyshev_nodes(lb,ub,N_train).reshape(N_train,D0)
 Y_train = f_target(X_train).reshape(N_train,1)
 x_horizontal = np.linspace(lb,ub,1000).reshape(1000,1)
 ## degree of mdl
@@ -152,6 +159,7 @@ final_sgd_error = train_SGD(mdl_sgd, M,eta,nb_iter,logging_freq ,dtype, Kern_tra
 ## PRINT ERRORS
 train_error_pinv = (1/N_train)*(np.linalg.norm(Y_train-np.dot(Kern_train,c_pinv))**2)
 print('\n-----------------')
+print(f'N_train={N_train}')
 print(f'train_error_pinv = {train_error_pinv}')
 print(f'final_sgd_error = {final_sgd_error}')
 
@@ -160,21 +168,21 @@ print('\a')
 #### PLOTTING
 X_plot_pytorch = Variable( torch.FloatTensor(X_plot), requires_grad=False)
 ##
-#fig1 = plt.figure()
-#plots objs
-#p_sgd, = plt.plot(x_horizontal, [ float(f_val) for f_val in mdl_sgd.forward(X_plot_pytorch).data.numpy() ])
-#p_pinv, = plt.plot(x_horizontal, np.dot(X_plot,c_pinv))
-#p_data, = plt.plot(X_train,Y_train,'ro')
-## legend
-#nb_terms = c_pinv.shape[0]
-#legend_mdl = f'SGD solution standard parametrization, number of monomials={nb_terms}, batch-size={M}, iterations={nb_iter}, step size={eta}'
-#plt.legend(
-#        [p_sgd,p_pinv,p_data],
-#        [legend_mdl,f'linear algebra soln, number of monomials={nb_terms}',f'data points = {N_train}']
-#    )
-##
-#plt.xlabel('x'), plt.ylabel('f(x)')
-#plt.show()
+fig1 = plt.figure()
+##plots objs
+p_sgd, = plt.plot(x_horizontal, [ float(f_val) for f_val in mdl_sgd.forward(X_plot_pytorch).data.numpy() ])
+p_pinv, = plt.plot(x_horizontal, np.dot(X_plot,c_pinv))
+p_data, = plt.plot(X_train,Y_train,'ro')
+# legend
+nb_terms = c_pinv.shape[0]
+legend_mdl = f'SGD solution standard parametrization, number of monomials={nb_terms}, batch-size={M}, iterations={nb_iter}, step size={eta}'
+plt.legend(
+       [p_sgd,p_pinv,p_data],
+       [legend_mdl,f'linear algebra soln, number of monomials={nb_terms}',f'data points = {N_train}']
+   )
+#
+plt.xlabel('x'), plt.ylabel('f(x)')
+plt.show()
 ## REPORT TIMES
 seconds = (time.time() - start_time)
 minutes = seconds/ 60

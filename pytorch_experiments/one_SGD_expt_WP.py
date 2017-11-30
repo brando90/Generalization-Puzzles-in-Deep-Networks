@@ -110,8 +110,11 @@ def main(**kwargs):
     #data_filename='sin_freq_sin_4_N_train_7_N_test_200_lb_train,ub_train_(0, 1)_lb_test,ub_test_(0.2, 0.8).npz'
     #truth_filename=''
     #data_filename='sin_freq_sin_4_N_train_11_N_test_100_lb_train,ub_train_(0, 1)_lb_test,ub_test_(0.2, 0.8).npz'
+    #truth_filename=''
+    #data_filename='poly_degree26_fit_2_sin_4_N_train_14_N_test_100_lb_train,ub_train_(0, 1)_lb_test,ub_test_(0.2, 0.8).npz'
+    ##
     truth_filename=''
-    data_filename='poly_degree26_fit_2_sin_4_N_train_14_N_test_100_lb_train,ub_train_(0, 1)_lb_test,ub_test_(0.2, 0.8).npz'
+    data_filename='f_target_fit_2_sin_2.3_N_train_12_N_test_100_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-0.5, 0.5).npz'
     ## Folder for experiment
     #experiment_name = 'unit_test'
     #experiment_name = 'linear_unit_test'
@@ -122,7 +125,8 @@ def main(**kwargs):
     #experiment_name = 'unit_expt_test_SP_sin_4_N_train_7_N_test_100_eps_test_0p2_init_zero'
     #experiment_name = 'unit_expt_test_SP_sin_4_N_train_7_N_test_100_eps_test_0p2_init_zero_reg__expt_type_SP_fig4_N_train_7_M_7'
     #experiment_name = 'linear_VW_expt1'
-    experiment_name = 'poly_degree26_step_size0p01'
+    #experiment_name = 'poly_degree26_step_size0p01'
+    experiment_name = 'gd_N_train12'
     ## Regularization
     #reg_type = 'tikhonov'
     #reg_type = 'VW'
@@ -154,7 +158,7 @@ def main(**kwargs):
     degrees = list(range(lb_deg,ub_deg+1,step_deg))
     lambdas = [0]
     #nb_iter = 1600*1000
-    nb_iter = 47407407
+    nb_iter = 10*1000*1000
     #nb_iter = 1*100
     nb_iterations = [nb_iter]
     repetitions = len(degrees)*[5]
@@ -163,7 +167,7 @@ def main(**kwargs):
     ## Hyper Params SGD weight parametrization
     M = 7
     #eta = 0.00000000001 # eta = 1e-6
-    eta = 0.01
+    eta = 0.001
     A = 0.0
     logging_freq = 100
     ## pick the right hyper param
@@ -396,5 +400,5 @@ class TestStringMethods(unittest.TestCase):
                 satid+=1
 
 if __name__ == '__main__':
-    main(save_bulk_experiment=True,plotting=False)
+    main(save_bulk_experiment=True,plotting=True)
     #unittest.main()
