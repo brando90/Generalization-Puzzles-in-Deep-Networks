@@ -117,14 +117,14 @@ def main(**kwargs):
     #truth_filename=''
     #data_filename='f_target_fit_2_sin_2.3_N_train_12_N_test_100_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-0.5, 0.5).npz'
     truth_filename=''
-    data_filename='f_target_fit_2_sin_2.3_N_train_8_N_test_200_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-0.5, 0.5)_cheby_nodes.npz'
-    data_filename='f_target_fit_2_sin_2.3_N_train_8_N_test_200_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-1.0, 1.0)_cheby_nodes.npz'
-    data_filename='f_target_fit_2_sin_2.3_N_train_100_N_test_200_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-1.0, 1.0)_cheby_nodes.npz'
-    data_filename='f_target_fit_2_sin_2.3_N_train_50_N_test_200_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-1.0, 1.0)_cheby_nodes.npz'
+    #data_filename='f_target_fit_2_sin_2.3_N_train_8_N_test_200_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-0.5, 0.5)_cheby_nodes.npz'
+    #data_filename='f_target_fit_2_sin_2.3_N_train_8_N_test_200_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-1.0, 1.0)_cheby_nodes.npz'
+    #data_filename='f_target_fit_2_sin_2.3_N_train_100_N_test_200_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-1.0, 1.0)_cheby_nodes.npz'
+    #data_filename='f_target_fit_2_sin_2.3_N_train_50_N_test_200_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-1.0, 1.0)_cheby_nodes.npz'
     #data_filename='f_target_fit_2_sin_2.3_N_train_9_N_test_200_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-1.0, 1.0)_cheby_nodes.npz'
     #data_filename='f_target_fit_2_sin_2.3_N_train_10_N_test_200_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-1.0, 1.0)_cheby_nodes.npz'
-
     #data_filename='f_target_fit_2_sin_2.3_N_train_14_N_test_200_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-1.0, 1.0)_cheby_nodes.npz'
+    data_filename=''
     ## Folder for experiment
     #experiment_name = 'unit_test'
     #experiment_name = 'linear_unit_test'
@@ -137,7 +137,7 @@ def main(**kwargs):
     #experiment_name = 'linear_VW_expt1'
     #experiment_name = 'poly_degree26_step_size0p01'
     #experiment_name = 'gd_N_train12'
-    experiment_name = 'unit_perturbation_gd_N_train8'
+    experiment_name = 'unit_perturbation_gd_N'
     ## Regularization
     #reg_type = 'tikhonov'
     #reg_type = 'VW'
@@ -205,11 +205,30 @@ def main(**kwargs):
         mdl_truth_dict = torch.load('./data/'+truth_filename)
         D_layers_truth=extract_list_filename(truth_filename)
     ## load data
-    data = np.load( './data/{}'.format(data_filename) )
-    if 'lb' and 'ub' in data:
-        data_lb, data_ub = data['lb'],data['ub']
-    else:
-        data_lb, data_ub = 0,1 #TODO change!
+    if data_filename != '': #if data_filename is not empty
+        data = np.load( './data/{}'.format(data_filename) )
+        if 'lb' and 'ub' in data:
+            data_lb, data_ub = data['lb'],data['ub']
+        else:
+            data_lb, data_ub = 0,1 #TODO change!
+    else: # use hand made data set
+        D0 = 1
+        lb,ub = 0,1
+        freq_sin = 4 #2.3
+        f_target = lambda x: np.sin(2*np.pi*freq_sin*x)
+        #
+        N_train = 10
+        #X_train = np.linspace(lb,ub,N_train)
+        X_train = get_chebyshev_nodes(lb,ub,N_train).reshape(N_train,D0)
+        Y_train = f_target(X_train).reshape(N_train,1)
+        #
+        N_test = 100
+        #X_train = np.linspace(lb,ub,N_train)
+        X_test = get_chebyshev_nodes(lb,ub,N_test).reshape(N_test,D0)
+        Y_test = f_target(X_test).reshape(N_test,1)
+        #
+        data = {'X_train':X_train,'Y_train':Y_train, 'X_test':X_test,'Y_test':Y_test}
+    ##
     X_train, Y_train = data['X_train'], data['Y_train']
     #X_train, Y_train = X_train[0:6], Y_train[0:6]
     X_test, Y_test = data['X_test'], data['Y_test']
@@ -314,6 +333,8 @@ def main(**kwargs):
         poly_feat = PolynomialFeatures(degree=Degree_mdl)
         Kern_train, Kern_test = poly_feat.fit_transform(X_train), poly_feat.fit_transform(X_test)
         #Kern_train, Kern_test = hermvander(X_train,Degree_mdl), hermvander(X_test,Degree_mdl)
+        Kern_train,_ = np.linalg.qr(Kern_train)
+        Kern_test,_ = np.linalg.qr(Kern_test)
         ##
         c_pinv = np.dot(np.linalg.pinv( Kern_train ),Y_train) ## TODO: https://stackoverflow.com/questions/10988082/multivariate-polynomial-regression-with-numpy
         nb_terms = c_pinv.shape[0]
@@ -348,11 +369,12 @@ def main(**kwargs):
         raise ValueError(f'Not implemented yet. {MDL_2_TRAIN}')
     ## check number of monomials
     nb_monomials = int(scipy.misc.comb(D0+Degree_mdl,Degree_mdl))
+    print(f'nb_monomials={nb_monomials} \nnb_terms={nb_terms}')
     if nb_terms != int(scipy.misc.comb(D0+Degree_mdl,Degree_mdl)):
        raise ValueError(f'nb of monomials dont match D0={D0},Degree_mdl={Degree_mdl}, number of monimials fron pinv={nb_terms}, number of monomials analyticall = {nb_monomials}')
     ########################################################################################################################################################
     ## some debugging print statements
-    print('nb = ', nb_iter)
+    print('nb_iter = ', nb_iter)
     print('reg_lambda = ', reg_lambda)
     print('reg_type = ', reg_type)
     ##
@@ -385,7 +407,7 @@ def main(**kwargs):
     reg = get_regularizer_term(arg, mdl_sgd,reg_lambda,X=data.X_train,Y=data.Y_train,l=2)
     erm_reg_WP = (1/N_train)*(mdl_sgd.forward(data.X_train) - data.Y_train).pow(2).sum() + reg_lambda*reg
     ##
-    condition_number_hessian = np.linalg.cond(Kern_train)
+    condition_number_hessian = np.linalg.cond( np.dot(Kern_train.T,Kern_train))
     ##
     print('----')
     print(f'condition_number_hessian={condition_number_hessian}')

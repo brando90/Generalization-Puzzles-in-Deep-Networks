@@ -14,6 +14,19 @@ from maps import NamedDict
 
 from plotting_utils import *
 
+def get_hermite_poly(x,degree):
+    #scipy.special.hermite()
+    N, = x.shape
+    ##
+    X = np.zeros( (N,degree+1) )
+    for n in range(N):
+        for deg in range(degree+1):
+            #X[n,deg] = hermite( n=deg, z=float(x[deg]) )
+            X[n,deg] = legendre( n=deg, x=float(x[deg]) )
+            #X[n,deg] = chebyt( n=deg, x=float(x[deg]) )
+            #X[n,deg] = chebyu( n=deg, x=float(x[deg]) )
+    return X
+
 def get_chebyshev_nodes(lb,ub,N):
     k = np.arange(1,N+1)
     chebyshev_nodes = 0.5*(lb+ub)+0.5*(ub-lb)*np.cos((np.pi*2*k-1)/(2*N))
@@ -135,20 +148,24 @@ x_horizontal = np.linspace(lb,ub,1000).reshape(1000,1)
 Degree_mdl = N_train-1
 ## pseudo-inverse solution
 ## Standard
-# poly_feat = PolynomialFeatures(degree=Degree_mdl)
-# Kern_train = poly_feat.fit_transform(X_train.reshape(N_train,1))
-# X_plot = poly_feat.fit_transform(x_horizontal)
+poly_feat = PolynomialFeatures(degree=Degree_mdl)
+Kern_train = poly_feat.fit_transform(X_train.reshape(N_train,1))
+Kern_train,_ = np.linalg.qr(Kern_train)
+X_plot = poly_feat.fit_transform(x_horizontal)
+X_plot,_ = np.linalg.qr(X_plot)
 ## Hermite
-Kern_train = hermvander(X_train,Degree_mdl)
+#Kern_train = hermvander(X_train,Degree_mdl)
 print(f'Kern_train.shape={Kern_train.shape}')
-Kern_train = Kern_train.reshape(N_train,Kern_train.shape[2])
-X_plot = hermvander(x_horizontal,Degree_mdl)
-X_plot = X_plot.reshape(1000,X_plot.shape[2])
+#Kern_train = Kern_train.reshape(N_train,Kern_train.shape[2])
+#X_plot = hermvander(x_horizontal,Degree_mdl)
+#X_plot = X_plot.reshape(1000,X_plot.shape[2])
+#Kern_train = get_hermite_poly(X_train,Degree_mdl)
+#Kern_train,_ = np.linalg.qr(Kern_train)
 ##
 Kern_train_pinv = np.linalg.pinv( Kern_train )
 c_pinv = np.dot(Kern_train_pinv, Y_train)
 ##
-condition_number_hessian = np.linalg.cond(Kern_train)
+condition_number_hessian = np.linalg.cond( np.dot(Kern_train.T,Kern_train))
 ## linear mdl to train with SGD
 nb_terms = c_pinv.shape[0]
 mdl_sgd = get_sequential_lifted_mdl(nb_monomials=nb_terms,D_out=1, bias=False)
@@ -165,7 +182,7 @@ print(f'N_train={N_train}')
 print(f'train_error_pinv = {train_error_pinv}')
 print(f'final_sgd_error = {final_sgd_error}')
 
-print(f'condition_number_hessian = {condition_number_hessian}')
+print(f'condition_number_hessian = np.linalg.cond( np.dot(Kern_train.T,Kern_train)) = {condition_number_hessian}')
 print('\a')
 #### PLOTTING
 X_plot_pytorch = Variable( torch.FloatTensor(X_plot), requires_grad=False)
