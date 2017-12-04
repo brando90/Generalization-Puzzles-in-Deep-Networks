@@ -462,7 +462,7 @@ def my_main(**kwargs):
     ##
     eps_edge = 0.05
     eps_test = eps_train
-    eps_test = 0.5
+    eps_test = 0.0
     lb_test, ub_test = lb+eps_test, ub-eps_test
     ##
     start_time = time.time()
@@ -479,8 +479,8 @@ def my_main(**kwargs):
     else:
         ## properties of Data set
         D0 = 1
-        N_test = 100
-        N_train = 12
+        N_test = 200
+        N_train = 9
         #N_left,N_middle,N_right = 100,20,100
         #N_train = N_left+N_middle+N_right
         print(f'D0 = {D0}, N_train = {N_train}, N_test = {N_test}')
@@ -493,10 +493,10 @@ def my_main(**kwargs):
             #X_train, X_test = 2*np.random.rand(N_train,D0)-1, 2*np.random.rand(N_test,D0)-1
             #X_train = (ub-lb)*np.random.rand(N_train,D0) + lb
             #X_test = (lb_test+ub_test)*np.random.rand(N_test,D0)-1
-            X_train = np.linspace(lb,ub,N_train).reshape(N_train,D0)
+            #X_train = np.linspace(lb,ub,N_train).reshape(N_train,D0)
             X_test = np.linspace(lb_test,ub_test,N_test).reshape(N_test,D0)
             #
-            #X_train = get_chebyshev_nodes(lb,ub,N_train).reshape(N_train,D0)
+            X_train = get_chebyshev_nodes(lb,ub,N_train).reshape(N_train,D0)
             #X_train = sample_X_D1(lb,ub,eps_train,eps_edge,N_left=N_left,N_middle=N_middle,N_right=N_right,D0=D0)
             f_2_imitate,func_params = get_f_2_imitate_D0_1(Degree_data_set)
         elif D0 == 2:
@@ -536,8 +536,8 @@ def my_main(**kwargs):
         if f_target.name == 'poly':
             file_name=f'poly_degree{Degree_data_set}_fit_2_sin_{freq_sin}_N_train_{N_train}_N_test_{N_test}_lb_train,ub_train_{lb,ub}_lb_test,ub_test_{lb_test,ub_test}'
         elif f_target.name == 'true_target':
-            file_name=f'f_target_fit_2_sin_{freq_sin}_N_train_{N_train}_N_test_{N_test}_lb_train,ub_train_{lb,ub}_lb_test,ub_test_{lb_test,ub_test}'
-            #file_name=f'f_target_fit_2_sin_{freq_sin}_N_train_{N_train}_N_test_{N_test}_lb_train,ub_train_{lb,ub}_lb_test,ub_test_{lb_test,ub_test}_cheby_nodes'
+            #file_name=f'f_target_fit_2_sin_{freq_sin}_N_train_{N_train}_N_test_{N_test}_lb_train,ub_train_{lb,ub}_lb_test,ub_test_{lb_test,ub_test}'
+            file_name=f'f_target_fit_2_sin_{freq_sin}_N_train_{N_train}_N_test_{N_test}_lb_train,ub_train_{lb,ub}_lb_test,ub_test_{lb_test,ub_test}_cheby_nodes'
         else:
             raise ValueError(f'Unknown name for target func {f_target.name}')
         path_to_save=f'./data/{file_name}'

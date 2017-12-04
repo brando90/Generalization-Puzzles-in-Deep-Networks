@@ -61,6 +61,21 @@ def plot_iter_vs_all_errors(iterations_axis, train_loss_list,test_loss_list,erm_
     plt.legend([p_erm_reg_WP,p_train_WP,p_test_WP],[p_erm_reg_WP_legend,p_train_WP_legend,p_test_WP_legend])
     plt.title(f'Loss+Regularization,Train,Test vs Iterations, reg_lambda = {reg_lambda}')
 
+def plot_iter_vs_train_test_errors(iterations_axis, train_loss_list,test_loss_list, title_comments,legend_comments):
+    reg_lambda=0
+    # PLOT ERM+train+test
+    fig1 = plt.figure()
+    p_train_WP, = plt.plot(iterations_axis, train_loss_list,color='m')
+    p_test_WP, = plt.plot(iterations_axis, test_loss_list,color='r')
+    plt.xlabel('iterations' )
+    plt.ylabel('Error/loss')
+    ## legends
+    p_train_WP_legend = f'Train error, {legend_comments}'
+    p_test_WP_legend = f'Test error, {legend_comments}'
+    ##
+    plt.legend([p_train_WP,p_test_WP],[p_train_WP_legend,p_test_WP_legend])
+    plt.title(f'Train,Test vs Iterations, {title_comments}')
+
 def plot_iter_vs_grads_norm2_4_current_layer(iterations_axis,grads, layer):
     p_grad_legend = f'grad norm(2) for layer = {layer}'
     ##plots

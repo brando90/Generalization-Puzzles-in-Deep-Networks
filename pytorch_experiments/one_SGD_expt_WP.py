@@ -89,7 +89,8 @@ def get_hp_to_run(hyper_params,repetitions,satid):
 
 def main(**kwargs):
     #MDL_2_TRAIN='WP'
-    MDL_2_TRAIN='SP'
+    #MDL_2_TRAIN='SP'
+    MDL_2_TRAIN='PERT'
     ##
     start_time = time.time()
     np.set_printoptions(suppress=True) #Whether or not suppress printing of small floating point values using scientific notation (default False).
@@ -113,8 +114,17 @@ def main(**kwargs):
     #truth_filename=''
     #data_filename='poly_degree26_fit_2_sin_4_N_train_14_N_test_100_lb_train,ub_train_(0, 1)_lb_test,ub_test_(0.2, 0.8).npz'
     ##
+    #truth_filename=''
+    #data_filename='f_target_fit_2_sin_2.3_N_train_12_N_test_100_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-0.5, 0.5).npz'
     truth_filename=''
-    data_filename='f_target_fit_2_sin_2.3_N_train_12_N_test_100_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-0.5, 0.5).npz'
+    data_filename='f_target_fit_2_sin_2.3_N_train_8_N_test_200_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-0.5, 0.5)_cheby_nodes.npz'
+    data_filename='f_target_fit_2_sin_2.3_N_train_8_N_test_200_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-1.0, 1.0)_cheby_nodes.npz'
+    data_filename='f_target_fit_2_sin_2.3_N_train_100_N_test_200_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-1.0, 1.0)_cheby_nodes.npz'
+    data_filename='f_target_fit_2_sin_2.3_N_train_50_N_test_200_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-1.0, 1.0)_cheby_nodes.npz'
+    #data_filename='f_target_fit_2_sin_2.3_N_train_9_N_test_200_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-1.0, 1.0)_cheby_nodes.npz'
+    #data_filename='f_target_fit_2_sin_2.3_N_train_10_N_test_200_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-1.0, 1.0)_cheby_nodes.npz'
+
+    #data_filename='f_target_fit_2_sin_2.3_N_train_14_N_test_200_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-1.0, 1.0)_cheby_nodes.npz'
     ## Folder for experiment
     #experiment_name = 'unit_test'
     #experiment_name = 'linear_unit_test'
@@ -126,7 +136,8 @@ def main(**kwargs):
     #experiment_name = 'unit_expt_test_SP_sin_4_N_train_7_N_test_100_eps_test_0p2_init_zero_reg__expt_type_SP_fig4_N_train_7_M_7'
     #experiment_name = 'linear_VW_expt1'
     #experiment_name = 'poly_degree26_step_size0p01'
-    experiment_name = 'gd_N_train12'
+    #experiment_name = 'gd_N_train12'
+    experiment_name = 'unit_perturbation_gd_N_train8'
     ## Regularization
     #reg_type = 'tikhonov'
     #reg_type = 'VW'
@@ -154,22 +165,21 @@ def main(**kwargs):
     ## SP DEGREE/MONOMIALS
     expt_type = 'SP_fig4'
     step_deg=1
-    lb_deg,ub_deg = 1,48
+    lb_deg,ub_deg = 1,500
     degrees = list(range(lb_deg,ub_deg+1,step_deg))
     lambdas = [0]
     #nb_iter = 1600*1000
-    nb_iter = 10*1000*1000
-    #nb_iter = 1*100
+    #nb_iter = 10*1000*1000
+    nb_iter = 5*160*10
     nb_iterations = [nb_iter]
-    repetitions = len(degrees)*[5]
+    repetitions = len(degrees)*[1]
     ##
     #debug, debug_sgd = True, False
     ## Hyper Params SGD weight parametrization
-    M = 7
+    M = 50
     #eta = 0.00000000001 # eta = 1e-6
-    eta = 0.001
+    eta = 0.1
     A = 0.0
-    logging_freq = 100
     ## pick the right hyper param
     if expt_type == 'LAMBDAS':
         degrees=[]
@@ -268,6 +278,7 @@ def main(**kwargs):
         ## data to TORCH
         data = get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test,dtype)
         ##
+        logging_freq = 20
         nb_terms = c_pinv.shape[0]
         legend_mdl = f'SGD solution weight parametrization, number of monomials={nb_terms}, batch-size={M}, iterations={nb_iter}, step size={eta}'
     elif MDL_2_TRAIN=='SP':
@@ -291,8 +302,48 @@ def main(**kwargs):
         data = get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test,dtype)
         data.X_train, data.X_test = data.Kern_train, data.Kern_test
         ##
+        logging_freq = 20
         nb_terms = c_pinv.shape[0]
         legend_mdl = f'SGD solution standard parametrization, number of monomials={nb_terms}, batch-size={M}, iterations={nb_iter}, step size={eta}'
+    elif MDL_2_TRAIN=='PERT':
+        print(f'--->training {MDL_2_TRAIN} mdl')
+        ## no activation functions
+        act = lambda x: x
+        act.__name__ = 'linear'
+        ## Lift data/Kernelize data
+        poly_feat = PolynomialFeatures(degree=Degree_mdl)
+        Kern_train, Kern_test = poly_feat.fit_transform(X_train), poly_feat.fit_transform(X_test)
+        #Kern_train, Kern_test = hermvander(X_train,Degree_mdl), hermvander(X_test,Degree_mdl)
+        ##
+        c_pinv = np.dot(np.linalg.pinv( Kern_train ),Y_train) ## TODO: https://stackoverflow.com/questions/10988082/multivariate-polynomial-regression-with-numpy
+        nb_terms = c_pinv.shape[0]
+        #### multiple layered mdl
+        D_layers,act = [nb_terms,1], act ## W1x = y
+        #D_layers,act = [nb_terms,H1,1], act ## W2W1x = y
+
+        nb_layers = len(D_layers)-1 #the number of layers include the last layer (the regression layer)
+        biases = [None] + [False] + (nb_layers-1)*[False] #bias not even in the first layer, note: its already there via parametrization of kernel
+        ## LA models
+        c_pinv = np.dot(np.linalg.pinv( Kern_train ),Y_train)
+        ## inits
+        init_config = Maps( {'w_init':'w_init_normal','mu':0.0,'std':0.0001, 'bias_init':'b_fill','bias_value':0.01,'biases':biases ,'nb_layers':len(D_layers)} )
+        w_inits_sgd, b_inits_sgd = get_initialization(init_config)
+        ## SGD models
+        if truth_filename:
+            mdl_truth = NN(D_layers=D_layers_truth,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,biases=biases)
+            mdl_truth.load_state_dict(mdl_truth_dict)
+        mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,biases=biases)
+        ## data to TORCH
+        data = get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test,dtype)
+        ##
+        data = get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test,dtype)
+        data.X_train, data.X_test = data.Kern_train, data.Kern_test
+        ##
+        legend_mdl = f'SGD solution y=W_L...W1phi(X), number of monomials={nb_terms}, batch-size={M}, iterations={nb_iter}, step size={eta}'
+        ##
+        logging_freq = 2
+        perturbation_freq = 200
+        frac_norm = 0.0
     else:
         raise ValueError(f'Not implemented yet. {MDL_2_TRAIN}')
     ## check number of monomials
@@ -307,8 +358,10 @@ def main(**kwargs):
     ##
     arg = Maps(reg_type=reg_type)
     keep_training=True
-    print(f'mdl_sgd[0].weight={mdl_sgd[0].weight}')
-    train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params = train_SGD( arg,mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv, reg_lambda)
+    if MDL_2_TRAIN == 'PERT':
+        train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params = train_SGD_with_perturbations(arg, mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv,reg_lambda,perturbation_freq,frac_norm)
+    else:
+        train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params = train_SGD( arg,mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv, reg_lambda)
     # while keep_training:
     #     try:
     #         train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params = train_SGD(
@@ -332,13 +385,18 @@ def main(**kwargs):
     reg = get_regularizer_term(arg, mdl_sgd,reg_lambda,X=data.X_train,Y=data.Y_train,l=2)
     erm_reg_WP = (1/N_train)*(mdl_sgd.forward(data.X_train) - data.Y_train).pow(2).sum() + reg_lambda*reg
     ##
+    condition_number_hessian = np.linalg.cond(Kern_train)
+    ##
     print('----')
+    print(f'condition_number_hessian={condition_number_hessian}')
+    print(f'data_filename={data_filename} \n')
     print(f'train_error_pinv={train_error_pinv}')
     print(f'test_error_pinv={test_error_pinv}')
     print()
     print(f'train_error_WP={train_error_WP}')
     print(f'test_error_WP={test_error_WP}')
     print(f'erm_reg_WP={erm_reg_WP}')
+    print()
     ## REPORT TIMES
     seconds = (time.time() - start_time)
     minutes = seconds/ 60
@@ -375,7 +433,10 @@ def main(**kwargs):
             start = 0
             iterations_axis = np.arange(1,nb_iter,step=logging_freq)[start:]
             ## iterations vs ALL errors
-            plot_iter_vs_all_errors(iterations_axis=iterations_axis, train_loss_list=train_loss_list_WP,test_loss_list=test_loss_list_WP,erm_lamdas=erm_lamdas_WP, reg_lambda=reg_lambda)
+            legend_comments=f'M={M},eta={eta},nb_iterations={nb_iter},reg_lambda={reg_lambda}'
+            title_comments=f'#linear_layers = {len(D_layers)-1},N_train={N_train},nb_monomials={nb_monomials}, fraction of noise={frac_norm},Recordings:perturbation_freq={perturbation_freq},logging_freq={logging_freq}'
+            plot_iter_vs_train_test_errors(iterations_axis=iterations_axis, train_loss_list=train_loss_list_WP,test_loss_list=test_loss_list_WP,title_comments=title_comments,legend_comments=legend_comments)
+            #plot_iter_vs_all_errors(iterations_axis=iterations_axis, train_loss_list=train_loss_list_WP,test_loss_list=test_loss_list_WP,erm_lamdas=erm_lamdas_WP, reg_lambda=reg_lambda)
             ## iterations vs gradient norm
             layer=0
             grads=grad_list_weight_sgd[layer]

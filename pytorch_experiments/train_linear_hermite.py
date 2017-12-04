@@ -2,7 +2,6 @@ import time
 start_time = time.time()
 
 import numpy as np
-from sklearn.preprocessing import PolynomialFeatures
 from numpy.polynomial.hermite import hermvander
 
 import random
@@ -10,14 +9,37 @@ import random
 import torch
 from torch.autograd import Variable
 
-from maps import NamedDict
+import scipy
 
-from plotting_utils import *
+import pdb
 
-def get_chebyshev_nodes(lb,ub,N):
-    k = np.arange(1,N+1)
-    chebyshev_nodes = 0.5*(lb+ub)+0.5*(ub-lb)*np.cos((np.pi*2*k-1)/(2*N))
-    return chebyshev_nodes
+import sys
+
+from mpmath import *
+
+def get_hermite_poly(x,degree):
+    #scipy.special.hermite()
+    N, = x.shape
+    ##
+    X = np.zeros( (N,degree+1) )
+    for n in range(N):
+        for deg in range(degree+1):
+            X[n,deg] = hermite( n=deg, z=float(x[deg]) )
+    return X
+
+def vectors_dims_dont_match(Y,Y_):
+    '''
+    Checks that vector Y and Y_ have the same dimensions. If they don't
+    then there might be an error that could be caused due to wrong broadcasting.
+    '''
+    DY = tuple( Y.size() )
+    DY_ = tuple( Y_.size() )
+    if len(DY) != len(DY_):
+        return True
+    for i in range(len(DY)):
+        if DY[i] != DY_[i]:
+            return True
+    return False
 
 def index_batch(X,batch_indices,dtype):
     '''
@@ -42,41 +64,8 @@ def get_batch2(X,Y,M,dtype):
     batch_ys = index_batch(Y,batch_indices,dtype)
     return Variable(batch_xs, requires_grad=False), Variable(batch_ys, requires_grad=False)
 
-def get_batch3(X,Y,M,dtype):
-    '''
-    get batch for pytorch model
-    '''
-    # TODO fix and make it nicer, there is pytorch forum question
-    #X,Y = X.data.numpy(), Y.data.numpy()
-    X,Y = X, Y
-    N = X.size()[0]
-    #indices = np.random.randint(0,N,size=M)
-    #indices = [ random.randint(0,N) for in i range(M)]
-    indices = np.random.random_integers(N,size=(M,))
-    if dtype ==  torch.cuda.FloatTensor:
-        batch_indices = torch.cuda.LongTensor( indices )# without replacement
-    else:
-        batch_indices = torch.LongTensor( indices ).type(dtype)  # without replacement
-    batch_xs = torch.index_select(X,0,batch_indices)
-    batch_ys = torch.index_select(Y,0,batch_indices)
-    return Variable(batch_xs, requires_grad=False), Variable(batch_ys, requires_grad=False)
-
 def get_sequential_lifted_mdl(nb_monomials,D_out, bias=False):
     return torch.nn.Sequential(torch.nn.Linear(nb_monomials,D_out,bias=bias))
-
-def vectors_dims_dont_match(Y,Y_):
-    '''
-    Checks that vector Y and Y_ have the same dimensions. If they don't
-    then there might be an error that could be caused due to wrong broadcasting.
-    '''
-    DY = tuple( Y.size() )
-    DY_ = tuple( Y_.size() )
-    if len(DY) != len(DY_):
-        return True
-    for i in range(len(DY)):
-        if DY[i] != DY_[i]:
-            return True
-    return False
 
 def train_SGD(mdl, M,eta,nb_iter,logging_freq ,dtype, X_train,Y_train):
     ##
@@ -97,17 +86,16 @@ def train_SGD(mdl, M,eta,nb_iter,logging_freq ,dtype, X_train,Y_train):
         batch_loss.backward() # Use autograd to compute the backward pass. Now w will have gradients
         ## SGD update
         for W in mdl.parameters():
-            eta = 0.1/(i**0.6)
-            delta = eta*W.grad.data
+            delta = eta(i)*W.grad.data
             W.data.copy_(W.data - delta)
         ## train stats
-        if i % (nb_iter/10) == 0 or i == 0:
+        if i % (nb_iter/10) == 0 or i == 0 or i == 1:
             #X_train_, Y_train_ = Variable(X_train), Variable(Y_train)
             X_train_, Y_train_ = X_train, Y_train
             current_train_loss = (1/N_train)*(mdl.forward(X_train_) - Y_train_).pow(2).sum().data.numpy()
             print('\n-------------')
             print(f'i = {i}, current_train_loss = {current_train_loss}\n')
-            print(f'eta*W.grad.data = {eta*W.grad.data}')
+            print(f'eta*W.grad.data = {eta(i)*W.grad.data}')
             print(f'W.grad.data = {W.grad.data}')
         ## Manually zero the gradients after updating weights
         mdl.zero_grad()
@@ -119,31 +107,24 @@ logging_freq = 100
 #dtype = torch.cuda.FloatTensor
 dtype = torch.FloatTensor
 ## SGD params
-M = 5
-eta = 0.01
+M = 2
+eta = lambda i: 0.1/(i**0.6)
 nb_iter = 500*10
 ##
 lb,ub = 0,1
 freq_sin = 4 # 2.3
 f_target = lambda x: np.sin(2*np.pi*freq_sin*x)
 N_train = 10
-#X_train = np.linspace(lb,ub,N_train)
-X_train = get_chebyshev_nodes(lb,ub,N_train).reshape(N_train,D0)
+X_train = np.linspace(lb,ub,N_train)
 Y_train = f_target(X_train).reshape(N_train,1)
 x_horizontal = np.linspace(lb,ub,1000).reshape(1000,1)
 ## degree of mdl
 Degree_mdl = N_train-1
-## pseudo-inverse solution
-## Standard
-# poly_feat = PolynomialFeatures(degree=Degree_mdl)
-# Kern_train = poly_feat.fit_transform(X_train.reshape(N_train,1))
-# X_plot = poly_feat.fit_transform(x_horizontal)
 ## Hermite
-Kern_train = hermvander(X_train,Degree_mdl)
-print(f'Kern_train.shape={Kern_train.shape}')
-Kern_train = Kern_train.reshape(N_train,Kern_train.shape[2])
-X_plot = hermvander(x_horizontal,Degree_mdl)
-X_plot = X_plot.reshape(1000,X_plot.shape[2])
+#Kern_train = hermvander(X_train,Degree_mdl)
+Kern_train = get_hermite_poly(X_train,Degree_mdl)
+#pdb.set_trace()
+#Kern_train = Kern_train.reshape(N_train,Kern_train.shape[2])
 ##
 Kern_train_pinv = np.linalg.pinv( Kern_train )
 c_pinv = np.dot(Kern_train_pinv, Y_train)
@@ -156,9 +137,10 @@ mdl_sgd[0].weight.data.normal_(mean=0,std=0.001)
 mdl_sgd[0].weight.data.fill_(0)
 ## Make polynomial Kernel
 Kern_train_pt, Y_train_pt = Variable(torch.FloatTensor(Kern_train).type(dtype), requires_grad=False), Variable(torch.FloatTensor(Y_train).type(dtype), requires_grad=False)
-#Kern_train_pt, Y_train_pt = torch.FloatTensor(Kern_train).type(dtype), torch.FloatTensor(Y_train).type(dtype)
 final_sgd_error = train_SGD(mdl_sgd, M,eta,nb_iter,logging_freq ,dtype, Kern_train_pt,Y_train_pt)
 ## PRINT ERRORS
+from plotting_utils import *
+
 train_error_pinv = (1/N_train)*(np.linalg.norm(Y_train-np.dot(Kern_train,c_pinv))**2)
 print('\n-----------------')
 print(f'N_train={N_train}')
@@ -168,6 +150,8 @@ print(f'final_sgd_error = {final_sgd_error}')
 print(f'condition_number_hessian = {condition_number_hessian}')
 print('\a')
 #### PLOTTING
+X_plot = hermvander(x_horizontal,Degree_mdl)
+X_plot = X_plot.reshape(1000,X_plot.shape[2])
 X_plot_pytorch = Variable( torch.FloatTensor(X_plot), requires_grad=False)
 ##
 fig1 = plt.figure()

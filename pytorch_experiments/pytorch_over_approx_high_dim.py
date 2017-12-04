@@ -453,6 +453,61 @@ def train_SGD(arg, mdl,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv,reg_lam
         mdl.zero_grad()
     return loss_list,test_loss_list,grad_list,func_diff,erm_lamdas,nb_module_params
 
+##
+
+def train_SGD_with_perturbations(arg, mdl,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv,reg_lambda, perturbation_freq, frac_norm):
+    '''
+    '''
+    nb_module_params = len( list(mdl.parameters()) )
+    loss_list, grad_list =  [], [ [] for i in range(nb_module_params) ]
+    func_diff = []
+    erm_lamdas = []
+    test_loss_list = []
+    ##
+    N_train, _ = tuple( data.X_train.size() )
+    print(f'reg_lambda={reg_lambda}')
+    for i in range(nb_iter):
+        # Forward pass: compute predicted Y using operations on Variables
+        batch_xs, batch_ys = get_batch2(data.X_train,data.Y_train,M,dtype) # [M, D], [M, 1]
+        ## FORWARD PASS
+        y_pred = mdl.forward(batch_xs)
+        ## Check vectors have same dimension
+        if vectors_dims_dont_match(batch_ys,y_pred):
+            raise ValueError('You vectors don\'t have matching dimensions. It will lead to errors.')
+        ## LOSS + Regularization
+        if reg_lambda != 0:
+            reg = get_regularizer_term(arg, mdl,reg_lambda,X=batch_xs,Y=batch_ys,l=2)
+            batch_loss = (1/M)*(y_pred - batch_ys).pow(2).sum() + reg
+        else:
+            batch_loss = (1/M)*(y_pred - batch_ys).pow(2).sum()
+        ## BACKARD PASS
+        batch_loss.backward() # Use autograd to compute the backward pass. Now w will have gradients
+        ## SGD update
+        for W in mdl.parameters():
+            delta = eta*W.grad.data
+            W.data.copy_(W.data - delta) # W - eta*g + A*gdl_eps
+        ## train stats
+        if i % (nb_iter/10) == 0 or i == 0:
+            current_train_loss = (1/N_train)*(mdl.forward(data.X_train) - data.Y_train).pow(2).sum().data.numpy()
+            print('-------------')
+            print(f'i = {i}, current_train_loss = {current_train_loss}')
+            print(f'W.data = {W.data}')
+            print(f'W.grad.data = {W.grad.data}')
+        ## stats logger
+        if i % logging_freq == 0:
+            stats_logger(arg, mdl, data, eta,loss_list,test_loss_list,grad_list,func_diff,erm_lamdas, i,c_pinv, reg_lambda)
+        ## DO OP
+        if i % perturbation_freq == 0:
+            for W in mdl.parameters():
+                #pdb.set_trace()
+                Din,Dout = W.data.size()
+                std = frac_norm*W.norm(2).data*torch.ones(Din,Dout)
+                #std = frac_norm*torch.ones(Din,Dout)
+                noise = torch.normal(means=0.0*torch.ones(Din,Dout),std=std)
+                W.data.copy_(W.data + noise)
+        ## Manually zero the gradients after updating weights
+        mdl.zero_grad()
+    return loss_list,test_loss_list,grad_list,func_diff,erm_lamdas,nb_module_params
 
 ###############################################################################
 ###############################################################################
