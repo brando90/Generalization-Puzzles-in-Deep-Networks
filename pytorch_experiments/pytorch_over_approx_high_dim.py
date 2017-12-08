@@ -463,6 +463,7 @@ def train_SGD_with_perturbations(arg, mdl,data, M,eta,nb_iter,A ,logging_freq ,d
     func_diff = []
     erm_lamdas = []
     test_loss_list = []
+    w_norms = [ [] for i in range(nb_module_params) ]
     ##
     N_train, _ = tuple( data.X_train.size() )
     print(f'reg_lambda={reg_lambda}')
@@ -496,6 +497,8 @@ def train_SGD_with_perturbations(arg, mdl,data, M,eta,nb_iter,A ,logging_freq ,d
         ## stats logger
         if i % logging_freq == 0:
             stats_logger(arg, mdl, data, eta,loss_list,test_loss_list,grad_list,func_diff,erm_lamdas, i,c_pinv, reg_lambda)
+            for index, W in enumerate(mdl.parameters()):
+                w_norms[index].append( W.data.norm(2) )
         ## DO OP
         if i % perturbation_freq == 0:
             for W in mdl.parameters():
@@ -507,7 +510,7 @@ def train_SGD_with_perturbations(arg, mdl,data, M,eta,nb_iter,A ,logging_freq ,d
                 W.data.copy_(W.data + noise)
         ## Manually zero the gradients after updating weights
         mdl.zero_grad()
-    return loss_list,test_loss_list,grad_list,func_diff,erm_lamdas,nb_module_params
+    return loss_list,test_loss_list,grad_list,func_diff,erm_lamdas,nb_module_params,w_norms
 
 ###############################################################################
 ###############################################################################
