@@ -173,7 +173,7 @@ def main(**kwargs):
     lambdas = [0]
     #nb_iter = 1600*1000
     #nb_iter = 10*1000*1000
-    nb_iter = int(250*1000)
+    nb_iter = int(250*1)
     nb_iterations = [nb_iter]
     repetitions = len(degrees)*[30]
     ##
@@ -368,7 +368,7 @@ def main(**kwargs):
         ##
         legend_mdl = f'SGD solution y=W_L...W1phi(X), number of monomials={nb_terms}, batch-size={M}, iterations={nb_iter}, step size={eta}'
         ##
-        frac_norm = 0.012
+        frac_norm = 0.013
         #frac_norm = 0.0
         logging_freq = 2
         perturbation_freq = 1000
@@ -470,6 +470,7 @@ def main(**kwargs):
             experiment_results['perturbation_freq'] = perturbation_freq
             path_to_save = f'{path_to_save}_frac_norm_{frac_norm}_logging_freq_{logging_freq}_perturbation_freq_{perturbation_freq}'
         ##
+        path_to_save=f'{path_to_save}/{prefix_experiment}'
         make_and_check_dir(path_to_save)
         path_to_save = f'{path_to_save}/satid_{SLURM_ARRAY_TASK_ID}_sid_{SLURM_JOBID}_{month}_{day}'
         scipy.io.savemat( path_to_save, experiment_results)
