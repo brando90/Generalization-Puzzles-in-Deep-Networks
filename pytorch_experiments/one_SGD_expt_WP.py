@@ -172,7 +172,7 @@ def main(**kwargs):
     #nb_iter = 10*1000*1000
     nb_iter = int(250*1000)
     nb_iterations = [nb_iter]
-    repetitions = len(degrees)*[10]
+    repetitions = len(degrees)*[30]
     ##
     #debug, debug_sgd = True, False
     ## Hyper Params SGD weight parametrization
@@ -364,10 +364,10 @@ def main(**kwargs):
         ##
         legend_mdl = f'SGD solution y=W_L...W1phi(X), number of monomials={nb_terms}, batch-size={M}, iterations={nb_iter}, step size={eta}'
         ##
-        logging_freq = 2
-        perturbation_freq = 1000
         frac_norm = 0.012
         frac_norm = 0.0
+        logging_freq = 2
+        perturbation_freq = 1000
     else:
         raise ValueError(f'Not implemented yet. {MDL_2_TRAIN}')
     ## check number of monomials
@@ -444,7 +444,6 @@ def main(**kwargs):
     print('\a')
     if kwargs['save_bulk_experiment']:
         path_to_save = f'./test_runs/{experiment_name}_reg_{reg_type}_expt_type_{expt_type}_N_train_{N_train}_M_{M}/{prefix_experiment}/'
-        make_and_check_dir(path_to_save)
         experiment_results= dict(
             SLURM_JOBID=SLURM_JOBID,SLURM_ARRAY_TASK_ID=SLURM_ARRAY_TASK_ID,
             reg_type=reg_type,
@@ -461,6 +460,12 @@ def main(**kwargs):
             experiment_results['train_loss_list_WP'] = train_loss_list_WP
             experiment_results['test_loss_list_WP'] = test_loss_list_WP
             experiment_results['grad_list_weight_sgd'] = grad_list_weight_sgd
+            experiment_results['frac_norm'] = frac_norm
+            experiment_results['logging_freq'] = logging_freq
+            experiment_results['perturbation_freq'] = perturbation_freq
+            path_to_save = f'{path_to_save}_frac_norm_{frac_norm}_logging_freq_{logging_freq}_perturbation_freq_{perturbation_freq}'
+        ##
+        make_and_check_dir(path_to_save)
         path_to_save = f'{path_to_save}/satid_{SLURM_ARRAY_TASK_ID}_sid_{SLURM_JOBID}_{month}_{day}'
         scipy.io.savemat( path_to_save, experiment_results)
     ##
