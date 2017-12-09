@@ -88,6 +88,9 @@ def get_hp_to_run(hyper_params,repetitions,satid):
     raise ValueError('There is something wrong with the number of jobs you submitted compared.')
 
 def main(**kwargs):
+    print(f'torch.get_rng_state={torch.get_rng_state}')
+    #torch.manual_seed()
+    ##
     #MDL_2_TRAIN='WP'
     #MDL_2_TRAIN='SP'
     MDL_2_TRAIN='PERT'
@@ -349,6 +352,7 @@ def main(**kwargs):
         ## LA models
         c_pinv = np.dot(np.linalg.pinv( Kern_train ),Y_train)
         ## inits
+        #00001
         init_config = Maps( {'w_init':'w_init_normal','mu':0.0,'std':0.00001, 'bias_init':'b_fill','bias_value':0.01,'biases':biases ,'nb_layers':len(D_layers)} )
         w_inits_sgd, b_inits_sgd = get_initialization(init_config)
         ## SGD models
