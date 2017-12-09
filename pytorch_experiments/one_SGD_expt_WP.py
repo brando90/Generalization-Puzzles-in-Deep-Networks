@@ -173,7 +173,7 @@ def main(**kwargs):
     lambdas = [0]
     #nb_iter = 1600*1000
     #nb_iter = 10*1000*1000
-    nb_iter = int(250*1)
+    nb_iter = int(250*1000)
     nb_iterations = [nb_iter]
     repetitions = len(degrees)*[30]
     ##
