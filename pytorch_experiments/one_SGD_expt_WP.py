@@ -447,6 +447,7 @@ def main(**kwargs):
     print("--- %s hours ---" % hours )
     print('\a')
     if kwargs['save_bulk_experiment']:
+        print('saving')
         path_to_save = f'./test_runs/{experiment_name}_reg_{reg_type}_expt_type_{expt_type}_N_train_{N_train}_M_{M}'
         experiment_results= dict(
             SLURM_JOBID=SLURM_JOBID,SLURM_ARRAY_TASK_ID=SLURM_ARRAY_TASK_ID,
