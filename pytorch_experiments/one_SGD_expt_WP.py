@@ -471,7 +471,7 @@ def main(**kwargs):
             path_to_save = f'{path_to_save}_frac_norm_{frac_norm}_logging_freq_{logging_freq}_perturbation_freq_{perturbation_freq}'
         ##
         make_and_check_dir(path_to_save)
-        path_to_save = f'/{path_to_save}/satid_{SLURM_ARRAY_TASK_ID}_sid_{SLURM_JOBID}_{month}_{day}'
+        path_to_save = f'{path_to_save}/satid_{SLURM_ARRAY_TASK_ID}_sid_{SLURM_JOBID}_{month}_{day}'
         scipy.io.savemat( path_to_save, experiment_results)
     ##
     print(f'plotting={kwargs}')
