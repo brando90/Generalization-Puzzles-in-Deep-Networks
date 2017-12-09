@@ -365,7 +365,7 @@ def main(**kwargs):
         legend_mdl = f'SGD solution y=W_L...W1phi(X), number of monomials={nb_terms}, batch-size={M}, iterations={nb_iter}, step size={eta}'
         ##
         frac_norm = 0.012
-        frac_norm = 0.0
+        #frac_norm = 0.0
         logging_freq = 2
         perturbation_freq = 1000
     else:
@@ -443,7 +443,7 @@ def main(**kwargs):
     print("--- %s hours ---" % hours )
     print('\a')
     if kwargs['save_bulk_experiment']:
-        path_to_save = f'./test_runs/{experiment_name}_reg_{reg_type}_expt_type_{expt_type}_N_train_{N_train}_M_{M}/{prefix_experiment}/'
+        path_to_save = f'./test_runs/{experiment_name}_reg_{reg_type}_expt_type_{expt_type}_N_train_{N_train}_M_{M}'
         experiment_results= dict(
             SLURM_JOBID=SLURM_JOBID,SLURM_ARRAY_TASK_ID=SLURM_ARRAY_TASK_ID,
             reg_type=reg_type,
@@ -453,7 +453,8 @@ def main(**kwargs):
             seconds=seconds,minutes=minutes,hours=hours,
             truth_filename=truth_filename,data_filename=data_filename,
             expt_type=expt_type,
-            MDL_2_TRAIN=MDL_2_TRAIN
+            MDL_2_TRAIN=MDL_2_TRAIN,
+            M=M,eta=eta,A=A
             )
         if MDL_2_TRAIN == 'PERT':
             experiment_results['w_norms'] = w_norms
@@ -466,7 +467,7 @@ def main(**kwargs):
             path_to_save = f'{path_to_save}_frac_norm_{frac_norm}_logging_freq_{logging_freq}_perturbation_freq_{perturbation_freq}'
         ##
         make_and_check_dir(path_to_save)
-        path_to_save = f'{path_to_save}/satid_{SLURM_ARRAY_TASK_ID}_sid_{SLURM_JOBID}_{month}_{day}'
+        path_to_save = f'/{path_to_save}/satid_{SLURM_ARRAY_TASK_ID}_sid_{SLURM_JOBID}_{month}_{day}'
         scipy.io.savemat( path_to_save, experiment_results)
     ##
     print(f'plotting={kwargs}')
