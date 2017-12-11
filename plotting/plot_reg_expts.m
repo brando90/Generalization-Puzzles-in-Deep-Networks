@@ -2,7 +2,8 @@ clear;
 disp('--------------')
 %%
 %prefix_fname='experiment_iter_oct7_9533381';
-prefix_fname='experiment_lambdas_November_4__1';
+%prefix_fname='experiment_lambdas_November_4__1';
+prefix_fname='experiment_degrees_November_15__7';
 %prefix_fname='experiment_iterations_October_31__1';
 %prefix_fname='experiment_lambdas_oct7_9528553';
 %prefix_fname='experiment_lambdas_oct7__9582799';
@@ -23,7 +24,7 @@ if contains(filename,'lambda')
     train_errors_bars = train_stds;
     test_errors = test_means;
     test_errors_bars = test_stds;
-else
+elseif contains(filename,'iterations')
     title_name_train = 'iterations vs train errors';
     title_name_test = 'iterations vs test errors';
     xlabel_name = 'iterations';
@@ -34,6 +35,19 @@ else
     train_errors_bars = train_stds;
     test_errors = test_means;
     test_errors_bars = test_stds;
+elseif contains(filename,'degrees')
+    title_name_train = 'monomials vs train errors';
+    title_name_test = 'monomials vs test errors';
+    xlabel_name = 'monomials/# parameters';
+    ylabel_name = 'Error';
+    %%
+    x_axis = degrees;
+    train_errors = train_means;
+    train_errors_bars = train_stds;
+    test_errors = test_means;
+    test_errors_bars = test_stds;
+else;
+    disp('Fail');
 end
 %%
 fprintf('size(x_axis) = %d %d', size(x_axis))

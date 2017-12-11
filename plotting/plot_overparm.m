@@ -1,7 +1,7 @@
 %clear;
 disp('--------------')
 %%
-filename='overfit_param_pinv_6';
+filename='overfit_param_pinv_7';
 %filename='overfit_param_pinv_keep';
 load( ['./results/' filename])
 %%
@@ -19,6 +19,7 @@ plot(x_axis,train_errors,'-ob');
 hold on;
 plot(x_axis,test_errors,'-*r');
 vline( double(N_train),'--g','# Training data');
+vline( double(26),'--c','# monomial of target function');
 legend('Training Error','Test Error')
 title(title_fig);
 xlabel('Number of Model Params');ylabel('Error');
