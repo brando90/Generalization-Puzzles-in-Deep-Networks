@@ -467,7 +467,7 @@ def train_SGD_with_perturbations(arg, mdl,data, M,eta,nb_iter,A ,logging_freq ,d
     ##
     N_train, _ = tuple( data.X_train.size() )
     print(f'reg_lambda={reg_lambda}')
-    for i in range(nb_iter):
+    for i in range(0,nb_iter):
         # Forward pass: compute predicted Y using operations on Variables
         batch_xs, batch_ys = get_batch2(data.X_train,data.Y_train,M,dtype) # [M, D], [M, 1]
         ## FORWARD PASS
@@ -495,7 +495,8 @@ def train_SGD_with_perturbations(arg, mdl,data, M,eta,nb_iter,A ,logging_freq ,d
             print(f'W.data = {W.data}')
             print(f'W.grad.data = {W.grad.data}')
         ## stats logger
-        if i % logging_freq == 0:
+        if i % logging_freq == 0 or i == 0:
+            #indices.append(i)
             stats_logger(arg, mdl, data, eta,loss_list,test_loss_list,grad_list,func_diff,erm_lamdas, i,c_pinv, reg_lambda)
             for index, W in enumerate(mdl.parameters()):
                 w_norms[index].append( W.data.norm(2) )
@@ -504,7 +505,8 @@ def train_SGD_with_perturbations(arg, mdl,data, M,eta,nb_iter,A ,logging_freq ,d
             for W in mdl.parameters():
                 #pdb.set_trace()
                 Din,Dout = W.data.size()
-                std = frac_norm*W.norm(2).data*torch.ones(Din,Dout)
+                ##std = frac_norm*W.norm(2).data*torch.ones(Din,Dout)
+                std = frac_norm
                 #std = frac_norm*torch.ones(Din,Dout)
                 noise = torch.normal(means=0.0*torch.ones(Din,Dout),std=std)
                 W.data.copy_(W.data + noise)

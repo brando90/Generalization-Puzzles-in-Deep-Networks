@@ -141,6 +141,7 @@ def main(**kwargs):
     #experiment_name = 'poly_degree26_step_size0p01'
     #experiment_name = 'gd_N_train12'
     experiment_name = 'pert_expt'
+    experiment_name = 'unit_pert_expt'
     ## Regularization
     #reg_type = 'tikhonov'
     #reg_type = 'VW'
@@ -173,7 +174,8 @@ def main(**kwargs):
     lambdas = [0]
     #nb_iter = 1600*1000
     #nb_iter = 10*1000*1000
-    nb_iter = int(250*1000)
+    nb_iter = int(125*1000)
+    nb_iter = int(250*1000) # sbatch
     nb_iterations = [nb_iter]
     repetitions = len(degrees)*[30]
     ##
@@ -368,10 +370,10 @@ def main(**kwargs):
         ##
         legend_mdl = f'SGD solution y=W_L...W1phi(X), number of monomials={nb_terms}, batch-size={M}, iterations={nb_iter}, step size={eta}'
         ##
-        frac_norm = 0.013
+        frac_norm = 0.04
         #frac_norm = 0.0
-        logging_freq = 2
-        perturbation_freq = 1000
+        logging_freq = 1
+        perturbation_freq = 4000
     else:
         raise ValueError(f'Not implemented yet. {MDL_2_TRAIN}')
     ## check number of monomials
@@ -486,7 +488,7 @@ def main(**kwargs):
             plot_1D_stuff(NamedDict(data_lb=data_lb,data_ub=data_ub,dtype=dtype,poly_feat=poly_feat,mdl_sgd=mdl_sgd,data=data,legend_mdl=legend_mdl,c_pinv=c_pinv,X_train=X_train))
             ## get iterations
             start = 0
-            iterations_axis = np.arange(1,nb_iter,step=logging_freq)[start:]
+            iterations_axis = np.arange(1,nb_iter+1,step=logging_freq)[start:]
             ## iterations vs ALL errors
             legend_comments=f'M={M},eta={eta},nb_iterations={nb_iter},reg_lambda={reg_lambda}'
             title_comments=f'#linear_layers = {len(D_layers)-1},N_train={N_train},nb_monomials={nb_monomials}, fraction of noise={frac_norm},Recordings:perturbation_freq={perturbation_freq},logging_freq={logging_freq}'
@@ -521,5 +523,5 @@ class TestStringMethods(unittest.TestCase):
                 satid+=1
 
 if __name__ == '__main__':
-    main(save_bulk_experiment=True,plotting=True)
+    main(save_bulk_experiment=False,plotting=True)
     #unittest.main()
