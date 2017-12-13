@@ -141,7 +141,8 @@ def main(**kwargs):
     #experiment_name = 'poly_degree26_step_size0p01'
     #experiment_name = 'gd_N_train12'
     experiment_name = 'pert_expt'
-    experiment_name = 'unit_pert_expt'
+    experiment_name = 'const_noise_pert_expt'
+    #experiment_name = 'unit_pert_expt'
     ## Regularization
     #reg_type = 'tikhonov'
     #reg_type = 'VW'
@@ -174,7 +175,7 @@ def main(**kwargs):
     lambdas = [0]
     #nb_iter = 1600*1000
     #nb_iter = 10*1000*1000
-    nb_iter = int(125*1000)
+    #nb_iter = int(125*1000)
     nb_iter = int(250*1000) # sbatch
     nb_iterations = [nb_iter]
     repetitions = len(degrees)*[30]
@@ -370,7 +371,7 @@ def main(**kwargs):
         ##
         legend_mdl = f'SGD solution y=W_L...W1phi(X), number of monomials={nb_terms}, batch-size={M}, iterations={nb_iter}, step size={eta}'
         ##
-        frac_norm = 0.04
+        frac_norm = 0.6
         #frac_norm = 0.0
         logging_freq = 1
         perturbation_freq = 4000
@@ -501,7 +502,7 @@ def main(**kwargs):
             ##
             plt.figure()
             plt_w_norm, = plt.plot( iterations_axis ,w_norms[0],color='b')
-            plt_w_norm_legend = f'W.norm(2) = ||W||^2'
+            plt_w_norm_legend = f'W.norm(2) = ||W||'
             plt.legend([plt_w_norm],[plt_w_norm_legend])
             ##
             plt.show()
@@ -523,5 +524,5 @@ class TestStringMethods(unittest.TestCase):
                 satid+=1
 
 if __name__ == '__main__':
-    main(save_bulk_experiment=False,plotting=True)
+    main(save_bulk_experiment=True,plotting=True)
     #unittest.main()
