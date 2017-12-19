@@ -501,7 +501,7 @@ def train_SGD_with_perturbations(arg, mdl,data, M,eta,nb_iter,A ,logging_freq ,d
             for index, W in enumerate(mdl.parameters()):
                 w_norms[index].append( W.data.norm(2) )
         ## DO OP
-        if i % perturbation_freq == 0 and frac_norm != 0:
+        if i % perturbation_freq == 0 and frac_norm != 0 and i != 0:
             for W in mdl.parameters():
                 #pdb.set_trace()
                 Din,Dout = W.data.size()
