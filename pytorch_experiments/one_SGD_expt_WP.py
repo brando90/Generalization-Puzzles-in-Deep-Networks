@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #SBATCH --mem=7000
 #SBATCH --time=0-11:00
-#SBATCH --array=1-5
+#SBATCH --array=1-60
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
 '''
@@ -142,7 +142,7 @@ def main(**kwargs):
     #experiment_name = 'gd_N_train12'
     #experiment_name = 'pert_expt'
     #experiment_name = 'const_noise_pert_expt'
-    experiment_name = 'const_noise_pert_expt_fig13'
+    experiment_name = 'const_noise_pert_expt_fig13_reps1'
     #experiment_name = 'unit_pert_expt'
     ## Regularization
     #reg_type = 'tikhonov'
@@ -171,7 +171,7 @@ def main(**kwargs):
     ## SP DEGREE/MONOMIALS
     expt_type = 'SP_fig4'
     step_deg=1
-    lb_deg,ub_deg = 4,4
+    lb_deg,ub_deg = 1,60
     degrees = list(range(lb_deg,ub_deg+1,step_deg))
     lambdas = [0]
     #nb_iter = 1600*1000
@@ -179,7 +179,7 @@ def main(**kwargs):
     #nb_iter = int(125*1000)
     nb_iter = int(250*1000) # sbatch
     nb_iterations = [nb_iter]
-    repetitions = len(degrees)*[30]
+    repetitions = len(degrees)*[1]
     ##
     #debug, debug_sgd = True, False
     ## Hyper Params SGD weight parametrization
@@ -526,5 +526,5 @@ class TestStringMethods(unittest.TestCase):
                 satid+=1
 
 if __name__ == '__main__':
-    main(save_bulk_experiment=False,plotting=True)
+    main(save_bulk_experiment=True,plotting=True)
     #unittest.main()

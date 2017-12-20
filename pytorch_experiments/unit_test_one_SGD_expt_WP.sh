@@ -1,5 +1,5 @@
 export SLURM_JOBID=2
-for i in {30..30}; do
+for i in {1..1}; do
   export SLURM_ARRAY_TASK_ID=$i
   python one_SGD_expt_WP.py
   #python one_SGD_expt_WP.py &
