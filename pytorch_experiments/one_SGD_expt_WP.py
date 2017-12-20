@@ -143,6 +143,7 @@ def main(**kwargs):
     #experiment_name = 'pert_expt'
     #experiment_name = 'const_noise_pert_expt'
     experiment_name = 'const_noise_pert_expt_fig13_reps1'
+    experiment_name = 'unit_const_noise_pert_expt_fig13_reps1'
     #experiment_name = 'unit_pert_expt'
     ## Regularization
     #reg_type = 'tikhonov'
@@ -364,7 +365,8 @@ def main(**kwargs):
             mdl_truth = NN(D_layers=D_layers_truth,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,biases=biases)
             mdl_truth.load_state_dict(mdl_truth_dict)
         mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,biases=biases)
-        pdb.set_trace()
+        mdl_sgd.linear_layers[1].weight.data.fill_(0)
+        #pdb.set_trace()
         ## data to TORCH
         data = get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test,dtype)
         ##
@@ -526,5 +528,5 @@ class TestStringMethods(unittest.TestCase):
                 satid+=1
 
 if __name__ == '__main__':
-    main(save_bulk_experiment=True,plotting=True)
+    main(save_bulk_experiment=True,plotting=False)
     #unittest.main()
