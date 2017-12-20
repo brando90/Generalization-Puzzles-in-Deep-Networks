@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #SBATCH --mem=7000
 #SBATCH --time=0-11:00
-#SBATCH --array=1-30
+#SBATCH --array=1-5
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
 '''
@@ -140,8 +140,9 @@ def main(**kwargs):
     #experiment_name = 'linear_VW_expt1'
     #experiment_name = 'poly_degree26_step_size0p01'
     #experiment_name = 'gd_N_train12'
-    experiment_name = 'pert_expt'
-    experiment_name = 'const_noise_pert_expt'
+    #experiment_name = 'pert_expt'
+    #experiment_name = 'const_noise_pert_expt'
+    experiment_name = 'const_noise_pert_expt_fig13'
     #experiment_name = 'unit_pert_expt'
     ## Regularization
     #reg_type = 'tikhonov'
@@ -170,7 +171,7 @@ def main(**kwargs):
     ## SP DEGREE/MONOMIALS
     expt_type = 'SP_fig4'
     step_deg=1
-    lb_deg,ub_deg = 30,30
+    lb_deg,ub_deg = 4,4
     degrees = list(range(lb_deg,ub_deg+1,step_deg))
     lambdas = [0]
     #nb_iter = 1600*1000
@@ -355,14 +356,15 @@ def main(**kwargs):
         ## LA models
         c_pinv = np.dot(np.linalg.pinv( Kern_train ),Y_train)
         ## inits
-        #00001
-        init_config = Maps( {'w_init':'w_init_normal','mu':0.0,'std':0.00001, 'bias_init':'b_fill','bias_value':0.01,'biases':biases ,'nb_layers':len(D_layers)} )
+        #0.00001
+        init_config = Maps( {'w_init':'w_init_normal','mu':0.0,'std':0.01, 'bias_init':'b_fill','bias_value':0.01,'biases':biases ,'nb_layers':len(D_layers)} )
         w_inits_sgd, b_inits_sgd = get_initialization(init_config)
         ## SGD models
         if truth_filename:
             mdl_truth = NN(D_layers=D_layers_truth,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,biases=biases)
             mdl_truth.load_state_dict(mdl_truth_dict)
         mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,biases=biases)
+        pdb.set_trace()
         ## data to TORCH
         data = get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test,dtype)
         ##
@@ -371,8 +373,8 @@ def main(**kwargs):
         ##
         legend_mdl = f'SGD solution y=W_L...W1phi(X), number of monomials={nb_terms}, batch-size={M}, iterations={nb_iter}, step size={eta}'
         ##
-        frac_norm = 0.6
-        #frac_norm = 0.0
+        #frac_norm = 0.6
+        frac_norm = 0.0
         logging_freq = 1
         perturbation_freq = 4000
     else:
@@ -524,5 +526,5 @@ class TestStringMethods(unittest.TestCase):
                 satid+=1
 
 if __name__ == '__main__':
-    main(save_bulk_experiment=True,plotting=True)
+    main(save_bulk_experiment=False,plotting=True)
     #unittest.main()
