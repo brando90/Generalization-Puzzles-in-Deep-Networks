@@ -519,7 +519,7 @@ def main(**kwargs):
             MDL_2_TRAIN=MDL_2_TRAIN,
             M=M,eta=eta,A=A
             )
-        if MDL_2_TRAIN == 'PERT':
+        if MDL_2_TRAIN == 'PERT' or MDL_2_TRAIN == 'TRIG_PERT':
             experiment_results['w_norms'] = w_norms
             experiment_results['train_loss_list_WP'] = train_loss_list_WP
             experiment_results['test_loss_list_WP'] = test_loss_list_WP
