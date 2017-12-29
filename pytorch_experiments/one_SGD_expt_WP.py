@@ -93,7 +93,8 @@ def main(**kwargs):
     ##
     #MDL_2_TRAIN='WP'
     #MDL_2_TRAIN='SP'
-    MDL_2_TRAIN='PERT'
+    #MDL_2_TRAIN='PERT'
+    MDL_2_TRAIN='TRIG_PERT'
     ##
     start_time = time.time()
     np.set_printoptions(suppress=True) #Whether or not suppress printing of small floating point values using scientific notation (default False).
@@ -144,6 +145,7 @@ def main(**kwargs):
     #experiment_name = 'const_noise_pert_expt'
     experiment_name = 'const_noise_pert_expt_fig13_reps1'
     experiment_name = 'unit_const_noise_pert_expt_fig13_reps1'
+    experiment_name = 'unit_trig_pert_expt_fig13_reps1'
     #experiment_name = 'unit_pert_expt'
     ## Regularization
     #reg_type = 'tikhonov'
@@ -178,13 +180,13 @@ def main(**kwargs):
     #nb_iter = 1600*1000
     #nb_iter = 10*1000*1000
     #nb_iter = int(125*1000)
-    nb_iter = int(250*1000) # sbatch
+    nb_iter = int(2*250*1000) # sbatch
     nb_iterations = [nb_iter]
     repetitions = len(degrees)*[1]
     ##
     #debug, debug_sgd = True, False
     ## Hyper Params SGD weight parametrization
-    M = 9
+    M = 25
     #eta = 0.00000000001 # eta = 1e-6
     eta = 0.2
     A = 0.0
@@ -223,18 +225,20 @@ def main(**kwargs):
         D0 = 1
         lb,ub = -1,1
         freq_sin = 4 #2.3
-        f_target = lambda x: np.sin(2*np.pi*freq_sin*x)
+        #f_target = lambda x: np.sin(2*np.pi*freq_sin*x)
+        freq1, freq2 = 3, 2
+        f_target = lambda x: np.sin(2*np.pi*freq1*x+2*np.pi*freq2*x)
         #
-        N_train = 9
-        #X_train = np.linspace(lb,ub,N_train)
-        X_train = get_chebyshev_nodes(lb,ub,N_train).reshape(N_train,D0)
+        N_train = 25
+        X_train = np.linspace(lb,ub,N_train).reshape(N_train,D0)
+        #X_train = get_chebyshev_nodes(lb,ub,N_train).reshape(N_train,D0)
         Y_train = f_target(X_train).reshape(N_train,1)
         #
         eps_test = 0.0
         lb_test, ub_test = lb+eps_test, ub-eps_test
         N_test = 100
-        #X_train = np.linspace(lb,ub,N_train)
-        X_test = get_chebyshev_nodes(lb,ub,N_test).reshape(N_test,D0)
+        X_test = np.linspace(lb,ub,N_test).reshape(N_test,D0)
+        #X_test = get_chebyshev_nodes(lb,ub,N_test).reshape(N_test,D0)
         Y_test = f_target(X_test).reshape(N_test,1)
         #
         data = {'X_train':X_train,'Y_train':Y_train, 'X_test':X_test,'Y_test':Y_test}
@@ -308,6 +312,8 @@ def main(**kwargs):
         ## data to TORCH
         data = get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test,dtype)
         ##
+        nb_monomials = int(scipy.misc.comb(D0+Degree_mdl,Degree_mdl))
+        ##
         logging_freq = 20
         nb_terms = c_pinv.shape[0]
         legend_mdl = f'SGD solution weight parametrization, number of monomials={nb_terms}, batch-size={M}, iterations={nb_iter}, step size={eta}'
@@ -331,6 +337,8 @@ def main(**kwargs):
         ##
         data = get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test,dtype)
         data.X_train, data.X_test = data.Kern_train, data.Kern_test
+        ##
+        nb_monomials = int(scipy.misc.comb(D0+Degree_mdl,Degree_mdl))
         ##
         logging_freq = 20
         nb_terms = c_pinv.shape[0]
@@ -369,11 +377,55 @@ def main(**kwargs):
         #pdb.set_trace()
         ## data to TORCH
         data = get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test,dtype)
-        ##
+        ##1560.0
         data = get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test,dtype)
         data.X_train, data.X_test = data.Kern_train, data.Kern_test
         ##
         legend_mdl = f'SGD solution y=W_L...W1phi(X), number of monomials={nb_terms}, batch-size={M}, iterations={nb_iter}, step size={eta}'
+        ##
+        nb_monomials = int(scipy.misc.comb(D0+Degree_mdl,Degree_mdl))
+        ##
+        #frac_norm = 0.6
+        frac_norm = 0.0
+        logging_freq = 1
+        perturbation_freq = 4000
+    elif MDL_2_TRAIN=='TRIG_PERT':
+        Kern_train, Kern_test = trig_kernel_matrix(X_train,Degree_mdl), trig_kernel_matrix(X_test,Degree_mdl)
+        c_pinv = np.dot(np.linalg.pinv( Kern_train ),Y_train) ## TODO: https://stackoverflow.com/questions/10988082/multivariate-polynomial-regression-with-numpy
+        nb_terms = c_pinv.shape[0]
+        #pdb.set_trace()
+        ## no activation functions
+        act = lambda x: x
+        act.__name__ = 'linear'
+        #### multiple layered mdl
+        D_layers,act = [nb_terms,1], act ## W1x = y
+        #D_layers,act = [nb_terms,H1,1], act ## W2W1x = y
+        nb_layers = len(D_layers)-1 #the number of layers include the last layer (the regression layer)
+        biases = [None] + [False] + (nb_layers-1)*[False] #bias not even in the first layer, note: its already there via parametrization of kernel
+        ## LA models
+        c_pinv = np.dot(np.linalg.pinv( Kern_train ),Y_train)
+        ## inits
+        #0.00001
+        init_config = Maps( {'w_init':'w_init_normal','mu':0.0,'std':0.00001, 'bias_init':'b_fill','bias_value':0.01,'biases':biases ,'nb_layers':len(D_layers)} )
+        w_inits_sgd, b_inits_sgd = get_initialization(init_config)
+        ## SGD models
+        if truth_filename:
+            mdl_truth = NN(D_layers=D_layers_truth,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,biases=biases)
+            mdl_truth.load_state_dict(mdl_truth_dict)
+        mdl_sgd = NN(D_layers=D_layers,act=act,w_inits=w_inits_sgd,b_inits=b_inits_sgd,biases=biases)
+        mdl_sgd.linear_layers[1].weight.data.fill_(0)
+        #pdb.set_trace()
+        ## data to TORCH
+        data = get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test,dtype)
+        ##1560.0
+        data = get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test,dtype)
+        data.X_train, data.X_test = data.Kern_train, data.Kern_test
+        ##
+        legend_mdl = f'SGD solution y=W_L...W1phi(X), number of terms={nb_terms}, batch-size={M}, iterations={nb_iter}, step size={eta}'
+        ##
+        poly_feat = NamedDict(fit_transform=lambda x: trig_kernel_matrix(x,Degree_mdl) )
+        #pdb.set_trace()
+        nb_monomials = int(2*Degree_mdl+1)
         ##
         #frac_norm = 0.6
         frac_norm = 0.0
@@ -382,9 +434,8 @@ def main(**kwargs):
     else:
         raise ValueError(f'Not implemented yet. {MDL_2_TRAIN}')
     ## check number of monomials
-    nb_monomials = int(scipy.misc.comb(D0+Degree_mdl,Degree_mdl))
     print(f'nb_monomials={nb_monomials} \nnb_terms={nb_terms}')
-    if nb_terms != int(scipy.misc.comb(D0+Degree_mdl,Degree_mdl)):
+    if nb_terms != nb_monomials:
        raise ValueError(f'nb of monomials dont match D0={D0},Degree_mdl={Degree_mdl}, number of monimials fron pinv={nb_terms}, number of monomials analyticall = {nb_monomials}')
     ########################################################################################################################################################
     ## some debugging print statements
@@ -394,7 +445,7 @@ def main(**kwargs):
     ##
     arg = Maps(reg_type=reg_type)
     keep_training=True
-    if MDL_2_TRAIN == 'PERT':
+    if MDL_2_TRAIN=='PERT' or MDL_2_TRAIN=='TRIG_PERT':
         train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params,w_norms = train_SGD_with_perturbations(arg, mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv,reg_lambda,perturbation_freq,frac_norm)
     else:
         train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params = train_SGD( arg,mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv, reg_lambda)
@@ -490,7 +541,7 @@ def main(**kwargs):
         if D0==1:
             print(f'print D0={D0}')
             #f_sgd = lambda x: f_mdl_eval(x,mdl_sgd,dtype)
-            plot_1D_stuff(NamedDict(data_lb=data_lb,data_ub=data_ub,dtype=dtype,poly_feat=poly_feat,mdl_sgd=mdl_sgd,data=data,legend_mdl=legend_mdl,c_pinv=c_pinv,X_train=X_train))
+            plot_1D_stuff(NamedDict(data_lb=data_lb,data_ub=data_ub,dtype=dtype,poly_feat=poly_feat,mdl_sgd=mdl_sgd,data=data,legend_mdl=legend_mdl,c_pinv=c_pinv,X_train=X_train,f_target=f_target))
             ## get iterations
             start = 0
             iterations_axis = np.arange(1,nb_iter+1,step=logging_freq)[start:]
@@ -528,5 +579,5 @@ class TestStringMethods(unittest.TestCase):
                 satid+=1
 
 if __name__ == '__main__':
-    main(save_bulk_experiment=True,plotting=False)
+    main(save_bulk_experiment=True,plotting=True)
     #unittest.main()

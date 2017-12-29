@@ -17,6 +17,7 @@ def plot_1D_stuff(arg):
     #plots objs
     p_sgd, = plt.plot(x_horizontal, [ float(f_val) for f_val in arg.mdl_sgd.forward(X_plot_pytorch).data.numpy() ])
     p_pinv, = plt.plot(x_horizontal, np.dot(X_plot,arg.c_pinv))
+    p_target, = plt.plot(x_horizontal, arg.f_target(x_horizontal))
     p_data, = plt.plot(arg.X_train,arg.data.Y_train.data.numpy(),'ro')
     ## legend
     nb_terms = arg.c_pinv.shape[0]

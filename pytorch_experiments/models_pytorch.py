@@ -75,7 +75,24 @@ def get_relu_poly_act(degree=2,lb=-1,ub=1,N=100):
 
 ## Kernel methods
 
-def poly_kernel_matrix( x,D ):
+def trig_kernel_matrix(x,Deg):
+    '''
+    x = single real number data value
+    D = largest degree of monomial
+
+    maps x to a trig polynomial up to degree=D.
+    [1, x^1, ..., x^D]
+    '''
+    N = len(x)
+    Kern = np.zeros( (N,2*Deg+1) )
+    for n in range(N): # {0 to N-1}
+        for d in range(Deg+1): # {0 to D}
+            Kern[n,d] = np.cos(d*x[n])
+        for d in range(1,Deg+1): # {1 to D}
+            Kern[n,Deg+d] = np.sin(d*x[n])
+    return Kern
+
+def poly_kernel_matrix(x,D):
     '''
     x = single real number data value
     D = largest degree of monomial
@@ -87,7 +104,7 @@ def poly_kernel_matrix( x,D ):
     Kern = np.zeros( (N,D+1) )
     for n in range(N):
         for d in range(D+1):
-            Kern[n,d] = x[n]**d;
+            Kern[n,d] = x[n]**d
     return Kern
 
 def generate_all_tuples_for_monomials(N,D):

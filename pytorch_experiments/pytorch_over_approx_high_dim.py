@@ -339,7 +339,7 @@ def VW_reg(mdl,l):
     V = mdl[2].weight
     ##
     VW = torch.matmul(V,W_p) + torch.matmul(V,b_w)
-    reg = VW.norm(l)
+    reg = VW.norm(l)**2
     return reg
 
 def V2W_reg(mdl,l):
@@ -418,7 +418,7 @@ def train_SGD(arg, mdl,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv,reg_lam
         ## LOSS + Regularization
         if reg_lambda != 0:
             reg = get_regularizer_term(arg, mdl,reg_lambda,X=batch_xs,Y=batch_ys,l=2)
-            batch_loss = (1/M)*(y_pred - batch_ys).pow(2).sum() + reg
+            batch_loss = (1/M)*(y_pred - batch_ys).pow(2).sum() + reg_lambda*reg
         else:
             batch_loss = (1/M)*(y_pred - batch_ys).pow(2).sum()
             #print(f'batch_loss = {batch_loss}')
