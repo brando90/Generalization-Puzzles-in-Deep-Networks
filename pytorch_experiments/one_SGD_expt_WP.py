@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #SBATCH --mem=7000
 #SBATCH --time=0-11:00
-#SBATCH --array=1-60
+#SBATCH --array=60-100
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
 '''
@@ -174,13 +174,13 @@ def main(**kwargs):
     ## SP DEGREE/MONOMIALS
     expt_type = 'SP_fig4'
     step_deg=1
-    lb_deg,ub_deg = 1,60
+    lb_deg,ub_deg = 1,100
     degrees = list(range(lb_deg,ub_deg+1,step_deg))
     lambdas = [0]
     #nb_iter = 1600*1000
     #nb_iter = 10*1000*1000
     #nb_iter = int(125*1000)
-    nb_iter = int(2*250*1000) # sbatch
+    nb_iter = int(2*250*10000) # sbatch
     nb_iterations = [nb_iter]
     repetitions = len(degrees)*[1]
     ##
