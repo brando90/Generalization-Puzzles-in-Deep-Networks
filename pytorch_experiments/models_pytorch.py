@@ -83,7 +83,6 @@ def poly_R(x, degree):
     X = x[:, None] ** np.arange(0, degree+1)
 
     #R: qr(X)$qr
-    pdb.set_trace()
     q, r = scipy.linalg.qr(X)
 
     #R: r * (row(r) == col(r))
