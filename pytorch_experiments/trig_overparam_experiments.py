@@ -32,7 +32,7 @@ import scipy.io
 
 import argparse
 
-SLURM_JOBID = 7
+SLURM_JOBID = 11
 
 def get_f_2_imitate_D0_1(Degree_data_set):
     func_params = {}
@@ -40,6 +40,7 @@ def get_f_2_imitate_D0_1(Degree_data_set):
     f_target = lambda x: np.sin(2*np.pi*freq1*x+2*np.pi*freq2*x)
     func_params['freq1']=freq1
     func_params['freq2']=freq2
+    f_target = lambda x: 10*x**3 + 5*x**2 + x + 1
     f_2_imitate = f_target
     return f_2_imitate, func_params
 
@@ -94,6 +95,8 @@ def get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees,lb,ub,f_target,c_
     ranks = []
     s_inv_total, s_inv_max = [], []
     diff_truth = []
+    conds = []
+    conds_pinv = []
     ##
     N_train,D0 = X_train.shape
     ##
@@ -115,6 +118,10 @@ def get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees,lb,ub,f_target,c_
         train_errors.append( train_error )
         test_errors.append( test_error )
         ##
+        cond_A = np.linalg.cond(Kern_train)
+        #cond_A_pinv = np.linalg.cond(Kern_train_pinv)
+        conds.append(cond_A)
+        conds_pinv.append(-1)
         ##diff_truth.append(diff_target_pinv)
         if c_target is not None:
             if c_target.shape[0] == c_pinv.shape[0]:
@@ -124,7 +131,7 @@ def get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees,lb,ub,f_target,c_
                 #print(f'diff_target_pinv = {diff_target_pinv}')
                 print(f'train_error = {train_error}')
                 print(f'test_error = {test_error}')
-    return train_errors,test_errors,ranks,s_inv_total,s_inv_max,diff_truth
+    return train_errors,test_errors,ranks,s_inv_total,s_inv_max,diff_truth, conds,conds_pinv
 
 def get_c(nb_monomials_data):
     #pdb.set_trace()
@@ -176,7 +183,7 @@ def my_main(**kwargs):
     else:
         ## properties of Data set
         D0 = 1
-        N_test = 150
+        N_test = 600
         N_train = 76
         #N_left,N_middle,N_right = 100,20,100
         #N_train = N_left+N_middle+N_right
@@ -228,7 +235,7 @@ def my_main(**kwargs):
     step_deg=1
     smallest_deg,largest_deg = 1,200
     degrees = list(range(smallest_deg,largest_deg,step_deg))
-    train_errors_pinv,test_errors_pinv,ranks,s_inv_total,s_inv_max,diff_truth = get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees, lb,ub,f_target,c_target)
+    train_errors_pinv,test_errors_pinv,ranks,s_inv_total,s_inv_max,diff_truth, conds,conds_pinv = get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees, lb,ub,f_target,c_target)
     #train_errors_pinv,test_errors_pinv,_,_,_,_ = get_errors_pinv_mdls(X_train,Y_train,X_test,Y_test,degrees, lb,ub,f_target,c_target)
     ## plot them
     monomials = [ get_nb_monomials(nb_variables=D0,degree=d) for d in degrees ]
@@ -268,6 +275,13 @@ def my_main(**kwargs):
                 fig = plt.figure()
                 plt_diff_truth, = plt.plot(monomials,diff_truth)
                 plt.legend([plt_diff_truth],['difference of model (pinv) vs c_target'])
+            ##
+            plt.figure()
+            plt.title('Cond conds pinv')
+            plt.plot(monomials,conds_pinv)
+            plt.figure()
+            plt.title('Cond conds')
+            plt.plot(monomials,conds)
         elif D0==2:
             #
             _,_,Z_cord_train = make_meshgrid_data_from_training_data(X_data=X_train, Y_data=Y_train) # meshgrid for trainign points visualization

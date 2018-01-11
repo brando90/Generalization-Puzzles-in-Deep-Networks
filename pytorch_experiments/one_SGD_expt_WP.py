@@ -180,13 +180,13 @@ def main(**kwargs):
     #nb_iter = 1600*1000
     #nb_iter = 10*1000*1000
     #nb_iter = int(125*1000)
-    nb_iter = int(2*250*10000) # sbatch
+    nb_iter = int(4*250*100) # sbatch
     nb_iterations = [nb_iter]
     repetitions = len(degrees)*[1]
     ##
     #debug, debug_sgd = True, False
     ## Hyper Params SGD weight parametrization
-    M = 25
+    M = 76
     #eta = 0.00000000001 # eta = 1e-6
     eta = 0.2
     A = 0.0
@@ -229,9 +229,9 @@ def main(**kwargs):
         freq1, freq2 = 3, 2
         f_target = lambda x: np.sin(2*np.pi*freq1*x+2*np.pi*freq2*x)
         #
-        N_train = 25
-        X_train = np.linspace(lb,ub,N_train).reshape(N_train,D0)
-        #X_train = get_chebyshev_nodes(lb,ub,N_train).reshape(N_train,D0)
+        N_train = 76
+        #X_train = np.linspace(lb,ub,N_train).reshape(N_train,D0)
+        X_train = get_chebyshev_nodes(lb,ub,N_train).reshape(N_train,D0)
         Y_train = f_target(X_train).reshape(N_train,1)
         #
         eps_test = 0.0

@@ -15,14 +15,14 @@ fig = figure;
 fig.PaperPositionMode = 'auto';
 title(title_fig)
 %
-plot(x_axis,train_errors,'-ob');
+plot(x_axis(2:end),train_errors(2:end),'-ob');
 hold on;
-plot(x_axis,test_errors,'-*r');
+plot(x_axis(2:end),test_errors(2:end),'-*r');
 vline( double(N_train),'--g','# Training data');
-vline( double(26),'--c','# monomial of target function');
+%vline( double(26),'--c','# monomial of target function');
 legend('Training Error','Test Error')
 title(title_fig);
-xlabel('Number of Model Params');ylabel('Error');
+xlabel('# monomials');ylabel('Error');
 %ylim([0 110])
 %%
 % fig = figure;

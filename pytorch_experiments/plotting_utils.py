@@ -4,6 +4,8 @@ import torch
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
 
+from models_pytorch import trig_kernel_matrix
+
 import pdb
 
 def plot_1D_stuff(arg):
@@ -86,3 +88,38 @@ def plot_iter_vs_grads_norm2_4_current_layer(iterations_axis,grads, layer):
     plt.xlabel('iterations' )
     plt.ylabel('Gradient norm')
     plt.title(f' Iterations vs Gradients')
+
+''' plot for over param scripts '''
+
+def plot_with_params(c_target,X_train,Y_train,lb,ub):
+    '''
+    Note: training data os govem to visualize the training data set with the model
+    '''
+    fig = plt.figure()
+    deg = c_target.shape[0]-1
+    ## plotting data (note this is NOT training data)
+    N=5000
+    x_plot_points = np.linspace(lb,ub,N).reshape(N,1) # [N,1]
+    ## evaluate the model given on plot points
+    Kern_plot_points = trig_kernel_matrix(x_plot_points,deg)
+    y_plot_points = np.dot(Kern_plot_points,c_target)
+    #
+    p_mdl, = plt.plot(x_plot_points,y_plot_points)
+    p_training_data, = plt.plot(X_train,Y_train,'ro')
+    plt.legend([p_mdl,p_training_data], ['function f(x) of degree {}'.format(deg),'data points'])
+    ##
+    plt.xlabel('x')
+    plt.ylabel('f(x)')
+    plt.title('Function of degree {}'.format(deg))
+
+def plot_fig4(monomials, train_errors, test_errors, N_train, N_test, target_nb_monomials,alg):
+    fig1 = plt.figure()
+    p_train, = plt.plot(monomials, train_errors,'-ob')
+    p_test, = plt.plot(monomials, test_errors,'-xr')
+    p_N_train = plt.axvline(x=N_train,color='g',linestyle='--')
+    p_nb_monomials = plt.axvline(x=target_nb_monomials,color='c',linestyle='--')
+    plt.legend([p_train,p_test,p_N_train,p_nb_monomials], ['Train error','Test error','# Training data','# of monomials of target function'])
+    #plt.ylim(0,100)
+    plt.xlabel('Number of monomials' )
+    plt.ylabel('Error/loss')
+    plt.title(f'Alg {alg}, No-overfitting on sythetic, # of training points = {N_train}, # of test points = {N_test} ')
