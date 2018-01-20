@@ -21,8 +21,6 @@ import scipy
 import scipy.io
 
 ##
-
-
 def get_chebyshev_nodes(lb,ub,N):
     k = np.arange(1,N+1)
     chebyshev_nodes = 0.5*(lb+ub)+0.5*(ub-lb)*np.cos((np.pi*2*k-1)/(2*N))
