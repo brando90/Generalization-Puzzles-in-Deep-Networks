@@ -514,6 +514,57 @@ def train_SGD_with_perturbations(arg, mdl,data, M,eta,nb_iter,A ,logging_freq ,d
         mdl.zero_grad()
     return loss_list,test_loss_list,grad_list,func_diff,erm_lamdas,nb_module_params,w_norms
 
+def train_SGD_with_perturbations_optim(arg, mdl,data,optimizer,loss, M,eta,nb_iter,A ,logging_freq ,dtype, perturbation_freq, frac_norm):
+    '''
+    '''
+    nb_module_params = len( list(mdl.parameters()) )
+    loss_list, grad_list =  [], [ [] for i in range(nb_module_params) ]
+    func_diff = []
+    erm_lamdas = []
+    test_loss_list = []
+    w_norms = [ [] for i in range(nb_module_params) ]
+    ##
+    N_train, _ = tuple( data.X_train.size() )
+    print(f'reg_lambda={reg_lambda}')
+    for i in range(0,nb_iter):
+        # Reset gradient
+        optimizer.zero_grad()
+        # Forward pass: compute predicted Y using operations on Variables
+        batch_xs, batch_ys = get_batch2(data.X_train,data.Y_train,M,dtype) # [M, D], [M, 1]
+        ## FORWARD PASS
+        y_pred = mdl(batch_xs)
+        batch_loss = loss(input=y_predfx,target=batch_ys)
+        ## Check vectors have same dimension
+        if vectors_dims_dont_match(batch_ys,y_pred):
+            raise ValueError('You vectors don\'t have matching dimensions. It will lead to errors.')
+        ## BACKARD PASS
+        batch_loss.backward() # Use autograd to compute the backward pass. Now w will have gradients
+        # Update parameters
+        optimizer.step()
+        ## train stats
+        if i % (nb_iter/10) == 0 or i == 0:
+            current_train_loss = (1/N_train)*(mdl.forward(data.X_train) - data.Y_train).pow(2).sum().data.numpy()
+            print('-------------')
+            print(f'i = {i}, current_train_loss = {current_train_loss}')
+            print(f'W.data = {W.data}')
+            print(f'W.grad.data = {W.grad.data}')
+        ## stats logger
+        if i % logging_freq == 0 or i == 0:
+            #indices.append(i)
+            c_pinv = W.data.numpy()
+            stats_logger(arg, mdl, data, eta,loss_list,test_loss_list,grad_list,func_diff,erm_lamdas, i,c_pinv, reg_lambda)
+            for index, W in enumerate(mdl.parameters()):
+                w_norms[index].append( W.data.norm(2) )
+        ## DO OP
+        if i % perturbation_freq == 0 and frac_norm != 0 and i != 0:
+            for W in mdl.parameters():
+                #pdb.set_trace()
+                Din,Dout = W.data.size()
+                std = frac_norm
+                noise = torch.normal(means=0.0*torch.ones(Din,Dout),std=std)
+                W.data.copy_(W.data + noise)
+    return loss_list,test_loss_list,grad_list,func_diff,erm_lamdas,nb_module_params,w_norms
+
 ###############################################################################
 ###############################################################################
 ###############################################################################

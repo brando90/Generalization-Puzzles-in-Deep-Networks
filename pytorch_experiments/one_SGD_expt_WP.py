@@ -94,7 +94,8 @@ def main(**kwargs):
     #MDL_2_TRAIN='WP'
     #MDL_2_TRAIN='SP'
     #MDL_2_TRAIN='PERT'
-    MDL_2_TRAIN='TRIG_PERT'
+    #MDL_2_TRAIN='TRIG_PERT'
+    MDL_2_TRAIN='logistic_regression_mdl'
     ##
     start_time = time.time()
     np.set_printoptions(suppress=True) #Whether or not suppress printing of small floating point values using scientific notation (default False).
@@ -105,48 +106,12 @@ def main(**kwargs):
     day = today_obj.day
     month = calendar.month_name[today_obj.month]
     ## Data file names
-    #truth_filename='data_gen_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_'
-    #data_filename='data_numpy_type_mdl=WP_D_layers_[30, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_30_N_test_32_lb_-1_ub_1_act_linear_nb_params_32_msg_.npz'
-    #truth_filename='data_gen_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_'
-    #data_filename='data_numpy_type_mdl=WP_D_layers_[3, 1, 1]_nb_layers3_bias[None, True, False]_mu0.0_std5.0_N_train_8_N_test_20_lb_-1_ub_1_act_poly_act_degree2_nb_params_5_msg_.npz'
-    #truth_filename=''
-    #data_filename='degree4_fit_2_sin_N_train_5_N_test_200.npz'
-    #truth_filename=''
-    #data_filename='sin_freq_sin_4_N_train_7_N_test_200_lb_train,ub_train_(0, 1)_lb_test,ub_test_(0.2, 0.8).npz'
-    #truth_filename=''
-    #data_filename='sin_freq_sin_4_N_train_11_N_test_100_lb_train,ub_train_(0, 1)_lb_test,ub_test_(0.2, 0.8).npz'
-    #truth_filename=''
-    #data_filename='poly_degree26_fit_2_sin_4_N_train_14_N_test_100_lb_train,ub_train_(0, 1)_lb_test,ub_test_(0.2, 0.8).npz'
-    ##
-    #truth_filename=''
-    #data_filename='f_target_fit_2_sin_2.3_N_train_12_N_test_100_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-0.5, 0.5).npz'
     truth_filename=''
-    #data_filename='f_target_fit_2_sin_2.3_N_train_8_N_test_200_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-0.5, 0.5)_cheby_nodes.npz'
-    #data_filename='f_target_fit_2_sin_2.3_N_train_8_N_test_200_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-1.0, 1.0)_cheby_nodes.npz'
-    #data_filename='f_target_fit_2_sin_2.3_N_train_100_N_test_200_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-1.0, 1.0)_cheby_nodes.npz'
-    #data_filename='f_target_fit_2_sin_2.3_N_train_50_N_test_200_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-1.0, 1.0)_cheby_nodes.npz'
-    #data_filename='f_target_fit_2_sin_2.3_N_train_9_N_test_200_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-1.0, 1.0)_cheby_nodes.npz'
-    #data_filename='f_target_fit_2_sin_2.3_N_train_10_N_test_200_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-1.0, 1.0)_cheby_nodes.npz'
-    #data_filename='f_target_fit_2_sin_2.3_N_train_14_N_test_200_lb_train,ub_train_(-1, 1)_lb_test,ub_test_(-1.0, 1.0)_cheby_nodes.npz'
     data_filename=''
+    ##
+    data_filename = 'classification_manual'
     ## Folder for experiment
-    #experiment_name = 'unit_test'
-    #experiment_name = 'linear_unit_test'
-    #experiment_name = 'nonlinear_VW_expt1'
-    #experiment_name = 'nonlinear_V2W_D3_expt1'
-    #experiment_name = 'unit_test_nonlinear_V2W_D3_expt1'
-    #experiment_name = 'unit_test_SP'
-    #experiment_name = 'unit_expt_test_SP_sin_4_N_train_7_N_test_100_eps_test_0p2_init_zero'
-    #experiment_name = 'unit_expt_test_SP_sin_4_N_train_7_N_test_100_eps_test_0p2_init_zero_reg__expt_type_SP_fig4_N_train_7_M_7'
-    #experiment_name = 'linear_VW_expt1'
-    #experiment_name = 'poly_degree26_step_size0p01'
-    #experiment_name = 'gd_N_train12'
-    #experiment_name = 'pert_expt'
-    #experiment_name = 'const_noise_pert_expt'
-    experiment_name = 'const_noise_pert_expt_fig13_reps1'
-    experiment_name = 'unit_const_noise_pert_expt_fig13_reps1'
-    experiment_name = 'unit_trig_pert_expt_fig13_reps1'
-    #experiment_name = 'unit_pert_expt'
+    experiment_name = 'unit_logistic_regression'
     ## Regularization
     #reg_type = 'tikhonov'
     #reg_type = 'VW'
@@ -215,13 +180,7 @@ def main(**kwargs):
         mdl_truth_dict = torch.load('./data/'+truth_filename)
         D_layers_truth=extract_list_filename(truth_filename)
     ## load data
-    if data_filename != '': #if data_filename is not empty
-        data = np.load( './data/{}'.format(data_filename) )
-        if 'lb' and 'ub' in data:
-            data_lb, data_ub = data['lb'],data['ub']
-        else:
-            data_lb, data_ub = 0,1 #TODO change!
-    else: # use hand made data set
+    if data_filename == 'regression_manual': # use hand made data set
         D0 = 1
         lb,ub = -1,1
         freq_sin = 4 #2.3
@@ -243,9 +202,31 @@ def main(**kwargs):
         #
         data = {'X_train':X_train,'Y_train':Y_train, 'X_test':X_test,'Y_test':Y_test}
         data_lb, data_ub = lb,ub
+    elif data_filename == 'classification_manual':
+        D0=1
+        lb,ub = -1,1
+        N_train = 10
+        N_test = 100
+        ## target function
+        freq_sin = 4
+        f_target = lambda x: np.sin(2*np.pi*freq_sin*x)
+        ## define x
+        X_train = np.linspace(lb,ub,N_train).reshape(N_train,D0)
+        X_test = np.linspace(lb,ub,N_test).reshape(N_test,D0)
+        ## get y's
+        Y_train = (f_target(X_train) > 0).astype(int).reshape(N_train,D0)
+        Y_test = (f_target(X_test) > 0).astype(int).reshape(N_test,D0)
+        ##
+        data = {'X_train':X_train,'Y_train':Y_train, 'X_test':X_test,'Y_test':Y_test}
+        data_lb, data_ub = lb,ub
+    else:
+        data = np.load( './data/{}'.format(data_filename) )
+        if 'lb' and 'ub' in data:
+            data_lb, data_ub = data['lb'],data['ub']
+        else:
+            data_lb, data_ub = 0,1 #TODO change!
     ##
     X_train, Y_train = data['X_train'], data['Y_train']
-    #X_train, Y_train = X_train[0:6], Y_train[0:6]
     X_test, Y_test = data['X_test'], data['Y_test']
     D_data = X_test.shape[1]
     ## get nb data points
@@ -417,8 +398,6 @@ def main(**kwargs):
         #pdb.set_trace()
         ## data to TORCH
         data = get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test,dtype)
-        ##1560.0
-        data = get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test,dtype)
         data.X_train, data.X_test = data.Kern_train, data.Kern_test
         ##
         legend_mdl = f'SGD solution y=W_L...W1phi(X), number of terms={nb_terms}, batch-size={M}, iterations={nb_iter}, step size={eta}'
@@ -426,6 +405,27 @@ def main(**kwargs):
         poly_feat = NamedDict(fit_transform=lambda x: trig_kernel_matrix(x,Degree_mdl) )
         #pdb.set_trace()
         nb_monomials = int(2*Degree_mdl+1)
+        ##
+        #frac_norm = 0.6
+        frac_norm = 0.0
+        logging_freq = 1
+        perturbation_freq = 4000
+    elif MDL_2_TRAIN=='logistic_regression_mdl':
+        ##
+        poly_feat = PolynomialFeatures(degree=Degree_mdl)
+        Kern_train, Kern_test = poly_feat.fit_transform(X_train), poly_feat.fit_transform(X_test) # N by D
+        ## get model
+        bias = False # cuz the kernel/feature vector has a 1 [..., 1]
+        mdl = torch.nn.Sequential(
+            torch.nn.Linear(input_dim, 1, bias=bias)
+        )
+        loss = torch.nn.CrossEntropyLoss(size_average=True)
+        optimizer = optim.SGD(mdl.parameters(), lr=eta, momentum=0.0)
+        ## data to TORCH
+        data = get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test,dtype)
+        data.X_train, data.X_test = data.Kern_train, data.Kern_test
+        ##
+        nb_monomials = int(scipy.misc.comb(D0+Degree_mdl,Degree_mdl))
         ##
         #frac_norm = 0.6
         frac_norm = 0.0
@@ -447,6 +447,8 @@ def main(**kwargs):
     keep_training=True
     if MDL_2_TRAIN=='PERT' or MDL_2_TRAIN=='TRIG_PERT':
         train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params,w_norms = train_SGD_with_perturbations(arg, mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv,reg_lambda,perturbation_freq,frac_norm)
+    elif MDL_2_TRAIN=='logistic_regression_mdl':
+        train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params,w_norms = train_SGD_with_perturbations_optim(arg, mdl_sgd,data,optimizer,loss, M,eta,nb_iter,A ,logging_freq ,dtype,perturbation_freq,frac_norm)
     else:
         train_loss_list_WP,test_loss_list_WP,grad_list_weight_sgd,func_diff_weight_sgd,erm_lamdas_WP,nb_module_params = train_SGD( arg,mdl_sgd,data, M,eta,nb_iter,A ,logging_freq ,dtype,c_pinv, reg_lambda)
     # while keep_training:
