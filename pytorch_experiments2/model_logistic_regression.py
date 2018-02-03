@@ -1,4 +1,4 @@
-
+import torch
 
 def get_logistic_regression_mdl(in_features,n_classes,bias):
     '''

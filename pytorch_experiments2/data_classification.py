@@ -1,6 +1,8 @@
 import numpy as np
 
-def get_quadratic_plane_classification_data_set(D0,lb,ub, N_train,N_test):
+import data_utils
+
+def get_quadratic_plane_classification_data_set(N_train,N_test,lb,ub,D0):
     '''
     data set with feature space phi(x)=[x0,x1,x2]=[1,x,x^2]
     separating hyperplane = [0,1,-2]
@@ -26,10 +28,16 @@ def get_quadratic_plane_classification_data_set(D0,lb,ub, N_train,N_test):
     Y_test = f_target(X_test)
     return X_train,X_test, Y_train,Y_test
 
-
-def get_2D_classification_data():
+def get_2D_classification_data(N_train,N_val,N_test,lb,ub,f_target):
     '''
     Returns x in R^2 classification data
     '''
-    # TODO
-    return
+    ''' make mesh grid'''
+    Xtr_grid,Ytr_grid = data_utils.generate_meshgrid(N_train,lb,ub)
+    Xv_grid,Yv_grid = data_utils.generate_meshgrid(N_val,lb,ub)
+    Xt_grid,Yt_grid = data_utils.generate_meshgrid(N_test,lb,ub)
+    ''' make data set with target function'''
+    Xtr,Ytr = data_utils.make_mesh_grid_to_data_set_with_f(f_target,Xtr_grid,Ytr_grid)
+    Xv,Yv = data_utils.make_mesh_grid_to_data_set_with_f(f_target,Xv_grid,Yv_grid)
+    Xt,Yt = data_utils.make_mesh_grid_to_data_set_with_f(f_target,Xt_grid,Yt_grid)
+    return Xtr,Ytr, Xv,Yv, Xt,Yt

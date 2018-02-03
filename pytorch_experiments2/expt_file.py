@@ -15,7 +15,7 @@ import calendar
 import os
 import sys
 
-current_directory = ps.getcwd() #The method getcwd() returns current working directory of a process.
+current_directory = os.getcwd() #The method getcwd() returns current working directory of a process.
 sys.path.append(current_directory)
 
 import torch
@@ -27,6 +27,10 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import scipy
 from sklearn.preprocessing import PolynomialFeatures
+
+import data_classification as data_class
+import model_logistic_regression as mdl_lreg
+import training_algorithms as tr_alg
 
 from maps import NamedDict
 
@@ -95,28 +99,46 @@ def main(**kwargs):
     ######## data set
     ''' Get data set'''
     if data_filename == 'classification_manual':
-        X_train,Y_train, X_test,Y_test = get_2D_classification_data()
+        N_train,N_val,N_test = 81,100,121
+        lb,ub = -1,1
+        f_target = lambda x: (np.dot( np.array([1,1]), x) > 0).astype(int)
+        Xtr,Xtr, Xv,Yv, Xt,Yt = data_class.get_2D_classification_data(N_train,N_val,N_test,lb,ub,f_target)
     else:
         data = np.load( './data/{}'.format(data_filename) )
         if 'lb' and 'ub' in data:
             data_lb, data_ub = data['lb'],data['ub']
         else:
             raise ValueError('Error, go to code and fix lb and ub')
-    N_train,N_test = X_train.shape[0], X_test.shape[0]
+    N_train,N_test = Xtr.shape[0], Xt.shape[0]
     print(f'N_train={N_train}, N_test={N_test}')
     ########
     ''' SGD params '''
-    M = 11
+    M = Xtr.shape[0]
     eta = 0.2
+    nb_iter = nb_iterations[0]
     A = 0.0
     momentum = 0
+    logging_freq = 1
+    perturb_freq = 0
+    perturb_magnitude = 0
     ''' MODEL '''
-    if MDL_2_TRAIN = 'logistic_regression_vec_mdl':
-            loss = torch.nn.CrossEntropyLoss(size_average=True) #TODO fix
-            optimizer = torch.optim.SGD(mdl_sgd.parameters(), lr=eta, momentum=0.98) #TODO fix
+    if MDL_2_TRAIN == 'logistic_regression_vec_mdl':
+        in_features=2
+        n_classes=2
+        bias=True
+        mdl = mdl_lreg.get_logistic_regression_mdl(in_features,n_classes,bias)
+        loss = torch.nn.CrossEntropyLoss(size_average=True)
+        optimizer = torch.optim.SGD(mdl.parameters(), lr=eta, momentum=0.98)
     else:
         raise ValueError(f'MDL_2_TRAIN={MDL_2_TRAIN}')
-    ''' '''
+    ''' TRAIN '''
+    if MDL_2_TRAIN=='logistic_regression_vec_mdl':
+        train_results = tr_alg.SGD_perturb(mdl, Xtr,Xtr,Xv,Yv,Xt,Yt,
+                            optimizer,loss, M,eta,nb_iter,A ,logging_freq,
+                            dtype_x,dtype_y,
+                            perturb_freq,perturb_magnitude)
+    else:
+        raise ValueError(f'MDL_2_TRAIN={MDL_2_TRAIN} not implemented')
     return
 
 if __name__ == '__main__':
