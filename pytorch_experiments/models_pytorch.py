@@ -6,7 +6,6 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 
 import numpy as np
-#from numpy import preprocessing.PolynomialFeatures as PolynomialFeatures
 import unittest
 
 import pdb

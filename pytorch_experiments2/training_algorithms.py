@@ -30,7 +30,7 @@ def get_batch2(X,Y,M,dtype):
     return batch_xs, batch_ys
 
 
-def SGD_perturb(mdl, Xtr,Ytr,Xv,Yv,Xt,Yt, optimizer,loss, M,eta,nb_iter,A ,logging_freq ,dtype_x,dtype_y, perturbfreq,perturb_magnitude):
+def SGD_perturb(mdl, Xtr,Ytr,Xv,Yv,Xt,Yt, optimizer,loss, M,eta,nb_iter,A ,logging_freq ,dtype_x,dtype_y, perturbfreq,perturb_magnitude, reg,reg_lambda):
     '''
     '''
     ''' wrap data in torch '''
@@ -57,7 +57,7 @@ def SGD_perturb(mdl, Xtr,Ytr,Xv,Yv,Xt,Yt, optimizer,loss, M,eta,nb_iter,A ,loggi
         batch_xs, batch_ys = get_batch2(Xtr,Ytr,M,(dtype_x,dtype_y)) # [M, D], [M, 1]
         ## FORWARD PASS
         y_pred = mdl(batch_xs)
-        batch_loss = loss(input=y_pred,target=batch_ys)
+        batch_loss = loss(input=y_pred,target=batch_ys) + reg_lambda*reg
         ## Check vectors have same dimension
         #if vectors_dims_dont_match(batch_ys,y_pred):
         #    raise ValueError('You vectors don\'t have matching dimensions. It will lead to errors.')

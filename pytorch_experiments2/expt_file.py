@@ -31,15 +31,30 @@ from sklearn.preprocessing import PolynomialFeatures
 import data_classification as data_class
 import model_logistic_regression as mdl_lreg
 import training_algorithms as tr_alg
+import dispatcher_code
 
 from maps import NamedDict
 
 import pdb
+from pdb import set_trace as st
 
 import unittest
 
-SLURM_ARRAY_TASK_ID = int(os.environ['SLURM_ARRAY_TASK_ID'])
-SLURM_JOBID = int(os.environ['SLURM_JOBID'])
+import argparse
+
+## python expt_file.py -satid 1 -sj 1
+parser = argparse.ArgumentParser(description='Run experiment')
+parser.add_argument('-satid', '--SLURM_ARRAY_TASK_ID',type=int,
+                    help='SLURM_ARRAY_TASK_ID',default=0)
+parser.add_argument('-sj', '--SLURM_JOBID',type=int,
+                    help='SLURM_JOBID',default=0)
+args = parser.parse_args()
+if args.SLURM_JOBID==0 or args.SLURM_ARRAY_TASK_ID==0:
+    SLURM_ARRAY_TASK_ID = int(os.environ['SLURM_ARRAY_TASK_ID'])
+    SLURM_JOBID = int(os.environ['SLURM_JOBID'])
+else:
+    SLURM_ARRAY_TASK_ID = int(args.SLURM_ARRAY_TASK_ID)
+    SLURM_JOBID = int(args.SLURM_JOBID)
 
 def main(**kwargs):
     ''' setup'''
@@ -53,7 +68,7 @@ def main(**kwargs):
     today_obj = date.today() # contains datetime.date(year, month, day); accessible via .day etc
     day = today_obj.day
     month = calendar.month_name[today_obj.month]
-    ''' organize parameters from dispatcher params '''
+    ''' Model to train setup param '''
     MDL_2_TRAIN='logistic_regression_vec_mdl'
     #MDL_2_TRAIN='logistic_regression_poly_mdl'
     ''' data file names '''
@@ -62,16 +77,14 @@ def main(**kwargs):
     data_filename = 'classification_manual'
     ''' Folder for experiment '''
     experiment_name = 'unit_logistic_regression'
-    ''' Experiment Type '''
-    expt_type='SP_fig4'
     ##########
     ''' Regularization '''
     ##
     #reg_type = 'VW'
     #reg_type = 'V2W_D3'
     reg_type = ''
+    reg = 0
     ''' Experiment LAMBDA experiment params '''
-    ## LAMBDAS
     # expt_type = 'LAMBDAS'
     # N_lambdas = 50
     # lb,ub = 0.01,10000
@@ -81,21 +94,52 @@ def main(**kwargs):
     # nb_iterations = [int(1.4*10**6)]
     # repetitions = len(lambdas)*[15]
     ''' Experiment ITERATIONS experiment params '''
-    ## ITERATIONS
     # expt_type = 'ITERATIONS'
     # N_iterations = 30
     # lb,ub = 1,60*10**4
     # lambdas = [0]
     # nb_iterations = [ int(i) for i in np.linspace(lb,ub,N_iterations)]
     # repetitions = len(nb_iterations)*[10]
-    ''' DEGREE/MONOMIALS '''
-    ## SP DEGREE/MONOMIALS
-    step_deg=1
-    lb_deg,ub_deg = 1,100
-    degrees = list(range(lb_deg,ub_deg+1,step_deg))
+    ''' Experiment DEGREE/MONOMIALS '''
+    # expt_type='DEGREES'
+    # step_deg=1
+    # lb_deg,ub_deg = 1,100
+    # degrees = list(range(lb_deg,ub_deg+1,step_deg))
+    # lambdas = [0]
+    # nb_iterations = [int(10000)]
+    # repetitions = len(degrees)*[1]
+    ''' Experiment Number of vector elements'''
+    expt_type='NB_VEC_ELEMENTS'
+    step=1
+    lb_vec,ub_vec = 1,100
+    nb_elements_vecs = list(range(lb_vec,ub_vec+1,step))
     lambdas = [0]
     nb_iterations = [int(10000)]
-    repetitions = len(degrees)*[1]
+    repetitions = len(nb_elements_vecs)*[1]
+    ''' Get setup for process to run '''
+    ps_params = NamedDict() # process params
+    if expt_type == 'LAMBDAS':
+        ps_params.degrees=[]
+        ps_params.reg_lambda = get_hp_to_run(hyper_params=lambdas,repetitions=repetitions,satid=SLURM_ARRAY_TASK_ID)
+        ps_params.nb_iter = nb_iterations[0]
+        ps_params.prefix_experiment = f'it_{nb_iter}/lambda_{reg_lambda}_reg_{reg_type}'
+    elif expt_type == 'ITERATIONS':
+        ps_params.degrees=[]
+        ps_params.reg_lambda = lambdas[0]
+        ps_params.nb_iter = get_hp_to_run(hyper_params=nb_iterations,repetitions=repetitions,satid=SLURM_ARRAY_TASK_ID)
+        ps_params.prefix_experiment = f'lambda_{reg_lambda}/it_{nb_iter}_reg_{reg_type}'
+    elif expt_type == 'DEGREES':
+        ps_params.reg_lambda = lambdas[0]
+        ps_params.degree_mdl = get_hp_to_run(hyper_params=degrees,repetitions=repetitions,satid=SLURM_ARRAY_TASK_ID)
+        ps_params.prefix_experiment = f'fig4_expt_lambda_{reg_lambda}_it_{nb_iter}/deg_{Degree_mdl}'
+    elif expt_type == 'NB_VEC_ELEMENTS':
+        ps_params.reg_lambda = lambdas[0]
+        ps_params.nb_elements_vec = dispatcher_code.get_hp_to_run(hyper_params=nb_elements_vecs,repetitions=repetitions,satid=SLURM_ARRAY_TASK_ID)
+        ps_params.nb_iter = nb_iterations[0]
+        ps_params.prefix_experiment = f'it_{ps_params.nb_iter}/lambda_{ps_params.reg_lambda}_reg_{reg_type}'
+    else:
+        raise ValueError(f'Experiment type expt_type={expt_type} does not exist, try a different expt_type.')
+    print(f'ps_params={ps_params}')
     ######## data set
     ''' Get data set'''
     if data_filename == 'classification_manual':
@@ -103,6 +147,7 @@ def main(**kwargs):
         lb,ub = -1,1
         f_target = lambda x: (np.dot( np.array([1,1]), x) > 0).astype(int)
         Xtr,Xtr, Xv,Yv, Xt,Yt = data_class.get_2D_classification_data(N_train,N_val,N_test,lb,ub,f_target)
+        st()
     else:
         data = np.load( './data/{}'.format(data_filename) )
         if 'lb' and 'ub' in data:
@@ -113,14 +158,13 @@ def main(**kwargs):
     print(f'N_train={N_train}, N_test={N_test}')
     ########
     ''' SGD params '''
+    optimizer = 'SGD_AND_PERTURB'
     M = Xtr.shape[0]
     eta = 0.2
     nb_iter = nb_iterations[0]
     A = 0.0
-    momentum = 0
+    ##
     logging_freq = 1
-    perturb_freq = 0
-    perturb_magnitude = 0
     ''' MODEL '''
     if MDL_2_TRAIN == 'logistic_regression_vec_mdl':
         in_features=2
@@ -128,15 +172,21 @@ def main(**kwargs):
         bias=True
         mdl = mdl_lreg.get_logistic_regression_mdl(in_features,n_classes,bias)
         loss = torch.nn.CrossEntropyLoss(size_average=True)
-        optimizer = torch.optim.SGD(mdl.parameters(), lr=eta, momentum=0.98)
     else:
         raise ValueError(f'MDL_2_TRAIN={MDL_2_TRAIN}')
     ''' TRAIN '''
-    if MDL_2_TRAIN=='logistic_regression_vec_mdl':
+    #train_args = NamedDict({})
+    if optimizer =='SGD_AND_PERTURB':
+        perturb_freq = 0
+        perturb_magnitude = 0
+        ##
+        momentum = 0
+        optim = torch.optim.SGD(mdl.parameters(), lr=eta, momentum=momentum)
         train_results = tr_alg.SGD_perturb(mdl, Xtr,Xtr,Xv,Yv,Xt,Yt,
-                            optimizer,loss, M,eta,nb_iter,A ,logging_freq,
+                            optim,loss, M,eta,nb_iter,A ,logging_freq,
                             dtype_x,dtype_y,
-                            perturb_freq,perturb_magnitude)
+                            perturb_freq,perturb_magnitude,
+                            reg=reg,reg_lambda=ps_params.reg_lambda)
     else:
         raise ValueError(f'MDL_2_TRAIN={MDL_2_TRAIN} not implemented')
     return

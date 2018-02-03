@@ -25,6 +25,12 @@ from sklearn.preprocessing import PolynomialFeatures
 
 #TODO make dtype, DTYPE accross all script
 
+def get_classification_error():
+    scores_pred = mdl(X)
+    max_vals, max_indices = torch.max(input=scores_pred,dim=1) # max over dimension=1 (i.e. max of each row)
+    accuracy = (max_indices == y_target).sum()/max_indices.size[0]
+    return accuracy
+
 def vectors_dims_dont_match(Y,Y_):
     '''
     Checks that vector Y and Y_ have the same dimensions. If they don't
@@ -93,11 +99,25 @@ def norm_params_WP(mdl,l=2):
 
 def get_data_struct(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test, dtype):
     X_train_pytorch = Variable(torch.FloatTensor(X_train).type(dtype), requires_grad=False)
+    pdb.set_trace()
     Y_train_pytorch = Variable(torch.FloatTensor(Y_train).type(dtype), requires_grad=False)
     X_test_pytorch = Variable(torch.FloatTensor(X_test).type(dtype), requires_grad=False)
     Y_test_pytorch = Variable(torch.FloatTensor(Y_test).type(dtype), requires_grad=False)
     Kern_train_pytorch = Variable(torch.FloatTensor(Kern_train).type(dtype), requires_grad=False)
     Kern_test_pytorch = Variable(torch.FloatTensor(Kern_test).type(dtype), requires_grad=False)
+    data_pytorch_struct = Maps( {'X_train':X_train_pytorch,'Y_train':Y_train_pytorch,
+        'X_test':X_test_pytorch,'Y_test':Y_test_pytorch,
+        'Kern_train':Kern_train_pytorch, 'Kern_test':Kern_test_pytorch}
+         )
+    return data_pytorch_struct
+
+def get_data_struct_classification(X_train,Y_train,X_test,Y_test,Kern_train,Kern_test, dtype_x,dtype_y):
+    X_train_pytorch = Variable(torch.FloatTensor(X_train).type(dtype_x), requires_grad=False)
+    Y_train_pytorch = Variable(torch.LongTensor(Y_train).type(dtype_y), requires_grad=False)
+    X_test_pytorch = Variable(torch.FloatTensor(X_test).type(dtype_x), requires_grad=False)
+    Y_test_pytorch = Variable(torch.LongTensor(Y_test).type(dtype_y), requires_grad=False)
+    Kern_train_pytorch = Variable(torch.FloatTensor(Kern_train).type(dtype_x), requires_grad=False)
+    Kern_test_pytorch = Variable(torch.FloatTensor(Kern_test).type(dtype_x), requires_grad=False)
     data_pytorch_struct = Maps( {'X_train':X_train_pytorch,'Y_train':Y_train_pytorch,
         'X_test':X_test_pytorch,'Y_test':Y_test_pytorch,
         'Kern_train':Kern_train_pytorch, 'Kern_test':Kern_test_pytorch}
@@ -175,10 +195,12 @@ def index_batch(X,batch_indices,dtype):
     '''
     returns the batch indexed/sliced batch
     '''
-    if len(X.shape) == 1: # i.e. dimension (M,) just a vector
-        batch_xs = torch.FloatTensor(X[batch_indices]).type(dtype)
-    else:
-        batch_xs = torch.FloatTensor(X[batch_indices,:]).type(dtype)
+    # if len(X.size()) == 1: # i.e. dimension (M,) just a vector
+    #     batch_xs = X[batch_indices].type(dtype)
+    # else:
+    #     batch_xs = X[batch_indices,:].type(dtype)
+    #batch_xs = torch.index_select(input=X,dim=0,index=batch_indices) #torch.index_select(input, dim, index, out=None)
+    batch_xs = torch.index_select(X,0,batch_indices)
     return batch_xs
 
 def get_batch2(X,Y,M,dtype):
@@ -186,13 +208,14 @@ def get_batch2(X,Y,M,dtype):
     get batch for pytorch model
     '''
     # TODO fix and make it nicer, there is pytorch forum question
-    X,Y = X.data.numpy(), Y.data.numpy()
+    dtype_x,dtype_y = (dtype[0],dtype[1]) if len(dtype) == 2 else (dtype,dtype)
+    #X,Y = X.data.numpy(), Y.data.numpy()
     N = len(Y)
     valid_indices = np.array( range(N) )
-    batch_indices = np.random.choice(valid_indices,size=M,replace=False)
-    batch_xs = index_batch(X,batch_indices,dtype)
-    batch_ys = index_batch(Y,batch_indices,dtype)
-    return Variable(batch_xs, requires_grad=False), Variable(batch_ys, requires_grad=False)
+    batch_indices = torch.LongTensor(np.random.choice(valid_indices,size=M,replace=False))
+    batch_xs = index_batch(X,batch_indices,dtype_x)
+    batch_ys = index_batch(Y,batch_indices,dtype_y)
+    return batch_xs, batch_ys
 
 def is_NaN(value):
     '''
@@ -312,6 +335,45 @@ def stats_logger(arg, mdl, data, eta,loss_list,test_loss_list,grad_list,func_dif
     ##
     #func_diff_stand_weight( (1/N_test)*(y_test_sgd - y_test_pinv).pow(2).sum().data.numpy() )
     ## collect param stats
+    for index, W in enumerate(mdl.parameters()):
+        delta = eta*W.grad.data
+        grad_list[index].append( W.grad.data.norm(2) )
+        if is_NaN(W.grad.data.norm(2)) or is_NaN(current_train_loss):
+            print('\n----------------- ERROR HAPPENED \a')
+            print('reg_lambda', reg_lambda)
+            print('error happened at: i = {} current_train_loss: {}, grad_norm: {},\n ----------------- \a'.format(i,current_train_loss,W.grad.data.norm(2)))
+            #sys.exit()
+            #pdb.set_trace()
+            raise ValueError('Nan Detected')
+
+def stats_logger_optim_loss(arg, mdl, loss, data, eta, loss_list,test_loss_list, grad_list, func_diff,erm_lamdas, train_accs,test_accs, i,c_pinv, reg_lambda):
+    N_train,_ = tuple(data.X_train.size())
+    N_test,_ = tuple(data.X_test.size())
+    ## log: TRAIN ERROR
+    y_pred_train = mdl(data.X_train)
+    current_train_loss = loss(input=y_pred_train,target=data.Y_train).data.numpy()
+    loss_list.append( float(current_train_loss) )
+    ##
+    y_pred_test = mdl(data.X_test)
+    current_test_loss = loss(input=y_pred_test,target=data.Y_test).data.numpy()
+    test_loss_list.append( float(current_test_loss) )
+    ## log: GEN DIFF/FUNC DIFF
+    gen_diff = -1
+    func_diff.append( float(gen_diff) )
+    ## ERM + regularization
+    #erm_reg = get_ERM_lambda(arg,mdl,reg_lambda,X=data.X_train,Y=data.Y_train,l=2).data.numpy()
+    reg = get_regularizer_term(arg, mdl,reg_lambda,X=data.X_train,Y=data.Y_train,l=2)
+    erm_reg = loss(input=y_pred_test,target=data.Y_test) + reg_lambda*reg
+    erm_lamdas.append( float(erm_reg.data.numpy()) )
+    ##
+    max_vals, max_indices = torch.max(mdl(data.X_train),1)
+    train_acc = (max_indices == data.Y_train).sum().data.numpy()/max_indices.size()[0]
+    train_accs.append(train_acc)
+    ##
+    max_vals, max_indices = torch.max(mdl(data.X_test),1)
+    test_acc = (max_indices == data.Y_test).sum().data.numpy()/max_indices.size()[0]
+    test_accs.append(test_acc)
+    ##
     for index, W in enumerate(mdl.parameters()):
         delta = eta*W.grad.data
         grad_list[index].append( W.grad.data.norm(2) )
@@ -514,45 +576,51 @@ def train_SGD_with_perturbations(arg, mdl,data, M,eta,nb_iter,A ,logging_freq ,d
         mdl.zero_grad()
     return loss_list,test_loss_list,grad_list,func_diff,erm_lamdas,nb_module_params,w_norms
 
-def train_SGD_with_perturbations_optim(arg, mdl,data,optimizer,loss, M,eta,nb_iter,A ,logging_freq ,dtype, perturbation_freq, frac_norm):
+def train_SGD_with_perturbations_optim(arg, mdl,data,optimizer,loss, M,eta,nb_iter,A ,logging_freq ,dtype_x,dtype_y, perturbation_freq, frac_norm):
     '''
     '''
     nb_module_params = len( list(mdl.parameters()) )
     loss_list, grad_list =  [], [ [] for i in range(nb_module_params) ]
-    func_diff = []
     erm_lamdas = []
     test_loss_list = []
+    func_diff = []
     w_norms = [ [] for i in range(nb_module_params) ]
+    train_accs,test_accs = [],[]
     ##
     N_train, _ = tuple( data.X_train.size() )
-    print(f'reg_lambda={reg_lambda}')
     for i in range(0,nb_iter):
         # Reset gradient
         optimizer.zero_grad()
         # Forward pass: compute predicted Y using operations on Variables
-        batch_xs, batch_ys = get_batch2(data.X_train,data.Y_train,M,dtype) # [M, D], [M, 1]
+        batch_xs, batch_ys = get_batch2(data.X_train,data.Y_train,M,(dtype_x,dtype_y)) # [M, D], [M, 1]
         ## FORWARD PASS
         y_pred = mdl(batch_xs)
-        batch_loss = loss(input=y_predfx,target=batch_ys)
+        batch_loss = loss(input=y_pred,target=batch_ys)
         ## Check vectors have same dimension
-        if vectors_dims_dont_match(batch_ys,y_pred):
-            raise ValueError('You vectors don\'t have matching dimensions. It will lead to errors.')
+        #if vectors_dims_dont_match(batch_ys,y_pred):
+        #    raise ValueError('You vectors don\'t have matching dimensions. It will lead to errors.')
         ## BACKARD PASS
         batch_loss.backward() # Use autograd to compute the backward pass. Now w will have gradients
         # Update parameters
         optimizer.step()
         ## train stats
         if i % (nb_iter/10) == 0 or i == 0:
-            current_train_loss = (1/N_train)*(mdl.forward(data.X_train) - data.Y_train).pow(2).sum().data.numpy()
+            current_train_loss = loss(input=mdl(data.X_train),target=data.Y_train).data.numpy()
+            max_vals, max_indices = torch.max(mdl(data.X_train),1)
+            train_acc = (max_indices == data.Y_train).sum().data.numpy()/max_indices.size()[0]
+            current_test_loss = loss(input=mdl(data.X_test),target=data.Y_test).data.numpy()
+            max_vals, max_indices = torch.max(mdl(data.X_test),1)
+            test_acc = (max_indices == data.Y_test).sum().data.numpy()/max_indices.size()[0]
             print('-------------')
             print(f'i = {i}, current_train_loss = {current_train_loss}')
-            print(f'W.data = {W.data}')
-            print(f'W.grad.data = {W.grad.data}')
+            print(f'i = {i}, train_acc = {train_acc}')
+            print(f'i = {i}, current_test_loss = {current_test_loss}')
+            print(f'i = {i}, test_acc = {test_acc}')
         ## stats logger
         if i % logging_freq == 0 or i == 0:
-            #indices.append(i)
-            c_pinv = W.data.numpy()
-            stats_logger(arg, mdl, data, eta,loss_list,test_loss_list,grad_list,func_diff,erm_lamdas, i,c_pinv, reg_lambda)
+            c_pinv = mdl[0].weight
+            reg_lambda = -1
+            stats_logger_optim_loss(arg, mdl, loss, data, eta,loss_list,test_loss_list,grad_list,func_diff,erm_lamdas, train_accs,test_accs, i,c_pinv, reg_lambda)
             for index, W in enumerate(mdl.parameters()):
                 w_norms[index].append( W.data.norm(2) )
         ## DO OP
@@ -563,7 +631,7 @@ def train_SGD_with_perturbations_optim(arg, mdl,data,optimizer,loss, M,eta,nb_it
                 std = frac_norm
                 noise = torch.normal(means=0.0*torch.ones(Din,Dout),std=std)
                 W.data.copy_(W.data + noise)
-    return loss_list,test_loss_list,grad_list,func_diff,erm_lamdas,nb_module_params,w_norms
+    return loss_list,test_loss_list,grad_list,func_diff,erm_lamdas,nb_module_params,w_norms, train_accs,test_accs
 
 ###############################################################################
 ###############################################################################

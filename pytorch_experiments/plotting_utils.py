@@ -64,7 +64,7 @@ def plot_iter_vs_all_errors(iterations_axis, train_loss_list,test_loss_list,erm_
     plt.legend([p_erm_reg_WP,p_train_WP,p_test_WP],[p_erm_reg_WP_legend,p_train_WP_legend,p_test_WP_legend])
     plt.title(f'Loss+Regularization,Train,Test vs Iterations, reg_lambda = {reg_lambda}')
 
-def plot_iter_vs_train_test_errors(iterations_axis, train_loss_list,test_loss_list, title_comments,legend_comments):
+def plot_iter_vs_train_test_errors(iterations_axis, train_loss_list,test_loss_list, title_comments,legend_comments,error_type):
     reg_lambda=0
     # PLOT ERM+train+test
     fig1 = plt.figure()
@@ -73,8 +73,8 @@ def plot_iter_vs_train_test_errors(iterations_axis, train_loss_list,test_loss_li
     plt.xlabel('iterations' )
     plt.ylabel('Error/loss')
     ## legends
-    p_train_WP_legend = f'Train error, {legend_comments}'
-    p_test_WP_legend = f'Test error, {legend_comments}'
+    p_train_WP_legend = f'Train {error_type}, {legend_comments}'
+    p_test_WP_legend = f'Test {error_type}, {legend_comments}'
     ##
     plt.legend([p_train_WP,p_test_WP],[p_train_WP_legend,p_test_WP_legend])
     plt.title(f'Train,Test vs Iterations, {title_comments}')

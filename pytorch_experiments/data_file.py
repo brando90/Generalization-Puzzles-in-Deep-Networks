@@ -47,7 +47,7 @@ def count_params(mdl):
 def generate_meshgrid(N,start_val,end_val):
     sqrtN = int(np.ceil(N**0.5)) #N = sqrtN*sqrtN
     if N**0.5 != int(N**0.5): # check if N_sqrt has a fractional part
-        print('WARNING: your data size is not a perfect squre. Could lead data set to be of an unexpected size.')
+        print('WARNING: your data size is not a perfect square. Could lead data set to be of an unexpected size.')
     N = sqrtN*sqrtN
     x_range = np.linspace(start_val, end_val, sqrtN)
     y_range = np.linspace(start_val, end_val, sqrtN)
