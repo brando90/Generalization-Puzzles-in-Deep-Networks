@@ -32,6 +32,7 @@ import data_classification as data_class
 import model_logistic_regression as mdl_lreg
 import training_algorithms as tr_alg
 import dispatcher_code
+import hyper_kernel_methods as hkm
 
 from maps import NamedDict
 
@@ -145,9 +146,13 @@ def main(**kwargs):
     if data_filename == 'classification_manual':
         N_train,N_val,N_test = 81,100,121
         lb,ub = -1,1
-        f_target = lambda x: (np.dot( np.array([1,1]), x) > 0).astype(int)
-        Xtr,Xtr, Xv,Yv, Xt,Yt = data_class.get_2D_classification_data(N_train,N_val,N_test,lb,ub,f_target)
-        st()
+        f_target = lambda x: np.int64( (np.dot( np.array([1,1]), x) > 0).astype(int) )
+        Xtr,Ytr, Xv,Yv, Xt,Yt = data_class.get_2D_classification_data(N_train,N_val,N_test,lb,ub,f_target)
+    elif data_filename == 'regression_manual':
+        N_train,N_val,N_test = 81,100,121
+        lb,ub = -1,1
+        f_target = lambda x: np.sin(2*np.pi*4*x)
+        Xtr,Ytr, Xv,Yv, Xt,Yt = data_class.get_2D_regression_data(N_train,N_val,N_test,lb,ub,f_target)
     else:
         data = np.load( './data/{}'.format(data_filename) )
         if 'lb' and 'ub' in data:
@@ -172,6 +177,10 @@ def main(**kwargs):
         bias=True
         mdl = mdl_lreg.get_logistic_regression_mdl(in_features,n_classes,bias)
         loss = torch.nn.CrossEntropyLoss(size_average=True)
+    elif MDL_2_TRAIN = 'HBF':
+        bias=True
+        mdl = hkm.OneLayerHBF(D_in,D_out, centers=Xtr,std, train_centers,train_std)
+        loss = torch.nn.MSELoss(size_average=True)
     else:
         raise ValueError(f'MDL_2_TRAIN={MDL_2_TRAIN}')
     ''' TRAIN '''
@@ -182,7 +191,7 @@ def main(**kwargs):
         ##
         momentum = 0
         optim = torch.optim.SGD(mdl.parameters(), lr=eta, momentum=momentum)
-        train_results = tr_alg.SGD_perturb(mdl, Xtr,Xtr,Xv,Yv,Xt,Yt,
+        train_results = tr_alg.SGD_perturb(mdl, Xtr,Ytr,Xv,Yv,Xt,Yt,
                             optim,loss, M,eta,nb_iter,A ,logging_freq,
                             dtype_x,dtype_y,
                             perturb_freq,perturb_magnitude,

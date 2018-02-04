@@ -2,6 +2,8 @@ import numpy as np
 
 import data_utils
 
+from pdb import set_trace as st
+
 def get_quadratic_plane_classification_data_set(N_train,N_test,lb,ub,D0):
     '''
     data set with feature space phi(x)=[x0,x1,x2]=[1,x,x^2]
@@ -40,4 +42,6 @@ def get_2D_classification_data(N_train,N_val,N_test,lb,ub,f_target):
     Xtr,Ytr = data_utils.make_mesh_grid_to_data_set_with_f(f_target,Xtr_grid,Ytr_grid)
     Xv,Yv = data_utils.make_mesh_grid_to_data_set_with_f(f_target,Xv_grid,Yv_grid)
     Xt,Yt = data_utils.make_mesh_grid_to_data_set_with_f(f_target,Xt_grid,Yt_grid)
+    ''' Convert to ints '''
+    Ytr,Yv,Yt = np.int64(Ytr).reshape(Ytr.shape[0]) ,np.int64(Yv).reshape(Yv.shape[0]), np.int64(Yt).reshape(Yt.shape[0])
     return Xtr,Ytr, Xv,Yv, Xt,Yt
