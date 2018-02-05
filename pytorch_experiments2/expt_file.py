@@ -28,6 +28,7 @@ import matplotlib.pyplot as plt
 import scipy
 from sklearn.preprocessing import PolynomialFeatures
 
+import data_regression as data_reg
 import data_classification as data_class
 import model_logistic_regression as mdl_lreg
 import training_algorithms as tr_alg
@@ -72,10 +73,12 @@ def main(**kwargs):
     ''' Model to train setup param '''
     MDL_2_TRAIN='logistic_regression_vec_mdl'
     #MDL_2_TRAIN='logistic_regression_poly_mdl'
+    MDL_2_TRAIN = 'HBF'
     ''' data file names '''
     truth_filename=''
     data_filename=''
     data_filename = 'classification_manual'
+    data_filename = 'regression_manual'
     ''' Folder for experiment '''
     experiment_name = 'unit_logistic_regression'
     ##########
@@ -152,7 +155,7 @@ def main(**kwargs):
         N_train,N_val,N_test = 81,100,121
         lb,ub = -1,1
         f_target = lambda x: np.sin(2*np.pi*4*x)
-        Xtr,Ytr, Xv,Yv, Xt,Yt = data_class.get_2D_regression_data(N_train,N_val,N_test,lb,ub,f_target)
+        Xtr,Ytr, Xv,Yv, Xt,Yt = data_reg.get_2D_regression_data(N_train,N_val,N_test,lb,ub,f_target)
     else:
         data = np.load( './data/{}'.format(data_filename) )
         if 'lb' and 'ub' in data:
@@ -177,10 +180,17 @@ def main(**kwargs):
         bias=True
         mdl = mdl_lreg.get_logistic_regression_mdl(in_features,n_classes,bias)
         loss = torch.nn.CrossEntropyLoss(size_average=True)
-    elif MDL_2_TRAIN = 'HBF':
+    elif MDL_2_TRAIN =='HBF':
         bias=True
-        mdl = hkm.OneLayerHBF(D_in,D_out, centers=Xtr,std, train_centers,train_std)
+        D_in, D_out = Xtr.shape[1], Ytr.shape[1]
+        ## RBF
+        std = Xtr[1] - Xtr[0]/ 4 # less than half the avg distance #TODO use np.mean
+        mdl = hkm.OneLayerHBF(D_in,D_out, centers=Xtr,std=std, train_centers=False,train_std=False)
         loss = torch.nn.MSELoss(size_average=True)
+        ##
+        loss_collector = lambda mdl,X,Y: tr_alg.calc_loss(mdl,loss,X,Y)
+        acc_collector = tr_alg.calc_accuracy
+        stats_collector = tr_alg.StatsCollector()
     else:
         raise ValueError(f'MDL_2_TRAIN={MDL_2_TRAIN}')
     ''' TRAIN '''
@@ -195,7 +205,8 @@ def main(**kwargs):
                             optim,loss, M,eta,nb_iter,A ,logging_freq,
                             dtype_x,dtype_y,
                             perturb_freq,perturb_magnitude,
-                            reg=reg,reg_lambda=ps_params.reg_lambda)
+                            reg=reg,reg_lambda=ps_params.reg_lambda,
+                            stats_collector=stats_collector)
     else:
         raise ValueError(f'MDL_2_TRAIN={MDL_2_TRAIN} not implemented')
     return

@@ -2,23 +2,30 @@ import numpy as np
 from sklearn.metrics.pairwise import euclidean_distances
 from scipy.optimize import minimize
 
+import torch
+
 import pdb
+from pdb import set_trace as st
 
 class OneLayerHBF(torch.nn.Module):
     def __init__(self,D_in,D_out, centers,std, train_centers,train_std, bias=False):
         """
         """
         super(OneLayerHBF, self).__init__()
-        self.linear1 = torch.nn.Linear(D_in, D_out, bias=bias)
-        self.std = Variable(centers,requires_grad=train_std)
-        self.t = Variable(centers,requires_grad=train_centers)
-        self.linear_layers = torch.nn.ModuleList([self.t,self.std])
+        self.C = torch.nn.Linear(D_in, D_out, bias=bias)
+        ## TODO add variables or not but make sure they dont train according to flags
+        #self.std = Variable(centers,std=train_std)
+        #self.t = Variable(centers,requires_grad=train_centers)
+        self.std = centers
+        self.t = centers
+        #self.linear_layers = torch.nn.ModuleList([self.t,self.std])
 
     def forward(self, x):
         """
         """
         beta = (1.0/self.std)**2
-        y_pred = torch.exp(-beta*euclidean_distances_pytorch(x=x,W=self.t)) # -beta*|| x - t ||^2
+        Kx = torch.exp(-beta*euclidean_distances_pytorch(x=x,W=self.t)) # -beta*|| x - t ||^2
+        y_pred = self.C(Kx)
         return y_pred
 
 def euclidean_distances_pytorch(x,W):
@@ -30,8 +37,9 @@ def euclidean_distances_pytorch(x,W):
     return:
     Delta_tilde = (M x D^(l))
     '''
-    WW = torch.sum(np.multiply(W,W), axis=0, keepdims=True) #(1 x D^(l))= sum( (D^(l-1) x D^(l)), 0 )
-    XX = torch.sum(np.multiply(x,x), axis=1, keepdims=True) #(M x 1) = sum( (M x D^(l-1)), 1 )
+    st()
+    WW = torch.sum(W*W, axis=0, keepdims=True) #(1 x D^(l))= sum( (D^(l-1) x D^(l)), 0 )
+    XX = torch.sum(x*x, axis=1, keepdims=True) #(M x 1) = sum( (M x D^(l-1)), 1 )
     # || x - w ||^2 = (||x||^2 + ||w||^2) - 2<x,w>
     #Delta_tilde = 2.0*np.dot(x,W) - (WW + XX)
     xW = x.mm(W) #(M x D^(l)) = (M x D^(l-1)) * (D^(l-1) x D^(l))

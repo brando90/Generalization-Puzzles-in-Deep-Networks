@@ -31,18 +31,16 @@ def get_batch2(X,Y,M,dtype):
     batch_ys = index_batch(Y,batch_indices,dtype_y)
     return batch_xs, batch_ys
 
-def SGD_perturb(mdl, Xtr,Ytr,Xv,Yv,Xt,Yt, optimizer,loss, M,eta,nb_iter,A ,logging_freq ,dtype_x,dtype_y, perturbfreq,perturb_magnitude, reg,reg_lambda):
+def SGD_perturb(mdl, Xtr,Ytr,Xv,Yv,Xt,Yt, optimizer,loss, M,eta,nb_iter,A ,logging_freq ,dtype_x,dtype_y, perturbfreq,perturb_magnitude, reg,reg_lambda, stats_collector):
     '''
     '''
     classification_task = type(Ytr[0]) == np.int64
     ''' wrap data in torch '''
     Xtr,Xv,Xt = data_utils.data2FloatTensor(Xtr,Xv,Xt)
-    if classification_task:
-        Ytr,Yv,Yt = data_utils.data2LongTensor(Ytr,Yv,Yt)
-    else:
-        Ytr,Yv,Yt = data_utils.data2FloatTensor(Ytr,Yv,Yt)
+    Ytr,Yv,Yt = data_utils.data2LongTensor(Ytr,Yv,Yt) if classification_task else data_utils.data2FloatTensor(Ytr,Yv,Yt)
+    ## wrap in pytorch Variables
     Xtr,Ytr,Xv,Yv,Xt,Yt = data_utils.data2torch_variable(Xtr,Ytr,Xv,Yv,Xt,Yt)
-    ##
+    ''' Start training '''
     N_train, _ = tuple( Xtr.size() )
     for i in range(0,nb_iter):
         optimizer.zero_grad()
@@ -69,11 +67,9 @@ def SGD_perturb(mdl, Xtr,Ytr,Xv,Yv,Xt,Yt, optimizer,loss, M,eta,nb_iter,A ,loggi
             print(f'i = {i}, test_acc = {test_acc}')
         ## stats logger
         if i % logging_freq == 0 or i == 0:
-            c_pinv = mdl[0].weight
-            reg_lambda = -1
-            stats_logger_optim_loss(arg, mdl, loss, data, eta,loss_list,test_loss_list,grad_list,func_diff,erm_lamdas, train_accs,test_accs, i,c_pinv, reg_lambda)
-            for index, W in enumerate(mdl.parameters()):
-                w_norms[index].append( W.data.norm(2) )
+
+            # for index, W in enumerate(mdl.parameters()):
+            #     w_norms[index].append( W.data.norm(2) )
         ## DO OP
         if i % perturbfreq == 0 and pert_magnitude != 0 and i != 0:
             for W in mdl.parameters():
@@ -82,23 +78,53 @@ def SGD_perturb(mdl, Xtr,Ytr,Xv,Yv,Xt,Yt, optimizer,loss, M,eta,nb_iter,A ,loggi
                 std = pert_magnitude
                 noise = torch.normal(means=0.0*torch.ones(Din,Dout),std=std)
                 W.data.copy_(W.data + noise)
-    return loss_list,test_loss_list,grad_list,func_diff,erm_lamdas,nb_module_params,w_norms, train_accs,test_accs
+    return
+
+def calc_loss(mdl,loss,X,Y):
+    loss_val = loss(input=mdl(X),target=Y).data.numpy()
+    if is_NaN(current_train_loss):
+        raise ValueError(f'Nan Detected error happened at: i={i} loss_val={loss_val}, loss={loss}')
+    return loss_val
 
 def calc_accuracy(mdl,X,Y):
+    # TODO: why can't we call .data.numpy() for train_acc as a whole?
     max_vals, max_indices = torch.max(mdl(X),1)
-    #train_acc = (max_indices == Ytr).sum().data.numpy()/max_indices.size()[0]
     train_acc = (max_indices == Y).sum().data.numpy()/max_indices.size()[0]
+    if is_NaN(current_train_loss):
+        loss = 'accuracy'
+        raise ValueError(f'Nan Detected error happened at: i={i} loss_val={loss_val}, loss={loss}')
     return train_acc
 
 class StatsCollector:
-    def __init__(self):
+    def __init__(self, loss,accuracy):
+        ''' functions that encode reward/loss '''
+        self.loss = loss
+        self.acc = accuracy
+        ''' loss & errors lists'''
+        self.train_losses, self.val_losses, self.test_losses = [], [], []
+        self.train_errors, self.val_errors, self.test_errors = [], [], []
+        ''' stats related to parameters'''
         nb_param_groups = len( list(mdl.parameters()) )
-        grad_list = [ [] for i in range(nb_param_groups) ]
-        w_norms = [ [] for i in range(nb_module_params) ]
-        test_loss_list,train_loss_list = [],[]
-        train_accs,test_accs = [],[]
+        self.grads = [ [] for i in range(nb_param_groups) ]
+        self.w_norms = [ [] for i in range(nb_module_params) ]
 
-    def collect_stats(self,loss,accuracy):
+    def collect_stats(self, i, mdl, Xtr,Ytr,Xv,Yv,Xt,Yt):
+        ''' log train losses '''
+        self.train_losses.append( float(self.loss(mdl,Xtr,Ytr)) )
+        self.val_losses.append( float(self.loss(mdl,Xv,Yv)) )
+        self.test_losses.append( float(self.loss(md,Xt,Yt)) )
+        ''' log train errors '''
+        self.train_errors.append( float(self.acc(mdl,Xtr,Ytr)) )
+        self.val_losses.append( float(self.acc(mdl,Xv,Yv)) )
+        self.test_losses.append( float(self.add(mdl,Xt,Yt)) )
+        ''' log parameter stats'''
+        for index, W in enumerate(mdl.parameters()):
+            delta = eta*W.grad.data
+            grad_list[index].append( W.grad.data.norm(2) )
+            if is_NaN(W.grad.data.norm(2)):
+                raise ValueError(f'Nan Detected error happened at: i={i} loss_val={loss_val}, loss={loss}')
+
+    def collect_stats(self,loss,accuracy, mdl, Xtr,Ytr,Xv,Yv,Xt,Yt):
         N_train,_ = tuple(Xtr.size())
         N_test,_ = tuple(Xt.size())
         ## log: TRAIN ERROR
