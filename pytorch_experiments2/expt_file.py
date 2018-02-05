@@ -30,10 +30,13 @@ from sklearn.preprocessing import PolynomialFeatures
 
 import data_regression as data_reg
 import data_classification as data_class
+
 import model_logistic_regression as mdl_lreg
 import training_algorithms as tr_alg
-import dispatcher_code
 import hyper_kernel_methods as hkm
+
+import dispatcher_code
+import plot_utils
 
 from maps import NamedDict
 
@@ -118,7 +121,7 @@ def main(**kwargs):
     lb_vec,ub_vec = 1,100
     nb_elements_vecs = list(range(lb_vec,ub_vec+1,step))
     lambdas = [0]
-    nb_iterations = [int(10000)]
+    nb_iterations = [int(100)]
     repetitions = len(nb_elements_vecs)*[1]
     ''' Get setup for process to run '''
     ps_params = NamedDict() # process params
@@ -168,7 +171,7 @@ def main(**kwargs):
     ''' SGD params '''
     optimizer = 'SGD_AND_PERTURB'
     M = Xtr.shape[0]
-    eta = 0.2
+    eta = 0.01
     nb_iter = nb_iterations[0]
     A = 0.0
     ##
@@ -180,36 +183,49 @@ def main(**kwargs):
         bias=True
         mdl = mdl_lreg.get_logistic_regression_mdl(in_features,n_classes,bias)
         loss = torch.nn.CrossEntropyLoss(size_average=True)
-    elif MDL_2_TRAIN =='HBF':
-        bias=True
-        D_in, D_out = Xtr.shape[1], Ytr.shape[1]
-        ## RBF
-        std = Xtr[1] - Xtr[0]/ 4 # less than half the avg distance #TODO use np.mean
-        mdl = hkm.OneLayerHBF(D_in,D_out, centers=Xtr,std=std, train_centers=False,train_std=False)
-        loss = torch.nn.MSELoss(size_average=True)
         ##
         loss_collector = lambda mdl,X,Y: tr_alg.calc_loss(mdl,loss,X,Y)
         acc_collector = tr_alg.calc_accuracy
         stats_collector = tr_alg.StatsCollector()
+    elif MDL_2_TRAIN =='HBF':
+        bias=True
+        D_in, D_out = Xtr.shape[0], Ytr.shape[1]
+        ## RBF
+        std = Xtr[1] - Xtr[0]/ 4 # less than half the avg distance #TODO use np.mean
+        mdl = hkm.OneLayerHBF(D_in,D_out, centers=Xtr,std=std, train_centers=False,train_std=False)
+        loss = torch.nn.MSELoss(size_average=True)
+        ''' stats collector '''
+        loss_collector = lambda mdl,X,Y: tr_alg.calc_loss(mdl,loss,X,Y)
+        acc_collector = loss_collector
+        ''' dynamic stats collector '''
+        c_pinv = torch.FloatTensor(hkm.get_rbf_coefficients(X=Xtr,centers=Xtr,Y=Ytr,std=std))
+        def diff_GD_vs_PINV(storer, i, mdl, Xtr,Ytr,Xv,Yv,Xt,Yt):
+            diff_GD_pinv = (mdl.C.weight.data.t() - c_pinv).norm(2)
+            storer.append(diff_GD_pinv)
+        dynamic_stats = NamedDict(diff_GD_vs_PINV=([],diff_GD_vs_PINV))
+        ##
+        stats_collector = tr_alg.StatsCollector(mdl, loss_collector,acc_collector,dynamic_stats=dynamic_stats)
     else:
         raise ValueError(f'MDL_2_TRAIN={MDL_2_TRAIN}')
     ''' TRAIN '''
     #train_args = NamedDict({})
     if optimizer =='SGD_AND_PERTURB':
-        perturb_freq = 0
+        perturb_freq = 1000
         perturb_magnitude = 0
         ##
         momentum = 0
         optim = torch.optim.SGD(mdl.parameters(), lr=eta, momentum=momentum)
-        train_results = tr_alg.SGD_perturb(mdl, Xtr,Ytr,Xv,Yv,Xt,Yt,
-                            optim,loss, M,eta,nb_iter,A ,logging_freq,
-                            dtype_x,dtype_y,
-                            perturb_freq,perturb_magnitude,
-                            reg=reg,reg_lambda=ps_params.reg_lambda,
-                            stats_collector=stats_collector)
+        tr_alg.SGD_perturb(mdl, Xtr,Ytr,Xv,Yv,Xt,Yt, optim,loss, M,eta,nb_iter,A ,logging_freq,
+            dtype_x,dtype_y, perturb_freq,perturb_magnitude,
+            reg=reg,reg_lambda=ps_params.reg_lambda,
+            stats_collector=stats_collector)
     else:
         raise ValueError(f'MDL_2_TRAIN={MDL_2_TRAIN} not implemented')
-    return
+    ''' '''
+    if MDL_2_TRAIN=='HBF':
+        iterations = range(0,nb_iter)
+        plot_utils.plot_loss_errors(iterations,stats_collector)
+        plt.show()
 
 if __name__ == '__main__':
     start_time = time.time()

@@ -5,6 +5,27 @@ import data_utils
 
 from pdb import set_trace as st
 
+def vectors_dims_dont_match(Y,Y_):
+    '''
+    Checks that vector Y and Y_ have the same dimensions. If they don't
+    then there might be an error that could be caused due to wrong broadcasting.
+    '''
+    DY = tuple( Y.size() )
+    DY_ = tuple( Y_.size() )
+    if len(DY) != len(DY_):
+        return True
+    for i in range(len(DY)):
+        if DY[i] != DY_[i]:
+            return True
+    return False
+
+def is_NaN(value):
+    '''
+    Checks is value is problematic by checking if the value:
+    is not finite, is infinite or is already NaN
+    '''
+    return not np.isfinite(value) or np.isinf(value) or np.isnan(value)
+
 def index_batch(X,batch_indices,dtype):
     '''
     returns the batch indexed/sliced batch
@@ -48,55 +69,46 @@ def SGD_perturb(mdl, Xtr,Ytr,Xv,Yv,Xt,Yt, optimizer,loss, M,eta,nb_iter,A ,loggi
         ''' FORWARD PASS '''
         y_pred = mdl(batch_xs)
         if vectors_dims_dont_match(batch_ys,y_pred) and not classification_task: ## Check vectors have same dimension
-           raise ValueError('You vectors don\'t have matching dimensions. It will lead to errors.')
+            raise ValueError('You vectors don\'t have matching dimensions. It will lead to errors: \n batch_ys={batch_ys.size()},y_pred={y_pred.size()}')
         batch_loss = loss(input=y_pred,target=batch_ys) + reg_lambda*reg
         batch_loss.backward() # Use autograd to compute the backward pass. Now w will have gradients
         """ Update parameters """
         optimizer.step()
-        ## train stats
+        ''' Collect training stats '''
         if i % (nb_iter/10) == 0 or i == 0 and False:
-            current_train_loss = loss(input=mdl(Xtr),target=Ytr).data.numpy()
-            train_acc = (max_indices == Ytr).sum().data.numpy()/max_indices.size()[0]
-            current_test_loss = loss(input=mdl(Xt),target=Yt).data.numpy()
-            max_vals, max_indices = torch.max(mdl(Xt),1)
-            test_acc = (max_indices == Yt).sum().data.numpy()/max_indices.size()[0]
-            print('-------------')
-            print(f'i = {i}, current_train_loss = {current_train_loss}')
-            print(f'i = {i}, train_acc = {train_acc}')
-            print(f'i = {i}, current_test_loss = {current_test_loss}')
-            print(f'i = {i}, test_acc = {test_acc}')
+            current_train_loss,train_acc = stats_collector.loss(mdl,Xtr,Ytr),stats_collector.acc(mdl,Xtr,Ytr)
+            current_test_loss,test_acc = stats_collector.loss(mdl,Xt,Yt),stats_collector.acc(mdl,Xt,Yt)
+            print('\n-------------')
+            print(f'i={i}, current_train_loss={current_train_loss} \ni={i}, train_acc = {train_acc}')
+            print(f'i={i}, current_test_loss={current_test_loss}, \ni={i}, test_acc = {test_acc}')
         ## stats logger
         if i % logging_freq == 0 or i == 0:
-
-            # for index, W in enumerate(mdl.parameters()):
-            #     w_norms[index].append( W.data.norm(2) )
+            stats_collector.collect_stats(i, mdl, Xtr,Ytr,Xv,Yv,Xt,Yt)
         ## DO OP
-        if i % perturbfreq == 0 and pert_magnitude != 0 and i != 0:
+        if i%perturbfreq == 0 and perturb_magnitude != 0 and i != 0:
             for W in mdl.parameters():
-                #pdb.set_trace()
                 Din,Dout = W.data.size()
-                std = pert_magnitude
+                std = perturb_magnitude
                 noise = torch.normal(means=0.0*torch.ones(Din,Dout),std=std)
                 W.data.copy_(W.data + noise)
-    return
 
 def calc_loss(mdl,loss,X,Y):
     loss_val = loss(input=mdl(X),target=Y).data.numpy()
-    if is_NaN(current_train_loss):
-        raise ValueError(f'Nan Detected error happened at: i={i} loss_val={loss_val}, loss={loss}')
+    if is_NaN(loss_val):
+        raise ValueError(f'Nan Detected error happened at: loss_val={loss_val}, loss={loss}')
     return loss_val
 
 def calc_accuracy(mdl,X,Y):
     # TODO: why can't we call .data.numpy() for train_acc as a whole?
     max_vals, max_indices = torch.max(mdl(X),1)
     train_acc = (max_indices == Y).sum().data.numpy()/max_indices.size()[0]
-    if is_NaN(current_train_loss):
+    if is_NaN(train_acc):
         loss = 'accuracy'
         raise ValueError(f'Nan Detected error happened at: i={i} loss_val={loss_val}, loss={loss}')
     return train_acc
 
 class StatsCollector:
-    def __init__(self, loss,accuracy):
+    def __init__(self, mdl,loss,accuracy, dynamic_stats={}):
         ''' functions that encode reward/loss '''
         self.loss = loss
         self.acc = accuracy
@@ -106,59 +118,30 @@ class StatsCollector:
         ''' stats related to parameters'''
         nb_param_groups = len( list(mdl.parameters()) )
         self.grads = [ [] for i in range(nb_param_groups) ]
-        self.w_norms = [ [] for i in range(nb_module_params) ]
+        self.w_norms = [ [] for i in range(nb_param_groups) ]
+        ''' '''
+        self.dynamic_stats_storer = {}
+        self.dynamic_stats_updater = {}
+        for name,(storer,updater) in dynamic_stats.items():
+            self.dynamic_stats_storer[name] = storer
+            self.dynamic_stats_updater[name] = updater
 
     def collect_stats(self, i, mdl, Xtr,Ytr,Xv,Yv,Xt,Yt):
         ''' log train losses '''
         self.train_losses.append( float(self.loss(mdl,Xtr,Ytr)) )
         self.val_losses.append( float(self.loss(mdl,Xv,Yv)) )
-        self.test_losses.append( float(self.loss(md,Xt,Yt)) )
+        self.test_losses.append( float(self.loss(mdl,Xt,Yt)) )
         ''' log train errors '''
         self.train_errors.append( float(self.acc(mdl,Xtr,Ytr)) )
-        self.val_losses.append( float(self.acc(mdl,Xv,Yv)) )
-        self.test_losses.append( float(self.add(mdl,Xt,Yt)) )
+        self.val_errors.append( float(self.acc(mdl,Xv,Yv)) )
+        self.test_errors.append( float(self.acc(mdl,Xt,Yt)) )
         ''' log parameter stats'''
         for index, W in enumerate(mdl.parameters()):
-            delta = eta*W.grad.data
-            grad_list[index].append( W.grad.data.norm(2) )
+            self.grads[index].append( W.grad.data.norm(2) )
             if is_NaN(W.grad.data.norm(2)):
                 raise ValueError(f'Nan Detected error happened at: i={i} loss_val={loss_val}, loss={loss}')
-
-    def collect_stats(self,loss,accuracy, mdl, Xtr,Ytr,Xv,Yv,Xt,Yt):
-        N_train,_ = tuple(Xtr.size())
-        N_test,_ = tuple(Xt.size())
-        ## log: TRAIN ERROR
-        y_pred_train = mdl(Xtr)
-        current_train_loss = loss(input=y_pred_train,target=Ytr).data.numpy()
-        loss_list.append( float(current_train_loss) )
-        ##
-        y_pred_test = mdl(Xt)
-        current_test_loss = loss(input=y_pred_test,target=Yt).data.numpy()
-        test_loss_list.append( float(current_test_loss) )
-        ## log: GEN DIFF/FUNC DIFF
-        gen_diff = -1
-        func_diff.append( float(gen_diff) )
-        ## ERM + regularization
-        #erm_reg = get_ERM_lambda(arg,mdl,reg_lambda,X=Xtr,Y=Ytr,l=2).data.numpy()
-        reg = get_regularizer_term(arg, mdl,reg_lambda,X=Xtr,Y=Ytr,l=2)
-        erm_reg = loss(input=y_pred_test,target=Yt) + reg_lambda*reg
-        erm_lamdas.append( float(erm_reg.data.numpy()) )
-        ##
-        max_vals, max_indices = torch.max(mdl(Xtr),1)
-        train_acc = (max_indices == Ytr).sum().data.numpy()/max_indices.size()[0]
-        train_accs.append(train_acc)
-        ##
-        max_vals, max_indices = torch.max(mdl(Xt),1)
-        test_acc = (max_indices == Yt).sum().data.numpy()/max_indices.size()[0]
-        test_accs.append(test_acc)
-        ##
-        for index, W in enumerate(mdl.parameters()):
-            delta = eta*W.grad.data
-            grad_list[index].append( W.grad.data.norm(2) )
-            if is_NaN(W.grad.data.norm(2)) or is_NaN(current_train_loss):
-                print('\n----------------- ERROR HAPPENED \a')
-                print('reg_lambda', reg_lambda)
-                print('error happened at: i = {} current_train_loss: {}, grad_norm: {},\n ----------------- \a'.format(i,current_train_loss,W.grad.data.norm(2)))
-                #sys.exit()
-                #pdb.set_trace()
-                raise ValueError('Nan Detected')
+        ''' Update the  '''
+        for name in self.dynamic_stats_updater:
+            storer = self.dynamic_stats_storer[name]
+            updater = self.dynamic_stats_updater[name]
+            updater(storer,i, mdl, Xtr,Ytr,Xv,Yv,Xt,Yt)
