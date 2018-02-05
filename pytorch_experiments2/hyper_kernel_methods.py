@@ -24,6 +24,8 @@ class OneLayerHBF(torch.nn.Module):
     def forward(self, x):
         """
         """
+        if type(x) == torch.FloatTensor:
+            x = Variable(x,requires_grad=False)
         beta = (1.0/self.std)**2
         Kx = torch.exp(-beta*euclidean_distances_pytorch(x=x,W=self.t)) # -beta*|| x - t ||^2
         y_pred = self.C(Kx)

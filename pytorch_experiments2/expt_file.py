@@ -225,6 +225,7 @@ def main(**kwargs):
     if MDL_2_TRAIN=='HBF':
         iterations = range(0,nb_iter)
         plot_utils.plot_loss_errors(iterations,stats_collector)
+        plot_utils.visualize_reconstruction(mdl,Xtr,Ytr,dataset_name='Train')
         plt.show()
 
 if __name__ == '__main__':
