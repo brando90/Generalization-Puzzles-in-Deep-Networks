@@ -96,11 +96,11 @@ def visualize_1D_reconstruction(lb,ub,N_denseness, f_mdl,f_target=None,f_pinv=No
     if f_pinv is not None:
         pinv_line, = plt.plot(x_axis,f_pinv(x_axis.reshape(N_denseness,1)),label='Minimum norm solution')
         handles_4_legend.append(pinv_line)
-    # ''' plot data set points X and Y also'''
-    # if X is not None and Y is not None and legend_data_set is not None:
-    #     N,_ = X.shape
-    #     data_pts = plt.scatter(X.reshape((N,)),Y,label=legend_data_set,c='r')
-    #     handles_4_legend.append(data_pts)
+    ''' plot data set points X and Y also'''
+    if X is not None and Y is not None and legend_data_set is not None:
+        N,_ = X.shape
+        data_pts = plt.scatter(X.reshape((N,)),Y,label=legend_data_set,c='r')
+        handles_4_legend.append(data_pts)
     ''' add auxiliarly info '''
     plt.legend(handles=handles_4_legend)
     plt.title('Reconstructions')
