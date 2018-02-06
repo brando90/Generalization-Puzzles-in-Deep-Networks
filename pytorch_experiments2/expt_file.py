@@ -49,17 +49,17 @@ import argparse
 
 ## python expt_file.py -satid 1 -sj 1
 parser = argparse.ArgumentParser(description='Run experiment')
-parser.add_argument('-satid', '--SLURM_ARRAY_TASK_ID',type=int,
-                    help='SLURM_ARRAY_TASK_ID',default=0)
-parser.add_argument('-sj', '--SLURM_JOBID',type=int,
-                    help='SLURM_JOBID',default=0)
+parser.add_argument('-satid', '--satid',type=int,
+                    help='satid',default=0)
+parser.add_argument('-sj', '--sj',type=int,
+                    help='sj',default=0)
 args = parser.parse_args()
-if args.SLURM_JOBID==0 or args.SLURM_ARRAY_TASK_ID==0:
-    SLURM_ARRAY_TASK_ID = int(os.environ['SLURM_ARRAY_TASK_ID'])
-    SLURM_JOBID = int(os.environ['SLURM_JOBID'])
+if args.sj==0 or args.satid==0:
+    satid = int(os.environ['SLURM_ARRAY_TASK_ID'])
+    sj = int(os.environ['SLURM_JOBID'])
 else:
-    SLURM_ARRAY_TASK_ID = int(args.SLURM_ARRAY_TASK_ID)
-    SLURM_JOBID = int(args.SLURM_JOBID)
+    satid = int(args.satid)
+    sj = int(args.sj)
 
 def main(**kwargs):
     ''' setup'''
@@ -121,27 +121,27 @@ def main(**kwargs):
     lb_vec,ub_vec = 1,100
     nb_elements_vecs = list(range(lb_vec,ub_vec+1,step))
     lambdas = [0]
-    nb_iterations = [int(100)]
+    nb_iterations = [int(2000)]
     repetitions = len(nb_elements_vecs)*[1]
     ''' Get setup for process to run '''
     ps_params = NamedDict() # process params
     if expt_type == 'LAMBDAS':
         ps_params.degrees=[]
-        ps_params.reg_lambda = get_hp_to_run(hyper_params=lambdas,repetitions=repetitions,satid=SLURM_ARRAY_TASK_ID)
+        ps_params.reg_lambda = get_hp_to_run(hyper_params=lambdas,repetitions=repetitions,satid=satid)
         ps_params.nb_iter = nb_iterations[0]
         ps_params.prefix_experiment = f'it_{nb_iter}/lambda_{reg_lambda}_reg_{reg_type}'
     elif expt_type == 'ITERATIONS':
         ps_params.degrees=[]
         ps_params.reg_lambda = lambdas[0]
-        ps_params.nb_iter = get_hp_to_run(hyper_params=nb_iterations,repetitions=repetitions,satid=SLURM_ARRAY_TASK_ID)
+        ps_params.nb_iter = get_hp_to_run(hyper_params=nb_iterations,repetitions=repetitions,satid=satid)
         ps_params.prefix_experiment = f'lambda_{reg_lambda}/it_{nb_iter}_reg_{reg_type}'
     elif expt_type == 'DEGREES':
         ps_params.reg_lambda = lambdas[0]
-        ps_params.degree_mdl = get_hp_to_run(hyper_params=degrees,repetitions=repetitions,satid=SLURM_ARRAY_TASK_ID)
+        ps_params.degree_mdl = get_hp_to_run(hyper_params=degrees,repetitions=repetitions,satid=satid)
         ps_params.prefix_experiment = f'fig4_expt_lambda_{reg_lambda}_it_{nb_iter}/deg_{Degree_mdl}'
     elif expt_type == 'NB_VEC_ELEMENTS':
         ps_params.reg_lambda = lambdas[0]
-        ps_params.nb_elements_vec = dispatcher_code.get_hp_to_run(hyper_params=nb_elements_vecs,repetitions=repetitions,satid=SLURM_ARRAY_TASK_ID)
+        ps_params.nb_elements_vec = dispatcher_code.get_hp_to_run(hyper_params=nb_elements_vecs,repetitions=repetitions,satid=satid)
         ps_params.nb_iter = nb_iterations[0]
         ps_params.prefix_experiment = f'it_{ps_params.nb_iter}/lambda_{ps_params.reg_lambda}_reg_{reg_type}'
     else:
@@ -155,7 +155,7 @@ def main(**kwargs):
         f_target = lambda x: np.int64( (np.dot( np.array([1,1]), x) > 0).astype(int) )
         Xtr,Ytr, Xv,Yv, Xt,Yt = data_class.get_2D_classification_data(N_train,N_val,N_test,lb,ub,f_target)
     elif data_filename == 'regression_manual':
-        N_train,N_val,N_test = 81,100,121
+        N_train,N_val,N_test = 16,100,121
         lb,ub = -1,1
         f_target = lambda x: np.sin(2*np.pi*4*x)
         Xtr,Ytr, Xv,Yv, Xt,Yt = data_reg.get_2D_regression_data(N_train,N_val,N_test,lb,ub,f_target)
@@ -170,8 +170,9 @@ def main(**kwargs):
     ########
     ''' SGD params '''
     optimizer = 'SGD_AND_PERTURB'
-    M = Xtr.shape[0]
-    eta = 0.01
+    M = int(Xtr.shape[0]/20)
+    M = int(2)
+    eta = 0.1
     nb_iter = nb_iterations[0]
     A = 0.0
     ##
@@ -191,7 +192,7 @@ def main(**kwargs):
         bias=True
         D_in, D_out = Xtr.shape[0], Ytr.shape[1]
         ## RBF
-        std = Xtr[1] - Xtr[0]/ 4 # less than half the avg distance #TODO use np.mean
+        std = (Xtr[1] - Xtr[0])/ 4 # less than half the avg distance #TODO use np.mean
         mdl = hkm.OneLayerHBF(D_in,D_out, centers=Xtr,std=std, train_centers=False,train_std=False)
         loss = torch.nn.MSELoss(size_average=True)
         ''' stats collector '''
@@ -221,11 +222,20 @@ def main(**kwargs):
             stats_collector=stats_collector)
     else:
         raise ValueError(f'MDL_2_TRAIN={MDL_2_TRAIN} not implemented')
-    ''' '''
+    ''' Plots and Print statements'''
+    print('\n----')
+    print(f'some SGD params: batch_size={M}, eta={eta}, nb_iterations={nb_iter}')
     if MDL_2_TRAIN=='HBF':
+        ''' print statements R/HBF'''
+        print(f'distance_btw_data_points={Xtr[1] - Xtr[0]}')
+        print(f'std={std}')
+        print(f'less than half the average distance?={(std < (Xtr[1] - Xtr[0])/2)}')
+        ''' plots for R/HBF'''
         iterations = range(0,nb_iter)
         plot_utils.plot_loss_errors(iterations,stats_collector)
-        plot_utils.visualize_reconstruction(mdl,Xtr,Ytr,dataset_name='Train')
+        plot_utils.visualize_reconstruction(mdl,Xtr,Ytr,dataset_name='Train',f_target=f_target)
+        plot_utils.plot_sgd_vs_pinv_soln(iterations,stats_collector)
+        plot_utils.print_gd_vs_pinv_params(mdl,c_pinv)
         plt.show()
 
 if __name__ == '__main__':

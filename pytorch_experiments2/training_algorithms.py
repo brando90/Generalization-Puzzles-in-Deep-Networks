@@ -108,7 +108,16 @@ def calc_accuracy(mdl,X,Y):
     return train_acc
 
 class StatsCollector:
+    '''
+    Class that has all the stats collected during training.
+    '''
     def __init__(self, mdl,loss,accuracy, dynamic_stats={}):
+        '''
+            dynamic_stats = an array of tuples (STORER,UPDATER) where the storer
+            is a data structure (like a list) that gets updated according to updater.
+            For the moment updater receives storer and all the parameters from collect_stats
+            (like the mdl, the data sets, the iteration number)
+        '''
         ''' functions that encode reward/loss '''
         self.loss = loss
         self.acc = accuracy
