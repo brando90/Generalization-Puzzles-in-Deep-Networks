@@ -6,6 +6,12 @@ from pdb import set_trace as st
 
 ####
 
+def l2_np_loss(y,y_):
+    N,_ = y.shape
+    return (1.0/N)*np.linalg.norm(y-y_,2)**2
+
+####
+
 def data2FloatTensor(Xtr,Xv,Xt):
     Xtr,Xv,Xt = torch.FloatTensor(Xtr),torch.FloatTensor(Xv),torch.FloatTensor(Xt)
     return Xtr,Xv,Xt

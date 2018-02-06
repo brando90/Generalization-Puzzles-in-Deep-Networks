@@ -28,6 +28,7 @@ import matplotlib.pyplot as plt
 import scipy
 from sklearn.preprocessing import PolynomialFeatures
 
+import data_utils
 import data_regression as data_reg
 import data_classification as data_class
 
@@ -235,10 +236,10 @@ def main(**kwargs):
         f_mdl = lambda x: mdl( Variable(torch.FloatTensor(x),requires_grad=False) ).data.numpy()
         f_pinv = lambda x: hkm.f_rbf(x,c=c_pinv,centers=Xtr,std=std)
         f_target = f_target
-        iterations = range(0,nb_iter)
+        iterations = np.array(range(0,nb_iter))
         N_denseness = 1000
         ## plots
-        plot_utils.plot_loss_errors(iterations,stats_collector)
+        plot_utils.plot_loss_errors(iterations,stats_collector,test_error_pinv=data_utils.l2_np_loss(f_pinv(Xt),Yt))
         plot_utils.visualize_1D_reconstruction(lb,ub,N_denseness, f_mdl,f_target=f_target,f_pinv=f_pinv,X=Xtr,Y=Ytr,legend_data_set='Training data points')
         # plot_utils.plot_sgd_vs_pinv_distance_during_training(iterations,stats_collector)
         # plot_utils.print_gd_vs_pinv_params(mdl,c_pinv)
