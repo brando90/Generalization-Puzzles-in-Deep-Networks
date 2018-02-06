@@ -121,7 +121,7 @@ def main(**kwargs):
     lb_vec,ub_vec = 1,100
     nb_elements_vecs = list(range(lb_vec,ub_vec+1,step))
     lambdas = [0]
-    nb_iterations = [int(2000)]
+    nb_iterations = [int(1000)]
     repetitions = len(nb_elements_vecs)*[1]
     ''' Get setup for process to run '''
     ps_params = NamedDict() # process params
@@ -199,9 +199,10 @@ def main(**kwargs):
         loss_collector = lambda mdl,X,Y: tr_alg.calc_loss(mdl,loss,X,Y)
         acc_collector = loss_collector
         ''' dynamic stats collector '''
-        c_pinv = torch.FloatTensor(hkm.get_rbf_coefficients(X=Xtr,centers=Xtr,Y=Ytr,std=std))
+        c_pinv = hkm.get_rbf_coefficients(X=Xtr,centers=Xtr,Y=Ytr,std=std)
         def diff_GD_vs_PINV(storer, i, mdl, Xtr,Ytr,Xv,Yv,Xt,Yt):
-            diff_GD_pinv = (mdl.C.weight.data.t() - c_pinv).norm(2)
+            c_pinv_torch = torch.FloatTensor( c_pinv )
+            diff_GD_pinv = (mdl.C.weight.data.t() - c_pinv_torch).norm(2)
             storer.append(diff_GD_pinv)
         dynamic_stats = NamedDict(diff_GD_vs_PINV=([],diff_GD_vs_PINV))
         ##
@@ -231,11 +232,16 @@ def main(**kwargs):
         print(f'std={std}')
         print(f'less than half the average distance?={(std < (Xtr[1] - Xtr[0])/2)}')
         ''' plots for R/HBF'''
+        f_mdl = lambda x: mdl( Variable(torch.FloatTensor(x),requires_grad=False) ).data.numpy()
+        f_pinv = lambda x: hkm.f_rbf(x,c=c_pinv,centers=Xtr,std=std)
+        f_target = f_target
         iterations = range(0,nb_iter)
+        N_denseness = 1000
+        ## plots
         plot_utils.plot_loss_errors(iterations,stats_collector)
-        plot_utils.visualize_reconstruction(mdl,Xtr,Ytr,dataset_name='Train',f_target=f_target)
-        plot_utils.plot_sgd_vs_pinv_soln(iterations,stats_collector)
-        plot_utils.print_gd_vs_pinv_params(mdl,c_pinv)
+        plot_utils.visualize_1D_reconstruction(lb,ub,N_denseness, f_mdl,f_target=f_target,f_pinv=f_pinv,X=Xtr,Y=Ytr,legend_data_set='Training data points')
+        # plot_utils.plot_sgd_vs_pinv_distance_during_training(iterations,stats_collector)
+        # plot_utils.print_gd_vs_pinv_params(mdl,c_pinv)
         plt.show()
 
 if __name__ == '__main__':

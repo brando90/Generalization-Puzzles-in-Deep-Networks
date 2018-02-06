@@ -47,6 +47,14 @@ def euclidean_distances_pytorch(x,W):
     Delta_tilde = (WW + XX) - 2.0*xW #(M x D^(l)) = (M x D^(l)) + ( (M x 1) + (1 x D^(l)) )
     return Delta_tilde
 
+##
+
+def f_rbf(x,c,centers,std):
+    beta = np.power(1.0/std,2)
+    Kern = np.exp( -beta*euclidean_distances_manual(x=x,W=centers.T) )
+    Kern_c =  np.dot(Kern,c)
+    return Kern_c
+
 def get_rbf_coefficients(X,centers,Y,std):
     '''
     X = input, Dx1
