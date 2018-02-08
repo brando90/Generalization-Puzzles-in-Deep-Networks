@@ -77,12 +77,12 @@ def main(**kwargs):
     ''' Model to train setup param '''
     MDL_2_TRAIN='logistic_regression_vec_mdl'
     #MDL_2_TRAIN='logistic_regression_poly_mdl'
-    MDL_2_TRAIN = 'HBF'
+    #MDL_2_TRAIN = 'HBF'
     ''' data file names '''
     truth_filename=''
     data_filename=''
     data_filename = 'classification_manual'
-    data_filename = 'regression_manual'
+    #data_filename = 'regression_manual'
     ''' Folder for experiment '''
     experiment_name = 'unit_logistic_regression'
     ##########
@@ -122,7 +122,7 @@ def main(**kwargs):
     lb_vec,ub_vec = 1,100
     nb_elements_vecs = list(range(lb_vec,ub_vec+1,step))
     lambdas = [0]
-    nb_iterations = [int(1000)]
+    nb_iterations = [int(100)]
     repetitions = len(nb_elements_vecs)*[1]
     ''' Get setup for process to run '''
     ps_params = NamedDict() # process params
@@ -153,7 +153,8 @@ def main(**kwargs):
     if data_filename == 'classification_manual':
         N_train,N_val,N_test = 81,100,121
         lb,ub = -1,1
-        f_target = lambda x: np.int64( (np.dot( np.array([1,1]), x) > 0).astype(int) )
+        w_target = np.array([1,1])
+        f_target = lambda x: np.int64( (np.dot( w_target, x) > 0).astype(int) )
         Xtr,Ytr, Xv,Yv, Xt,Yt = data_class.get_2D_classification_data(N_train,N_val,N_test,lb,ub,f_target)
     elif data_filename == 'regression_manual':
         N_train,N_val,N_test = 16,100,121
@@ -179,22 +180,23 @@ def main(**kwargs):
     ##
     logging_freq = 1
     ''' MODEL '''
-    if MDL_2_TRAIN == 'logistic_regression_vec_mdl':
+    if MDL_2_TRAIN=='logistic_regression_vec_mdl':
         in_features=2
         n_classes=2
         bias=True
         mdl = mdl_lreg.get_logistic_regression_mdl(in_features,n_classes,bias)
         loss = torch.nn.CrossEntropyLoss(size_average=True)
-        ##
+        ''' stats collector '''
         loss_collector = lambda mdl,X,Y: tr_alg.calc_loss(mdl,loss,X,Y)
         acc_collector = tr_alg.calc_accuracy
-        stats_collector = tr_alg.StatsCollector()
-    elif MDL_2_TRAIN =='HBF':
+        stats_collector = tr_alg.StatsCollector(mdl, loss_collector,acc_collector)
+    elif MDL_2_TRAIN=='HBF':
         bias=True
         D_in, D_out = Xtr.shape[0], Ytr.shape[1]
         ## RBF
-        std = (Xtr[1] - Xtr[0])/ 4 # less than half the avg distance #TODO use np.mean
-        mdl = hkm.OneLayerHBF(D_in,D_out, centers=Xtr,std=std, train_centers=False,train_std=False)
+        std = (Xtr[1] - Xtr[0])/ 0.8 # less than half the avg distance #TODO use np.mean
+        centers=Xtr
+        mdl = hkm.OneLayerHBF(D_in,D_out, centers=centers,std=std, train_centers=False,train_std=False)
         loss = torch.nn.MSELoss(size_average=True)
         ''' stats collector '''
         loss_collector = lambda mdl,X,Y: tr_alg.calc_loss(mdl,loss,X,Y)
@@ -232,17 +234,30 @@ def main(**kwargs):
         print(f'distance_btw_data_points={Xtr[1] - Xtr[0]}')
         print(f'std={std}')
         print(f'less than half the average distance?={(std < (Xtr[1] - Xtr[0])/2)}')
+        beta = (1.0/std)**2
+        rank = np.linalg.matrix_rank( np.exp( -beta*hkm.euclidean_distances_manual(x=Xtr,W=centers.T) ) )
+        print(f'rank of Kernel matrix = Rank(K) = {rank}')
         ''' plots for R/HBF'''
         f_mdl = lambda x: mdl( Variable(torch.FloatTensor(x),requires_grad=False) ).data.numpy()
         f_pinv = lambda x: hkm.f_rbf(x,c=c_pinv,centers=Xtr,std=std)
         f_target = f_target
         iterations = np.array(range(0,nb_iter))
         N_denseness = 1000
+        legend_hyper_params=f'N_train={Xtr.shape[0]},N_test={Xt.shape[0]},batch-size={M},learning step={eta},# iterations = {nb_iter} momentum={momentum}, Model=Gaussian, # centers={centers.shape[0]}, std={std[0]}'
+        ''' PLOT '''
         ## plots
-        plot_utils.plot_loss_errors(iterations,stats_collector,test_error_pinv=data_utils.l2_np_loss(f_pinv(Xt),Yt))
+        plot_utils.plot_loss_errors(iterations,stats_collector,test_error_pinv=data_utils.l2_np_loss(f_pinv(Xt),Yt),legend_hyper_params=legend_hyper_params)
         plot_utils.visualize_1D_reconstruction(lb,ub,N_denseness, f_mdl,f_target=f_target,f_pinv=f_pinv,X=Xtr,Y=Ytr,legend_data_set='Training data points')
-        # plot_utils.plot_sgd_vs_pinv_distance_during_training(iterations,stats_collector)
-        # plot_utils.print_gd_vs_pinv_params(mdl,c_pinv)
+        plot_utils.plot_sgd_vs_pinv_distance_during_training(iterations,stats_collector)
+        #plot_utils.print_gd_vs_pinv_params(mdl,c_pinv)
+        plt.show()
+    elif MDL_2_TRAIN=='logistic_regression_vec_mdl':
+        f_mdl = lambda x: mdl( Variable(torch.FloatTensor(x),requires_grad=False) ).data.numpy()
+        #st()
+        f_target = lambda x: -1*(w_target[0]/w_target[1])*x
+        N_denseness = 1000
+        ''' PLOT '''
+        plot_utils.visualize_classification_data_learned_planes_2D(lb,ub,N_denseness,Xtr,Ytr,f_mdl,f_target)
         plt.show()
 
 if __name__ == '__main__':

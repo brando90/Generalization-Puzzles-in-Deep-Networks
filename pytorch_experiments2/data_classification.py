@@ -30,6 +30,21 @@ def get_quadratic_plane_classification_data_set(N_train,N_test,lb,ub,D0):
     Y_test = f_target(X_test)
     return X_train,X_test, Y_train,Y_test
 
+
+def separte_data_by_classes(Xtr,Ytr):
+    N,D = Xtr.shape
+    X_pos = []
+    X_neg = []
+    for n in range(Xtr.shape[0]):
+        x = Xtr[n,:]
+        if Ytr[n]==1:
+            #np.append(X_pos,x,axis=0)
+            X_pos.append(x)
+        else:
+            #np.append(X_neg,x,axis=0)
+            X_neg.append(x)
+    return np.array(X_pos),np.array(X_neg)
+
 def get_2D_classification_data(N_train,N_val,N_test,lb,ub,f_target):
     '''
     Returns x in R^2 classification data

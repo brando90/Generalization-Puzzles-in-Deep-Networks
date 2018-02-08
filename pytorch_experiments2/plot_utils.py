@@ -6,6 +6,8 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 
+import data_classification as data_class
+
 import pdb
 from pdb import set_trace as st
 
@@ -23,7 +25,7 @@ def print_gd_vs_pinv_params(mdl,c_pinv):
 
 ##
 
-def plot_loss_errors(iterations,stats_collector,test_error_pinv=None):
+def plot_loss_errors(iterations,stats_collector,test_error_pinv=None,legend_hyper_params=''):
     '''
         provides a single plot of Train and Test losses vs training iterations
         (with appropriate legends and title)
@@ -34,7 +36,7 @@ def plot_loss_errors(iterations,stats_collector,test_error_pinv=None):
     fig=plt.figure()
     handles_4_legend = []
     ''' plot loss vs iterations of mdl'''
-    train_line, = plt.plot(x_axis,stats_collector.train_losses,label='Train Loss (S)GD model')
+    train_line, = plt.plot(x_axis,stats_collector.train_losses,label=f'Train Loss (S)GD model')
     # plt.plot(x_axis,stats_collector.val_losses)
     test_line, = plt.plot(x_axis,stats_collector.test_losses,label='Test Loss (S)GD model')
     handles_4_legend.extend([train_line,test_line])
@@ -44,7 +46,7 @@ def plot_loss_errors(iterations,stats_collector,test_error_pinv=None):
         handles_4_legend.append(pinv_line)
     ''' set up title and legend '''
     plt.legend(handles=handles_4_legend)
-    plt.title('Loss and Errors vs iterations')
+    plt.title(f'Loss and Errors vs iterations {legend_hyper_params}')
 
 def plot_sgd_vs_pinv_distance_during_training(iterations,stats_collector):
     '''
@@ -112,3 +114,16 @@ def visualize_1D_reconstruction(lb,ub,N_denseness, f_mdl,f_target=None,f_pinv=No
     ''' add auxiliarly info '''
     plt.legend(handles=handles_4_legend)
     plt.title('Reconstructions')
+
+#### Classification plots
+
+def visualize_classification_data_learned_planes_2D(lb,ub,N_denseness,Xtr,Ytr,f_mdl,f_target=None):
+    ''' '''
+    X_pos,X_neg = data_class.separte_data_by_classes(Xtr,Ytr)
+    fig = plt.figure()
+    ''' plot data points '''
+    plt.scatter(X_pos[:,0],X_pos[:,1],marker='+')
+    plt.scatter(X_neg[:,0],X_neg[:,1],marker='o')
+    ''' plot hyper planes '''
+    x_axis = np.linspace(lb,ub,N_denseness)
+    plt.plot(x_axis,f_target(x_axis))

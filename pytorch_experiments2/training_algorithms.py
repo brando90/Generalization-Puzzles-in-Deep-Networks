@@ -111,7 +111,7 @@ class StatsCollector:
     '''
     Class that has all the stats collected during training.
     '''
-    def __init__(self, mdl,loss,accuracy, dynamic_stats={}):
+    def __init__(self, mdl,loss,accuracy, dynamic_stats=None):
         '''
             dynamic_stats = an array of tuples (STORER,UPDATER) where the storer
             is a data structure (like a list) that gets updated according to updater.
@@ -129,11 +129,16 @@ class StatsCollector:
         self.grads = [ [] for i in range(nb_param_groups) ]
         self.w_norms = [ [] for i in range(nb_param_groups) ]
         ''' '''
-        self.dynamic_stats_storer = {}
-        self.dynamic_stats_updater = {}
-        for name,(storer,updater) in dynamic_stats.items():
-            self.dynamic_stats_storer[name] = storer
-            self.dynamic_stats_updater[name] = updater
+        if dynamic_stats is not None:
+            self.dynamic_stats_storer = {}
+            self.dynamic_stats_updater = {}
+            for name,(storer,updater) in dynamic_stats.items():
+                self.dynamic_stats_storer[name] = storer
+                self.dynamic_stats_updater[name] = updater
+        else:
+            # TODO empty dict or None?
+            self.dynamic_stats_storer = None
+            self.dynamic_stats_updater = None
 
     def collect_stats(self, i, mdl, Xtr,Ytr,Xv,Yv,Xt,Yt):
         ''' log train losses '''
@@ -150,7 +155,8 @@ class StatsCollector:
             if is_NaN(W.grad.data.norm(2)):
                 raise ValueError(f'Nan Detected error happened at: i={i} loss_val={loss_val}, loss={loss}')
         ''' Update the  '''
-        for name in self.dynamic_stats_updater:
-            storer = self.dynamic_stats_storer[name]
-            updater = self.dynamic_stats_updater[name]
-            updater(storer,i, mdl, Xtr,Ytr,Xv,Yv,Xt,Yt)
+        if self.dynamic_stats_storer is not None:
+            for name in self.dynamic_stats_updater:
+                storer = self.dynamic_stats_storer[name]
+                updater = self.dynamic_stats_updater[name]
+                updater(storer,i, mdl, Xtr,Ytr,Xv,Yv,Xt,Yt)
