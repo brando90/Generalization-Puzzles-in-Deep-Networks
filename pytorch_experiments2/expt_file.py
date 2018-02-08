@@ -122,7 +122,7 @@ def main(**kwargs):
     lb_vec,ub_vec = 1,100
     nb_elements_vecs = list(range(lb_vec,ub_vec+1,step))
     lambdas = [0]
-    nb_iterations = [int(100)]
+    nb_iterations = [int(1000)]
     repetitions = len(nb_elements_vecs)*[1]
     ''' Get setup for process to run '''
     ps_params = NamedDict() # process params
@@ -218,7 +218,7 @@ def main(**kwargs):
         perturb_freq = 1000
         perturb_magnitude = 0
         ##
-        momentum = 0
+        momentum = 0.9
         optim = torch.optim.SGD(mdl.parameters(), lr=eta, momentum=momentum)
         tr_alg.SGD_perturb(mdl, Xtr,Ytr,Xv,Yv,Xt,Yt, optim,loss, M,eta,nb_iter,A ,logging_freq,
             dtype_x,dtype_y, perturb_freq,perturb_magnitude,
@@ -253,10 +253,13 @@ def main(**kwargs):
         plt.show()
     elif MDL_2_TRAIN=='logistic_regression_vec_mdl':
         f_mdl = lambda x: mdl( Variable(torch.FloatTensor(x),requires_grad=False) ).data.numpy()
-        #st()
         f_target = lambda x: -1*(w_target[0]/w_target[1])*x
+        iterations = np.array(range(0,nb_iter))
         N_denseness = 1000
+        legend_hyper_params=f'N_train={Xtr.shape[0]},N_test={Xt.shape[0]},batch-size={M},learning step={eta},# iterations = {nb_iter} momentum={momentum}, Model=Logistic Regression'
         ''' PLOT '''
+        ## plots
+        plot_utils.plot_loss_errors(iterations,stats_collector,legend_hyper_params=legend_hyper_params,plot_errors=True)
         plot_utils.visualize_classification_data_learned_planes_2D(lb,ub,N_denseness,Xtr,Ytr,f_mdl,f_target)
         plt.show()
 

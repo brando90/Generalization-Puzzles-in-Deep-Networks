@@ -1,5 +1,11 @@
 import torch
 
+# def f_mdl(x,mdl):
+#     w_pos = mdl[0].weight[:,0].data.numpy()
+#     w_neg = mdl[0].weight[:,1].data.numpy()
+#     score_pos = np.dot(w_pos,x)
+#     score_pos = np.dot(w_pos,x)
+
 def get_logistic_regression_mdl(in_features,n_classes,bias):
     '''
     '''

@@ -25,7 +25,7 @@ def print_gd_vs_pinv_params(mdl,c_pinv):
 
 ##
 
-def plot_loss_errors(iterations,stats_collector,test_error_pinv=None,legend_hyper_params=''):
+def plot_loss_errors(iterations,stats_collector,test_error_pinv=None,legend_hyper_params='',plot_errors=False):
     '''
         provides a single plot of Train and Test losses vs training iterations
         (with appropriate legends and title)
@@ -39,6 +39,11 @@ def plot_loss_errors(iterations,stats_collector,test_error_pinv=None,legend_hype
     train_line, = plt.plot(x_axis,stats_collector.train_losses,label=f'Train Loss (S)GD model')
     # plt.plot(x_axis,stats_collector.val_losses)
     test_line, = plt.plot(x_axis,stats_collector.test_losses,label='Test Loss (S)GD model')
+    handles_4_legend.extend([train_line,test_line])
+    if plot_errors:
+        train_line, = plt.plot(x_axis,stats_collector.train_errors,label=f'Train Accuracy (S)GD model')
+        # plt.plot(x_axis,stats_collector.val_losses)
+        test_line, = plt.plot(x_axis,stats_collector.test_errors,label='Test Accuracy (S)GD model')
     handles_4_legend.extend([train_line,test_line])
     ''' plot losses of pinv model '''
     if test_error_pinv is not None:
