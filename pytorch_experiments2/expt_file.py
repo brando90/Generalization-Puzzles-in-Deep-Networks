@@ -262,6 +262,12 @@ def main(**kwargs):
         plot_utils.plot_loss_errors(iterations,stats_collector,legend_hyper_params=legend_hyper_params,plot_errors=True)
         plot_utils.visualize_classification_data_learned_planes_2D(lb,ub,N_denseness,Xtr,Ytr,f_mdl,f_target)
         plt.show()
+        ''' '''
+        path_to_save = f'./test_runs/{experiment_name}_reg_{reg_type}_expt_type_{expt_type}_N_train_{N_train}_M_{M}'
+        path_to_save=f'{path_to_save}/{prefix_experiment}'
+        make_and_check_dir(path_to_save)
+        path_to_save = f'{path_to_save}/satid_{SLURM_ARRAY_TASK_ID}_sid_{SLURM_JOBID}_{month}_{day}'
+        scipy.io.savemat( path_to_save, experiment_results)
 
 if __name__ == '__main__':
     start_time = time.time()

@@ -160,3 +160,14 @@ class StatsCollector:
                 storer = self.dynamic_stats_storer[name]
                 updater = self.dynamic_stats_updater[name]
                 updater(storer,i, mdl, Xtr,Ytr,Xv,Yv,Xt,Yt)
+
+    def get_stats_dict(self):
+        stats = NamedDit(
+            train_losses=self.train_losses,val_losses=self.val_losses,test_losses=self.test_losses,
+            train_errors=self.train_errors,val_errors=self.val_errors,test_errors=self.test_errors
+            grads=self.grads,
+            w_norms=self.w_norms
+        )
+        if self.dynamic_stats_storer is not None:
+            stats = NamedDict(stats,**self.dynamic_stats_storer)
+        return stats
