@@ -35,6 +35,7 @@ import data_classification as data_class
 import model_logistic_regression as mdl_lreg
 import training_algorithms as tr_alg
 import hyper_kernel_methods as hkm
+import save_to_matlab_format as save2matlab
 
 import dispatcher_code
 import plot_utils
@@ -54,6 +55,7 @@ parser.add_argument('-satid', '--satid',type=int,
                     help='satid',default=0)
 parser.add_argument('-sj', '--sj',type=int,
                     help='sj',default=0)
+parser.add_argument('-debug','--debug',dest='debug',action='store_true')
 args = parser.parse_args()
 if args.sj==0 or args.satid==0:
     satid = int(os.environ['SLURM_ARRAY_TASK_ID'])
@@ -61,6 +63,7 @@ if args.sj==0 or args.satid==0:
 else:
     satid = int(args.satid)
     sj = int(args.sj)
+debug = '_debug' if args.debug else ''
 
 def main(**kwargs):
     ''' setup'''
@@ -130,21 +133,21 @@ def main(**kwargs):
         ps_params.degrees=[]
         ps_params.reg_lambda = get_hp_to_run(hyper_params=lambdas,repetitions=repetitions,satid=satid)
         ps_params.nb_iter = nb_iterations[0]
-        ps_params.prefix_experiment = f'it_{nb_iter}/lambda_{reg_lambda}_reg_{reg_type}'
+        #ps_params.prefix_experiment = f'it_{nb_iter}/lambda_{reg_lambda}_reg_{reg_type}'
     elif expt_type == 'ITERATIONS':
         ps_params.degrees=[]
         ps_params.reg_lambda = lambdas[0]
         ps_params.nb_iter = get_hp_to_run(hyper_params=nb_iterations,repetitions=repetitions,satid=satid)
-        ps_params.prefix_experiment = f'lambda_{reg_lambda}/it_{nb_iter}_reg_{reg_type}'
+        #ps_params.prefix_experiment = f'lambda_{reg_lambda}/it_{nb_iter}_reg_{reg_type}'
     elif expt_type == 'DEGREES':
         ps_params.reg_lambda = lambdas[0]
         ps_params.degree_mdl = get_hp_to_run(hyper_params=degrees,repetitions=repetitions,satid=satid)
-        ps_params.prefix_experiment = f'fig4_expt_lambda_{reg_lambda}_it_{nb_iter}/deg_{Degree_mdl}'
+        #ps_params.prefix_experiment = f'fig4_expt_lambda_{reg_lambda}_it_{nb_iter}/deg_{Degree_mdl}'
     elif expt_type == 'NB_VEC_ELEMENTS':
         ps_params.reg_lambda = lambdas[0]
         ps_params.nb_elements_vec = dispatcher_code.get_hp_to_run(hyper_params=nb_elements_vecs,repetitions=repetitions,satid=satid)
         ps_params.nb_iter = nb_iterations[0]
-        ps_params.prefix_experiment = f'it_{ps_params.nb_iter}/lambda_{ps_params.reg_lambda}_reg_{reg_type}'
+        #ps_params.prefix_experiment = f'it_{ps_params.nb_iter}/lambda_{ps_params.reg_lambda}_reg_{reg_type}'
     else:
         raise ValueError(f'Experiment type expt_type={expt_type} does not exist, try a different expt_type.')
     print(f'ps_params={ps_params}')
@@ -218,7 +221,7 @@ def main(**kwargs):
         perturb_freq = 1000
         perturb_magnitude = 0
         ##
-        momentum = 0.9
+        momentum = 0.0
         optim = torch.optim.SGD(mdl.parameters(), lr=eta, momentum=momentum)
         tr_alg.SGD_perturb(mdl, Xtr,Ytr,Xv,Yv,Xt,Yt, optim,loss, M,eta,nb_iter,A ,logging_freq,
             dtype_x,dtype_y, perturb_freq,perturb_magnitude,
@@ -262,12 +265,15 @@ def main(**kwargs):
         plot_utils.plot_loss_errors(iterations,stats_collector,legend_hyper_params=legend_hyper_params,plot_errors=True)
         plot_utils.visualize_classification_data_learned_planes_2D(lb,ub,N_denseness,Xtr,Ytr,f_mdl,f_target)
         plt.show()
-        ''' '''
-        path_to_save = f'./test_runs/{experiment_name}_reg_{reg_type}_expt_type_{expt_type}_N_train_{N_train}_M_{M}'
-        path_to_save=f'{path_to_save}/{prefix_experiment}'
-        make_and_check_dir(path_to_save)
-        path_to_save = f'{path_to_save}/satid_{SLURM_ARRAY_TASK_ID}_sid_{SLURM_JOBID}_{month}_{day}'
-        scipy.io.savemat( path_to_save, experiment_results)
+        ''' save experiment results to maltab '''
+        experiment_results=stats_collector.get_stats_dict()
+        save2matlab.save_experiment_results_2_matlab(experiment_results=experiment_results,
+            root_path='./test_runs{debug}',
+            experiment_name=experiment_name,
+            training_config_name=f'N_train_{Xtr.shape[0]}_N_test_{Xt.shape[0]}_batch_size_{M}_perturb_freq_{perturb_freq}_perturb_magnitude_{perturb_magnitude}_momentum_{momentum}',
+            main_experiment_params=f'{expt_type}_lambda_{ps_params.reg_lambda}_it_{ps_params.nb_iter}_reg_{reg_type}',
+            expt_type=f'expt_type_{expt_type}_{satid}')
+
 
 if __name__ == '__main__':
     start_time = time.time()

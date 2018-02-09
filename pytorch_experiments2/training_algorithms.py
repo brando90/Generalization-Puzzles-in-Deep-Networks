@@ -1,6 +1,8 @@
 import numpy as np
 import torch
 
+from maps import NamedDict
+
 import data_utils
 
 from pdb import set_trace as st
@@ -162,9 +164,9 @@ class StatsCollector:
                 updater(storer,i, mdl, Xtr,Ytr,Xv,Yv,Xt,Yt)
 
     def get_stats_dict(self):
-        stats = NamedDit(
+        stats = NamedDict(
             train_losses=self.train_losses,val_losses=self.val_losses,test_losses=self.test_losses,
-            train_errors=self.train_errors,val_errors=self.val_errors,test_errors=self.test_errors
+            train_errors=self.train_errors,val_errors=self.val_errors,test_errors=self.test_errors,
             grads=self.grads,
             w_norms=self.w_norms
         )
