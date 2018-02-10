@@ -25,6 +25,30 @@ def print_gd_vs_pinv_params(mdl,c_pinv):
 
 ##
 
+def plot_weight_norm_vs_iterations(iterations,w_norms,legend_hyper_params=''):
+    fig=plt.figure()
+    x_axis=iterations
+    w_norm_line, = plt.plot(x_axis,w_norms,label='Weight Norm ||w||')
+    handles_4_legend = [w_norm_line]
+    ''' set up title and legend '''
+    plt.legend(handles=handles_4_legend)
+    plt.title(f'Weight norm vs iterations {legend_hyper_params}')
+
+def plot_loss_classification_errors(iterations,stats_collector,legend_hyper_params=''):
+    ''' set up x-axis grid as # iterations '''
+    x_axis=iterations
+    ''' set up figure '''
+    fig=plt.figure()
+    handles_4_legend = []
+    ''' plot loss vs iterations of mdl'''
+    train_line, = plt.plot(x_axis,stats_collector.train_errors,label=f'Train Error (S)GD model')
+    # plt.plot(x_axis,stats_collector.val_losses)
+    test_line, = plt.plot(x_axis,stats_collector.test_errors,label='Test Error (S)GD model')
+    handles_4_legend.extend([train_line,test_line])
+    ''' set up title and legend '''
+    plt.legend(handles=handles_4_legend)
+    plt.title(f'Errors vs iterations {legend_hyper_params}')
+
 def plot_loss_errors(iterations,stats_collector,test_error_pinv=None,legend_hyper_params='',plot_errors=False):
     '''
         provides a single plot of Train and Test losses vs training iterations
@@ -36,15 +60,15 @@ def plot_loss_errors(iterations,stats_collector,test_error_pinv=None,legend_hype
     fig=plt.figure()
     handles_4_legend = []
     ''' plot loss vs iterations of mdl'''
-    train_line, = plt.plot(x_axis,stats_collector.train_losses,label=f'Train Loss (S)GD model')
+    train_line, = plt.plot(x_axis,stats_collector.train_losses,label='Train Loss (S)GD model')
     # plt.plot(x_axis,stats_collector.val_losses)
     test_line, = plt.plot(x_axis,stats_collector.test_losses,label='Test Loss (S)GD model')
     handles_4_legend.extend([train_line,test_line])
     if plot_errors:
-        train_line, = plt.plot(x_axis,stats_collector.train_errors,label=f'Train Accuracy (S)GD model')
+        train_line, = plt.plot(x_axis,stats_collector.train_errors,label='Train Error (S)GD model')
         # plt.plot(x_axis,stats_collector.val_losses)
-        test_line, = plt.plot(x_axis,stats_collector.test_errors,label='Test Accuracy (S)GD model')
-    handles_4_legend.extend([train_line,test_line])
+        test_line, = plt.plot(x_axis,stats_collector.test_errors,label='Test Error (S)GD model')
+        handles_4_legend.extend([train_line,test_line])
     ''' plot losses of pinv model '''
     if test_error_pinv is not None:
         pinv_line, = plt.plot(iterations,test_error_pinv*np.ones(x_axis.shape),label='Test Loss of minimum-norm solution',linestyle='--')

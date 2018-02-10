@@ -172,7 +172,6 @@ def main(**kwargs):
     elif expt_type == 'SP_fig4':
         reg_lambda = lambdas[0]
         Degree_mdl = get_hp_to_run(hyper_params=degrees,repetitions=repetitions,satid=SLURM_ARRAY_TASK_ID)
-        print(f'\n--Degree_mdl={Degree_mdl} \n--degrees={degrees} \n--SLURM_ARRAY_TASK_ID={SLURM_ARRAY_TASK_ID} \n')
         prefix_experiment = f'fig4_expt_lambda_{reg_lambda}_it_{nb_iter}/deg_{Degree_mdl}'
     else:
         raise ValueError(f'Experiment type expt_type={expt_type} does not exist, try a different expt_type.')

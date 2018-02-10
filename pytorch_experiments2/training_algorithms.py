@@ -81,8 +81,8 @@ def SGD_perturb(mdl, Xtr,Ytr,Xv,Yv,Xt,Yt, optimizer,loss, M,eta,nb_iter,A ,loggi
             current_train_loss,train_acc = stats_collector.loss(mdl,Xtr,Ytr),stats_collector.acc(mdl,Xtr,Ytr)
             current_test_loss,test_acc = stats_collector.loss(mdl,Xt,Yt),stats_collector.acc(mdl,Xt,Yt)
             print('\n-------------')
-            print(f'i={i}, current_train_loss={current_train_loss} \ni={i}, train_acc = {train_acc}')
-            print(f'i={i}, current_test_loss={current_test_loss}, \ni={i}, test_acc = {test_acc}')
+            print(f'i={i}, current_train_loss={current_train_loss} \ni={i}, train_error = {train_acc}')
+            print(f'i={i}, current_test_loss={current_test_loss}, \ni={i}, test_error = {test_acc}')
         ## stats logger
         if i % logging_freq == 0 or i == 0:
             stats_collector.collect_stats(i, mdl, Xtr,Ytr,Xv,Yv,Xt,Yt)
@@ -104,6 +104,15 @@ def calc_accuracy(mdl,X,Y):
     # TODO: why can't we call .data.numpy() for train_acc as a whole?
     max_vals, max_indices = torch.max(mdl(X),1)
     train_acc = (max_indices == Y).sum().data.numpy()/max_indices.size()[0]
+    if is_NaN(train_acc):
+        loss = 'accuracy'
+        raise ValueError(f'Nan Detected error happened at: i={i} loss_val={loss_val}, loss={loss}')
+    return train_acc
+
+def calc_error(mdl,X,Y):
+    # TODO: why can't we call .data.numpy() for train_acc as a whole?
+    max_vals, max_indices = torch.max(mdl(X),1)
+    train_acc = 1 - (max_indices == Y).sum().data.numpy()/max_indices.size()[0]
     if is_NaN(train_acc):
         loss = 'accuracy'
         raise ValueError(f'Nan Detected error happened at: i={i} loss_val={loss_val}, loss={loss}')
@@ -153,6 +162,7 @@ class StatsCollector:
         self.test_errors.append( float(self.acc(mdl,Xt,Yt)) )
         ''' log parameter stats'''
         for index, W in enumerate(mdl.parameters()):
+            self.w_norms[index].append( float(W.norm(2).data.numpy()) )
             self.grads[index].append( W.grad.data.norm(2) )
             if is_NaN(W.grad.data.norm(2)):
                 raise ValueError(f'Nan Detected error happened at: i={i} loss_val={loss_val}, loss={loss}')

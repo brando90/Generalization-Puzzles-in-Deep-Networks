@@ -65,8 +65,20 @@ else:
     sj = int(args.sj)
 debug = '_debug' if args.debug else ''
 
+def report_times(start_time):
+    ## REPORT TIMES
+    seconds = (time.time() - start_time)
+    minutes = seconds/ 60
+    hours = minutes/ 60
+    print("--- %s seconds ---" % seconds )
+    print("--- %s minutes ---" % minutes )
+    print("--- %s hours ---" % hours )
+    print('\a')
+    return seconds, minutes, hours
+
 def main(**kwargs):
     ''' setup'''
+    start_time = time.time()
     np.set_printoptions(suppress=True) #Whether or not suppress printing of small floating point values using scientific notation (default False).
     ##dtype = torch.cuda.FloatTensor # Uncomment this to run on GPU
     ''' pytorch dtype setup '''
@@ -125,7 +137,7 @@ def main(**kwargs):
     lb_vec,ub_vec = 1,100
     nb_elements_vecs = list(range(lb_vec,ub_vec+1,step))
     lambdas = [0]
-    nb_iterations = [int(1000)]
+    nb_iterations = [int(2500)]
     repetitions = len(nb_elements_vecs)*[1]
     ''' Get setup for process to run '''
     ps_params = NamedDict() # process params
@@ -157,7 +169,7 @@ def main(**kwargs):
         N_train,N_val,N_test = 81,100,121
         lb,ub = -1,1
         w_target = np.array([1,1])
-        f_target = lambda x: np.int64( (np.dot( w_target, x) > 0).astype(int) )
+        f_target = lambda x: np.int64( (np.dot(w_target,x) > 0).astype(int) )
         Xtr,Ytr, Xv,Yv, Xt,Yt = data_class.get_2D_classification_data(N_train,N_val,N_test,lb,ub,f_target)
     elif data_filename == 'regression_manual':
         N_train,N_val,N_test = 16,100,121
@@ -177,7 +189,7 @@ def main(**kwargs):
     optimizer = 'SGD_AND_PERTURB'
     M = int(Xtr.shape[0]/20)
     M = int(2)
-    eta = 0.1
+    eta = 0.2
     nb_iter = nb_iterations[0]
     A = 0.0
     ##
@@ -192,6 +204,7 @@ def main(**kwargs):
         ''' stats collector '''
         loss_collector = lambda mdl,X,Y: tr_alg.calc_loss(mdl,loss,X,Y)
         acc_collector = tr_alg.calc_accuracy
+        acc_collector = tr_alg.calc_error
         stats_collector = tr_alg.StatsCollector(mdl, loss_collector,acc_collector)
     elif MDL_2_TRAIN=='HBF':
         bias=True
@@ -221,7 +234,7 @@ def main(**kwargs):
         perturb_freq = 1000
         perturb_magnitude = 0
         ##
-        momentum = 0.0
+        momentum = 0.99
         optim = torch.optim.SGD(mdl.parameters(), lr=eta, momentum=momentum)
         tr_alg.SGD_perturb(mdl, Xtr,Ytr,Xv,Yv,Xt,Yt, optim,loss, M,eta,nb_iter,A ,logging_freq,
             dtype_x,dtype_y, perturb_freq,perturb_magnitude,
@@ -229,8 +242,9 @@ def main(**kwargs):
             stats_collector=stats_collector)
     else:
         raise ValueError(f'MDL_2_TRAIN={MDL_2_TRAIN} not implemented')
+    seconds,minutes,hours = report_times(start_time)
     ''' Plots and Print statements'''
-    print('\n----')
+    print('\n----\a\a')
     print(f'some SGD params: batch_size={M}, eta={eta}, nb_iterations={nb_iter}')
     if MDL_2_TRAIN=='HBF':
         ''' print statements R/HBF'''
@@ -255,6 +269,18 @@ def main(**kwargs):
         #plot_utils.print_gd_vs_pinv_params(mdl,c_pinv)
         plt.show()
     elif MDL_2_TRAIN=='logistic_regression_vec_mdl':
+        ''' save experiment results to maltab '''
+        experiment_results=stats_collector.get_stats_dict()
+        experiment_results=NamedDict(seconds=seconds,minutes=minutes,hours=hours,**experiment_results)
+        save2matlab.save_experiment_results_2_matlab(experiment_results=experiment_results,
+            root_path=f'./test_runs{debug}',
+            experiment_name=experiment_name,
+            training_config_name=f'N_train_{Xtr.shape[0]}_N_test_{Xt.shape[0]}_batch_size_{M}_perturb_freq_{perturb_freq}_perturb_magnitude_{perturb_magnitude}_momentum_{momentum}',
+            main_experiment_params=f'{expt_type}_lambda_{ps_params.reg_lambda}_it_{ps_params.nb_iter}_reg_{reg_type}',
+            expt_type=f'expt_type_{expt_type}_{satid}',
+            matlab_file_name=f'satid_{satid}_sid_{sj}_{month}_{day}'
+            )
+        ''' arguments for plotting things '''
         f_mdl = lambda x: mdl( Variable(torch.FloatTensor(x),requires_grad=False) ).data.numpy()
         f_target = lambda x: -1*(w_target[0]/w_target[1])*x
         iterations = np.array(range(0,nb_iter))
@@ -262,17 +288,11 @@ def main(**kwargs):
         legend_hyper_params=f'N_train={Xtr.shape[0]},N_test={Xt.shape[0]},batch-size={M},learning step={eta},# iterations = {nb_iter} momentum={momentum}, Model=Logistic Regression'
         ''' PLOT '''
         ## plots
-        plot_utils.plot_loss_errors(iterations,stats_collector,legend_hyper_params=legend_hyper_params,plot_errors=True)
+        plot_utils.plot_loss_errors(iterations,stats_collector,legend_hyper_params=legend_hyper_params)
+        plot_utils.plot_loss_classification_errors(iterations,stats_collector,legend_hyper_params=legend_hyper_params)
         plot_utils.visualize_classification_data_learned_planes_2D(lb,ub,N_denseness,Xtr,Ytr,f_mdl,f_target)
+        plot_utils.plot_weight_norm_vs_iterations(iterations,stats_collector.w_norms[0])
         plt.show()
-        ''' save experiment results to maltab '''
-        experiment_results=stats_collector.get_stats_dict()
-        save2matlab.save_experiment_results_2_matlab(experiment_results=experiment_results,
-            root_path='./test_runs{debug}',
-            experiment_name=experiment_name,
-            training_config_name=f'N_train_{Xtr.shape[0]}_N_test_{Xt.shape[0]}_batch_size_{M}_perturb_freq_{perturb_freq}_perturb_magnitude_{perturb_magnitude}_momentum_{momentum}',
-            main_experiment_params=f'{expt_type}_lambda_{ps_params.reg_lambda}_it_{ps_params.nb_iter}_reg_{reg_type}',
-            expt_type=f'expt_type_{expt_type}_{satid}')
 
 
 if __name__ == '__main__':

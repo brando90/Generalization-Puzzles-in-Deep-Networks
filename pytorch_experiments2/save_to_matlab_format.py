@@ -14,7 +14,7 @@ from maps import NamedDict
 import pdb
 from pdb import set_trace as st
 
-def save_experiment_results_2_matlab(experiment_results, root_path,experiment_name,training_config_name,main_experiment_params,expt_type):
+def save_experiment_results_2_matlab(experiment_results, root_path,experiment_name,training_config_name,main_experiment_params,expt_type,matlab_file_name):
     '''
         Format for saving directories:
             {root_path}/{experiment_name}/{training_config_name}/{main_experiment_params}/{expt_1...i...N}
@@ -36,10 +36,10 @@ def save_experiment_results_2_matlab(experiment_results, root_path,experiment_na
     ''' 5) e.g. LAMBDAS '''
     expt_type = f'{expt_type}'
     ''' asseble path to save AND check if you need to make it'''
-    path_to_save = f'{root_path}/{experiment_name}/{training_config_name}/{expt_type}'
+    path_to_save = f'{root_path}/{experiment_name}/{training_config_name}/{expt_type}/'
     utils.make_and_check_dir(path_to_save)
     ''' save data '''
-    io.savemat(path_to_save,experiment_results)
+    io.savemat(f'{path_to_save}/{matlab_file_name}',experiment_results)
 
 
 def save2matlab(path_to_save,stats_collector,other_stats):
