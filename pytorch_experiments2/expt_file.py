@@ -137,7 +137,7 @@ def main(**kwargs):
     lb_vec,ub_vec = 1,100
     nb_elements_vecs = list(range(lb_vec,ub_vec+1,step))
     lambdas = [0]
-    nb_iterations = [int(2500)]
+    nb_iterations = [int(50000)]
     repetitions = len(nb_elements_vecs)*[1]
     ''' Get setup for process to run '''
     ps_params = NamedDict() # process params
@@ -166,7 +166,7 @@ def main(**kwargs):
     ######## data set
     ''' Get data set'''
     if data_filename == 'classification_manual':
-        N_train,N_val,N_test = 81,100,121
+        N_train,N_val,N_test = 81,100,500
         lb,ub = -1,1
         w_target = np.array([1,1])
         f_target = lambda x: np.int64( (np.dot(w_target,x) > 0).astype(int) )
@@ -188,7 +188,7 @@ def main(**kwargs):
     ''' SGD params '''
     optimizer = 'SGD_AND_PERTURB'
     M = int(Xtr.shape[0]/20)
-    M = int(2)
+    M = int(81)
     eta = 0.2
     nb_iter = nb_iterations[0]
     A = 0.0
@@ -213,6 +213,8 @@ def main(**kwargs):
         std = (Xtr[1] - Xtr[0])/ 0.8 # less than half the avg distance #TODO use np.mean
         centers=Xtr
         mdl = hkm.OneLayerHBF(D_in,D_out, centers=centers,std=std, train_centers=False,train_std=False)
+        mdl[0].weight.data.fill_(0)
+        mdl[0].bias.data.fill_(0)
         loss = torch.nn.MSELoss(size_average=True)
         ''' stats collector '''
         loss_collector = lambda mdl,X,Y: tr_alg.calc_loss(mdl,loss,X,Y)
@@ -234,7 +236,7 @@ def main(**kwargs):
         perturb_freq = 1000
         perturb_magnitude = 0
         ##
-        momentum = 0.99
+        momentum = 0.0
         optim = torch.optim.SGD(mdl.parameters(), lr=eta, momentum=momentum)
         tr_alg.SGD_perturb(mdl, Xtr,Ytr,Xv,Yv,Xt,Yt, optim,loss, M,eta,nb_iter,A ,logging_freq,
             dtype_x,dtype_y, perturb_freq,perturb_magnitude,
