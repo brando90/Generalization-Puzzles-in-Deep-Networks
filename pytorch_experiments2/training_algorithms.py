@@ -183,3 +183,28 @@ class StatsCollector:
         if self.dynamic_stats_storer is not None:
             stats = NamedDict(stats,**self.dynamic_stats_storer)
         return stats
+
+####
+
+def train_cifar(nb_epochs, trainloader,testloader, net,optimizer,criterion,logging_freq=2000):
+    # TODO: test loss
+    for epoch in range(nb_epochs):  # loop over the dataset multiple times
+        running_train_loss = 0.0
+        #running_test_loss = 0.0
+        for i, data in enumerate(trainloader, 0):
+            # get the inputs
+            inputs, labels = data
+            inputs, labels = Variable(inputs), Variable(labels)
+            # zero the parameter gradients
+            optimizer.zero_grad()
+            # forward + backward + optimize
+            outputs = net(inputs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+            # print statistics
+            running_loss += loss.data[0]
+            if i % logging_freq == logging_freq-1:    # print every logging_freq mini-batches
+                # note you dividing by logging_freq because you summed logging_freq mini-batches, so the average is dividing by logging_freq.
+                print(f'monitoring during training: eptoch={epoch+1}, batch_index={i+1}, loss={running_loss/logging_freq}')
+                running_loss = 0.0

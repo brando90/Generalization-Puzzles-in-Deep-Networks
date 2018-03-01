@@ -58,7 +58,6 @@ def get_models():
     '''
     '''
 
-
 def main():
     expt_type = 'polynomial'
     data_filename = 'regression_manual'
@@ -83,7 +82,7 @@ def main():
             raise ValueError('Error, go to code and fix lb and ub')
     ''' Loop through the linear model'''
     if expt_type == 'hermite_poly':
-    results = get_models()
+        results = get_hermite_poly()
 
 if __name__ == '__main__':
     start_time = time.time()

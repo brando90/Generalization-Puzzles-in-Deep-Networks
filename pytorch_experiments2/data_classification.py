@@ -59,3 +59,40 @@ def get_2D_classification_data(N_train,N_val,N_test,lb,ub,f_target):
     ''' Convert to ints '''
     Ytr,Yv,Yt = np.int64(Ytr).reshape(Ytr.shape[0]) ,np.int64(Yv).reshape(Yv.shape[0]), np.int64(Yt).reshape(Yt.shape[0])
     return Xtr,Ytr, Xv,Yv, Xt,Yt
+
+#####
+
+def get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers):
+    '''
+        The output of torchvision datasets are PILImage images of range [0, 1].
+        We transform them to Tensors of (gau)normalized range [-1, 1].
+
+        Params:
+            num_workers = how many subprocesses to use for data loading. 0 means that the data will be loaded in the main process.
+    ''''
+    ''' converts (HxWxC) in range [0,255] to [0.0,1.0] '''
+    to_tensor = transforms.ToTensor()
+    ''' Given meeans (M1,...,Mn) and std: (S1,..,Sn) for n channels, input[channel] = (input[channel] - mean[channel]) / std[channel] '''
+    gaussian_normalize = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
+    ''' transform them to Tensors of normalized range [-1, 1]. '''
+    transform = transforms.Compose([to_tensor,gaussian_normalize])
+    ''' train data processor '''
+    trainset = torchvision.datasets.CIFAR10(root=data_path, train=True,download=True, transform=transform)
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,shuffle=True, num_workers=num_workers)
+    ''' test data processor '''
+    testset = torchvision.datasets.CIFAR10(root=data_path, train=False,download=True, transform=transform)
+    testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,shuffle=False, num_workers=num_workers)
+    ''' classes '''
+    classes = ('plane', 'car', 'bird', 'cat','deer', 'dog', 'frog', 'horse', 'ship', 'truck')
+    ''' return trainer processors'''
+    return trainset,trainloader, testset,testloader, classes
+
+def get_error_loss_test(testloader, net):
+    correct,total = 0,0
+    for data in testloader:
+        images, labels = data
+        outputs = net(Variable(images))
+        _, predicted = torch.max(outputs.data, 1)
+        total += labels.size(0)
+        correct += (predicted == labels).sum()
+    return correct,total
