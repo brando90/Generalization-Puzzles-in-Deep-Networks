@@ -1,6 +1,8 @@
 import numpy as np
 import torch
 
+from torch.autograd import Variable
+
 from maps import NamedDict
 
 import data_utils
@@ -203,8 +205,8 @@ def train_cifar(nb_epochs, trainloader,testloader, net,optimizer,criterion,loggi
             loss.backward()
             optimizer.step()
             # print statistics
-            running_loss += loss.data[0]
+            running_train_loss += loss.data[0]
             if i % logging_freq == logging_freq-1:    # print every logging_freq mini-batches
                 # note you dividing by logging_freq because you summed logging_freq mini-batches, so the average is dividing by logging_freq.
-                print(f'monitoring during training: eptoch={epoch+1}, batch_index={i+1}, loss={running_loss/logging_freq}')
-                running_loss = 0.0
+                print(f'monitoring during training: eptoch={epoch+1}, batch_index={i+1}, loss={running_train_loss/logging_freq}')
+                running_train_loss = 0.0

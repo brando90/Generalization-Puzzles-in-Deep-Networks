@@ -28,6 +28,8 @@ import matplotlib.pyplot as plt
 import scipy
 from sklearn.preprocessing import PolynomialFeatures
 
+import utils
+
 import data_utils
 import data_regression as data_reg
 import data_classification as data_class
@@ -64,17 +66,6 @@ else:
     satid = int(args.satid)
     sj = int(args.sj)
 debug = '_debug' if args.debug else ''
-
-def report_times(start_time):
-    ## REPORT TIMES
-    seconds = (time.time() - start_time)
-    minutes = seconds/ 60
-    hours = minutes/ 60
-    print("--- %s seconds ---" % seconds )
-    print("--- %s minutes ---" % minutes )
-    print("--- %s hours ---" % hours )
-    print('\a')
-    return seconds, minutes, hours
 
 def main(**kwargs):
     ''' setup'''
@@ -244,7 +235,7 @@ def main(**kwargs):
             stats_collector=stats_collector)
     else:
         raise ValueError(f'MDL_2_TRAIN={MDL_2_TRAIN} not implemented')
-    seconds,minutes,hours = report_times(start_time)
+    seconds,minutes,hours = utils.report_times(start_time)
     ''' Plots and Print statements'''
     print('\n----\a\a')
     print(f'some SGD params: batch_size={M}, eta={eta}, nb_iterations={nb_iter}')
@@ -298,6 +289,5 @@ def main(**kwargs):
 
 
 if __name__ == '__main__':
-    start_time = time.time()
     #main(save_bulk_experiment=True,plotting=True)
     main()

@@ -2,6 +2,10 @@ import numpy as np
 
 import data_utils
 
+import torch
+import torchvision
+import torchvision.transforms as transforms
+
 from pdb import set_trace as st
 
 def get_quadratic_plane_classification_data_set(N_train,N_test,lb,ub,D0):
@@ -69,19 +73,19 @@ def get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_wor
 
         Params:
             num_workers = how many subprocesses to use for data loading. 0 means that the data will be loaded in the main process.
-    ''''
+    '''
     ''' converts (HxWxC) in range [0,255] to [0.0,1.0] '''
     to_tensor = transforms.ToTensor()
     ''' Given meeans (M1,...,Mn) and std: (S1,..,Sn) for n channels, input[channel] = (input[channel] - mean[channel]) / std[channel] '''
-    gaussian_normalize = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
+    gaussian_normalize = transforms.Normalize( (0.5, 0.5, 0.5), (0.5, 0.5, 0.5) )
     ''' transform them to Tensors of normalized range [-1, 1]. '''
     transform = transforms.Compose([to_tensor,gaussian_normalize])
     ''' train data processor '''
     trainset = torchvision.datasets.CIFAR10(root=data_path, train=True,download=True, transform=transform)
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,shuffle=True, num_workers=num_workers)
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size_train,shuffle=True, num_workers=num_workers)
     ''' test data processor '''
     testset = torchvision.datasets.CIFAR10(root=data_path, train=False,download=True, transform=transform)
-    testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,shuffle=False, num_workers=num_workers)
+    testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size_test,shuffle=False, num_workers=num_workers)
     ''' classes '''
     classes = ('plane', 'car', 'bird', 'cat','deer', 'dog', 'frog', 'horse', 'ship', 'truck')
     ''' return trainer processors'''
