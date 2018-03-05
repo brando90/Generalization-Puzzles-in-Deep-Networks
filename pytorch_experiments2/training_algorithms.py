@@ -1,3 +1,4 @@
+import time
 import numpy as np
 import torch
 
@@ -6,6 +7,7 @@ from torch.autograd import Variable
 from maps import NamedDict
 
 import data_utils
+import utils
 
 from pdb import set_trace as st
 
@@ -97,7 +99,7 @@ def SGD_perturb(mdl, Xtr,Ytr,Xv,Yv,Xt,Yt, optimizer,loss, M,eta,nb_iter,A ,loggi
                 W.data.copy_(W.data + noise)
 
 def calc_loss(mdl,loss,X,Y):
-    loss_val = loss(input=mdl(X),target=Y).data.numpy()
+    loss_val = loss(input=mdl(X),target=Y)
     if is_NaN(loss_val):
         raise ValueError(f'Nan Detected error happened at: loss_val={loss_val}, loss={loss}')
     return loss_val
@@ -153,18 +155,26 @@ class StatsCollector:
             self.dynamic_stats_storer = None
             self.dynamic_stats_updater = None
 
-    def collect_stats(self, i, mdl, Xtr,Ytr,Xv,Yv,Xt,Yt):
-        ''' log train losses '''
-        self.train_losses.append( float(self.loss(mdl,Xtr,Ytr)) )
-        self.val_losses.append( float(self.loss(mdl,Xv,Yv)) )
-        self.test_losses.append( float(self.loss(mdl,Xt,Yt)) )
-        ''' log train errors '''
-        self.train_errors.append( float(self.acc(mdl,Xtr,Ytr)) )
-        self.val_errors.append( float(self.acc(mdl,Xv,Yv)) )
-        self.test_errors.append( float(self.acc(mdl,Xt,Yt)) )
+    def collect_mdl_params_stats(self,mdl):
         ''' log parameter stats'''
         for index, W in enumerate(mdl.parameters()):
-            self.w_norms[index].append( float(W.norm(2).data.numpy()) )
+            self.w_norms[index].append( W.data.norm(2) )
+            self.grads[index].append( W.grad.data.norm(2) )
+            if is_NaN(W.grad.data.norm(2)):
+                raise ValueError(f'Nan Detected error happened at: i={i} loss_val={loss_val}, loss={loss}')
+
+    def collect_stats(self, i, mdl, Xtr,Ytr,Xv,Yv,Xt,Yt):
+        ''' log train losses '''
+        self.train_losses.append( self.loss(mdl,Xtr,Ytr).data[0] )
+        self.val_losses.append( self.loss(mdl,Xv,Yv).data[0] )
+        self.test_losses.append( self.loss(mdl,Xt,Yt).data[0] )
+        ''' log train errors '''
+        self.train_errors.append( self.acc(mdl,Xtr,Ytr).data[0] )
+        self.val_errors.append( self.acc(mdl,Xv,Yv).data[0] )
+        self.test_errors.append( self.acc(mdl,Xt,Yt).data[0] )
+        ''' log parameter stats'''
+        for index, W in enumerate(mdl.parameters()):
+            self.w_norms[index].append( W.data.norm(2) )
             self.grads[index].append( W.grad.data.norm(2) )
             if is_NaN(W.grad.data.norm(2)):
                 raise ValueError(f'Nan Detected error happened at: i={i} loss_val={loss_val}, loss={loss}')
@@ -186,17 +196,27 @@ class StatsCollector:
             stats = NamedDict(stats,**self.dynamic_stats_storer)
         return stats
 
+    def append_losses_errors(train_loss, train_error, test_loss, test_error):
+        self.train_losses.append(train_loss)
+        self.test_losses.append(test_loss)
+        self.train_errors.append(train_error)
+        self.test_errors.append(test_error)
+
 ####
 
-def train_cifar(nb_epochs, trainloader,testloader, net,optimizer,criterion,logging_freq=2000):
+def train_cifar(args, nb_epochs, trainloader,testloader, net,optimizer,criterion,logging_freq=2000):
     # TODO: test loss
     for epoch in range(nb_epochs):  # loop over the dataset multiple times
         running_train_loss = 0.0
         #running_test_loss = 0.0
         for i, data in enumerate(trainloader, 0):
             # get the inputs
+            start_time = time.time()
             inputs, labels = data
-            inputs, labels = Variable(inputs), Variable(labels)
+            if args.enable_cuda:
+                inputs, labels = Variable(inputs.cuda()), Variable(labels.cuda())
+            else:
+                inputs, labels = Variable(inputs), Variable(labels)
             # zero the parameter gradients
             optimizer.zero_grad()
             # forward + backward + optimize
@@ -206,7 +226,52 @@ def train_cifar(nb_epochs, trainloader,testloader, net,optimizer,criterion,loggi
             optimizer.step()
             # print statistics
             running_train_loss += loss.data[0]
+            seconds,minutes,hours = utils.report_times(start_time)
+            st()
             if i % logging_freq == logging_freq-1:    # print every logging_freq mini-batches
                 # note you dividing by logging_freq because you summed logging_freq mini-batches, so the average is dividing by logging_freq.
                 print(f'monitoring during training: eptoch={epoch+1}, batch_index={i+1}, loss={running_train_loss/logging_freq}')
                 running_train_loss = 0.0
+
+def extract_data(enable_cuda,data,wrap_in_variable=False):
+    inputs, labels = data
+    if enable_cuda:
+        inputs, labels = inputs.cuda(), labels.cuda()
+    if wrap_in_variable:
+        inputs, labels = Variable(inputs), Variable(labels)
+    return inputs, labels
+
+def train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer,criterion,error_criterion ,stats_collector):
+    enable_cuda = args.enable_cuda
+    ##
+    test_iter = iter(testloader)
+    #train_iter = iter(trainloader)
+    for epoch in range(nb_epochs):  # loop over the dataset multiple times
+        running_train_loss,running_train_error = 0.0,0.0
+        running_test_error,running_test_error = 0.0,0.0
+        for i, data in enumerate(trainloader, 0):
+            ''' get train inputs'''
+            inputs, labels = extract_data(enable_cuda,data,wrap_in_variable=True)
+            ''' zero the parameter gradients '''
+            optimizer.zero_grad()
+            ''' forward + backward + optimize '''
+            outputs = net(inputs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+            running_train_loss += loss.data[0]
+            running_train_error += error_criterion(net,inputs,labels).data[0]
+            ''' test evaluation '''
+            inputs, labels = extract_data(enable_cuda,data=test_iter.next(),wrap_in_variable=False)
+            outputs = net(Variable(inputs))
+            loss = criterion(outputs, labels)
+            running_test_loss += loss.data[0]
+            running_test_error += error_criterion(net,inputs,labels).data[0]
+            ''' print error first iteration'''
+            if i == 0: # print on the first iteration
+                print(f'running_train_loss={running_train_loss}, running_train_error={running_train_error}, running_test_loss={running_test_loss},running_test_error={running_test_error}')
+        ''' End of Epoch: collect stats'''
+        train_loss_epoch, train_error_epoch = running_train_loss/(i+1), running_train_error/(i+1)
+        test_loss_epoch, test_error_epoch = running_test_loss/(i+1), running_test_error/(i+1)
+        stats_collector.collect_mdl_params_stats(net)
+        stats_collector.append_losses_errors(train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch)

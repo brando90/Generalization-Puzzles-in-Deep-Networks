@@ -23,10 +23,25 @@ import data_classification as data_class
 import nn_models as nn_mdls
 import training_algorithms as tr_alg
 import save_to_matlab_format as save2matlab
+import utils
+
+from pdb import set_trace as st
+
+import argparse
+
+parser = argparse.ArgumentParser(description='PyTorch Example')
+parser.add_argument('-cuda','--enable-cuda',action='store_true',
+                    help='Enable cuda/gpu')
+args = parser.parse_args()
+if not torch.cuda.is_available() and args.enable_cuda:
+    print('Cuda is enabled but the current system does not have cuda')
+    sys.exit()
 
 def main():
-    nb_epochs = 2
-    batch_size = 4
+    start_time = time.time()
+    ''' '''
+    nb_epochs = 1
+    batch_size = 2
     batch_size_train,batch_size_test = batch_size,batch_size
     data_path = './data'
     num_workers = 2 # how many subprocesses to use for data loading. 0 means that the data will be loaded in the main process.
@@ -37,22 +52,30 @@ def main():
     nb_filters1,nb_filters2 = 6, 16
     kernel_size1,kernel_size2 = 5,5
     ## fc params
-    nb_units_fc1,nb_units_fc2,nb_units_fc3 =120,84,len(classes)
+    nb_units_fc1,nb_units_fc2,nb_units_fc3 = 120,84,len(classes)
     C,H,W = 3,32,32
     net = nn_mdls.BoixNet(C,H,W,nb_filters1,nb_filters2, kernel_size1,kernel_size2, nb_units_fc1,nb_units_fc2,nb_units_fc3)
+    if args.enable_cuda:
+        net.cuda()
     ''' Cross Entropy + Optmizer'''
-    lr = 0.001
+    lr = 0.01
     momentum = 0
     criterion = torch.nn.CrossEntropyLoss()
+    #loss = torch.nn.MSELoss(size_average=True)
     optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
+    ''' stats collector '''
+    stats_collector = tr_alg.StatsCollector(net,None,None)
     ''' Train the Network '''
     # We simply have to loop over our data iterator, and feed the inputs to the network and optimize.
-    tr_alg.train_cifar(nb_epochs, trainloader,testloader, net,optimizer,criterion)
+    #tr_alg.train_cifar(args, nb_epochs, trainloader,testloader, net,optimizer,criterion)
+    error_criterion = tr_alg.calc_error
+    tr_alg.train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer,criterion,error_criterion, stats_collector)
     seconds,minutes,hours = utils.report_times(start_time)
     print(f'Finished Training, hours={hours}')
     ''' Test the Network on the test data '''
     correct,total = data_class.get_error_loss_test(testloader, net)
-    print(f'test_error={100*correct/total} )')
+    print(f'test_error={100*correct/total}')
 
 if __name__ == '__main__':
     main()
+    print('\a')
