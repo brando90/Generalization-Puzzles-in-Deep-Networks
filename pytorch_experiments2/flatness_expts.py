@@ -38,18 +38,28 @@ if not torch.cuda.is_available() and args.enable_cuda:
     sys.exit()
 
 def main():
+    ''' date parameters setup'''
+    today_obj = date.today() # contains datetime.date(year, month, day); accessible via .day etc
+    day = today_obj.day
+    month = calendar.month_name[today_obj.month]
     start_time = time.time()
     ''' '''
-    nb_epochs = 4
-    batch_size = 16
-    batch_size_train,batch_size_test = batch_size,batch_size
+    results_root = './test_runs_flatness'
+    expt_path = 'flatness_debug2'
+    matlab_file_name = f'flatness_{day}_{month}'
+    ''' '''
+    nb_epochs = 2
+    batch_size = 4
+    #batch_size_train,batch_size_test = batch_size,batch_size
+    batch_size_train = batch_size
+    batch_size_test = 512
     data_path = './data'
     num_workers = 2 # how many subprocesses to use for data loading. 0 means that the data will be loaded in the main process.
     ''' get (gau)normalized range [-1, 1]'''
     trainset,trainloader, testset,testloader, classes = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers)
     ''' get NN '''
     ## conv params
-    nb_filters1,nb_filters2 = 6, 16
+    nb_filters1,nb_filters2 = 6, 18
     kernel_size1,kernel_size2 = 5,5
     ## fc params
     nb_units_fc1,nb_units_fc2,nb_units_fc3 = 120,84,len(classes)
@@ -68,12 +78,20 @@ def main():
     ''' Train the Network '''
     # We simply have to loop over our data iterator, and feed the inputs to the network and optimize.
     #tr_alg.train_cifar(args, nb_epochs, trainloader,testloader, net,optimizer,criterion)
-    error_criterion = tr_alg.calc_error
-    train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch = tr_alg.train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer,criterion,error_criterion, stats_collector)
+    error_criterion = tr_alg.error_criterion
+    train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch = tr_alg.train_and_track_stats2(args, nb_epochs, trainloader,testloader, net,optimizer,criterion,error_criterion, stats_collector)
     seconds,minutes,hours = utils.report_times(start_time)
     print(f'Finished Training, hours={hours}')
     ''' Test the Network on the test data '''
     print(f'train_loss_epoch={train_loss_epoch} \ntrain_error_epoch={train_error_epoch} \ntest_loss_epoch={test_loss_epoch} \ntest_error_epoch={test_error_epoch}')
+    ''' save results from experiment '''
+    save2matlab.save2matlab_flatness_expt(results_root,expt_path,matlab_file_name, stats_collector)
+    ''' save net model '''
+    path = os.path.join(results_root,expt_path,'net')
+    utils.save_entire_mdl(path,net)
+    restored_net = utils.restore_entire_mdl(path)
+    loss_restored,error_restored = tr_alg.evalaute_mdl_data_set(criterion,error_criterion,restored_net,testloader,args.enable_cuda)
+    print(f'\nloss_restored={loss_restored},error_restored={error_restored}')
 
 if __name__ == '__main__':
     main()
