@@ -107,7 +107,7 @@ def calc_loss(mdl,loss,X,Y):
 def calc_accuracy(mdl,X,Y):
     # TODO: why can't we call .data.numpy() for train_acc as a whole?
     max_vals, max_indices = torch.max(mdl(X),1)
-    train_acc = (max_indices == Y).sum().data.numpy()/max_indices.size()[0]
+    train_acc = (max_indices == Y).sum().data[0]/max_indices.size()[0]
     if is_NaN(train_acc):
         loss = 'accuracy'
         raise ValueError(f'Nan Detected error happened at: i={i} loss_val={loss_val}, loss={loss}')
@@ -116,7 +116,7 @@ def calc_accuracy(mdl,X,Y):
 def calc_error(mdl,X,Y):
     # TODO: why can't we call .data.numpy() for train_acc as a whole?
     max_vals, max_indices = torch.max(mdl(X),1)
-    train_acc = 1 - (max_indices == Y).sum().data.numpy()/max_indices.size()[0]
+    train_acc = 1 - (max_indices == Y).sum().data[0]/max_indices.size()[0]
     if is_NaN(train_acc):
         loss = 'accuracy'
         raise ValueError(f'Nan Detected error happened at: i={i} loss_val={loss_val}, loss={loss}')
@@ -259,13 +259,13 @@ def train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer
             loss.backward()
             optimizer.step()
             running_train_loss += loss.data[0]
-            running_train_error += error_criterion(net,inputs,labels).data[0]
+            running_train_error += error_criterion(net,inputs,labels)
             ''' test evaluation '''
             inputs, labels = extract_data(enable_cuda,data=data_test,wrap_in_variable=True)
             outputs = net(inputs)
             loss = criterion(outputs, labels)
             running_test_loss += loss.data[0]
-            running_test_error += error_criterion(net,inputs,labels).data[0]
+            running_test_error += error_criterion(net,inputs,labels)
             ''' print error first iteration'''
             if i == 0: # print on the first iteration
                 print(f'--\ni={i}, running_train_loss={running_train_loss}, running_train_error={running_train_error}, running_test_loss={running_test_loss},running_test_error={running_test_error}')
