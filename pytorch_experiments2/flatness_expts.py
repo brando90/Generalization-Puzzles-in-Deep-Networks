@@ -69,12 +69,11 @@ def main():
     # We simply have to loop over our data iterator, and feed the inputs to the network and optimize.
     #tr_alg.train_cifar(args, nb_epochs, trainloader,testloader, net,optimizer,criterion)
     error_criterion = tr_alg.calc_error
-    tr_alg.train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer,criterion,error_criterion, stats_collector)
+    train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch = tr_alg.train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer,criterion,error_criterion, stats_collector)
     seconds,minutes,hours = utils.report_times(start_time)
     print(f'Finished Training, hours={hours}')
     ''' Test the Network on the test data '''
-    correct,total = data_class.get_error_loss_test(testloader, net)
-    print(f'test_error={correct/total}')
+    print(f'train_loss_epoch={train_loss_epoch} \ntrain_error_epoch={ntrain_error_epoch} \ntest_loss_epoch={ntest_loss_epoch} \ntest_error_epoch={ntest_error_epoch}')
 
 if __name__ == '__main__':
     main()

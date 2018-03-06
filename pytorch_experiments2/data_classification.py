@@ -92,13 +92,3 @@ def get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_wor
     classes = ('plane', 'car', 'bird', 'cat','deer', 'dog', 'frog', 'horse', 'ship', 'truck')
     ''' return trainer processors'''
     return trainset,trainloader, testset,testloader, classes
-
-def get_error_loss_test(testloader, net):
-    correct,total = 0,0
-    for data in testloader:
-        images, labels = data
-        outputs = net(Variable(images))
-        _, predicted = torch.max(outputs.data, 1)
-        total += labels.size(0)
-        correct += (predicted == labels).sum()
-    return correct,total

@@ -275,3 +275,4 @@ def train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer
         stats_collector.collect_mdl_params_stats(net)
         stats_collector.append_losses_errors(train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch)
         print(f'epoch={epoch}, train_loss_epoch={train_loss_epoch}, train_error_epoch={train_error_epoch}, test_loss_epoch={test_loss_epoch},test_error_epoch={test_error_epoch}')
+    return train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch
