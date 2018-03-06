@@ -40,8 +40,8 @@ if not torch.cuda.is_available() and args.enable_cuda:
 def main():
     start_time = time.time()
     ''' '''
-    nb_epochs = 1
-    batch_size = 2
+    nb_epochs = 4
+    batch_size = 16
     batch_size_train,batch_size_test = batch_size,batch_size
     data_path = './data'
     num_workers = 2 # how many subprocesses to use for data loading. 0 means that the data will be loaded in the main process.
@@ -74,7 +74,7 @@ def main():
     print(f'Finished Training, hours={hours}')
     ''' Test the Network on the test data '''
     correct,total = data_class.get_error_loss_test(testloader, net)
-    print(f'test_error={100*correct/total}')
+    print(f'test_error={correct/total}')
 
 if __name__ == '__main__':
     main()

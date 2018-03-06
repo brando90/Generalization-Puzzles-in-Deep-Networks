@@ -196,7 +196,7 @@ class StatsCollector:
             stats = NamedDict(stats,**self.dynamic_stats_storer)
         return stats
 
-    def append_losses_errors(train_loss, train_error, test_loss, test_error):
+    def append_losses_errors(self,train_loss, train_error, test_loss, test_error):
         self.train_losses.append(train_loss)
         self.test_losses.append(test_loss)
         self.train_errors.append(train_error)
@@ -248,13 +248,12 @@ def train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer
     #train_iter = iter(trainloader)
     for epoch in range(nb_epochs):  # loop over the dataset multiple times
         running_train_loss,running_train_error = 0.0,0.0
-        running_test_error,running_test_error = 0.0,0.0
-        for i, data in enumerate(trainloader, 0):
-            ''' get train inputs'''
-            inputs, labels = extract_data(enable_cuda,data,wrap_in_variable=True)
+        running_test_loss,running_test_error = 0.0,0.0
+        for (i,(data_train,data_test)) in enumerate( zip(trainloader,testloader) ):
             ''' zero the parameter gradients '''
             optimizer.zero_grad()
-            ''' forward + backward + optimize '''
+            ''' train step = forward + backward + optimize '''
+            inputs, labels = extract_data(enable_cuda,data_train,wrap_in_variable=True)
             outputs = net(inputs)
             loss = criterion(outputs, labels)
             loss.backward()
@@ -262,16 +261,17 @@ def train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer
             running_train_loss += loss.data[0]
             running_train_error += error_criterion(net,inputs,labels).data[0]
             ''' test evaluation '''
-            inputs, labels = extract_data(enable_cuda,data=test_iter.next(),wrap_in_variable=False)
-            outputs = net(Variable(inputs))
+            inputs, labels = extract_data(enable_cuda,data=data_test,wrap_in_variable=True)
+            outputs = net(inputs)
             loss = criterion(outputs, labels)
             running_test_loss += loss.data[0]
             running_test_error += error_criterion(net,inputs,labels).data[0]
             ''' print error first iteration'''
             if i == 0: # print on the first iteration
-                print(f'running_train_loss={running_train_loss}, running_train_error={running_train_error}, running_test_loss={running_test_loss},running_test_error={running_test_error}')
+                print(f'i={i}, running_train_loss={running_train_loss}, running_train_error={running_train_error}, running_test_loss={running_test_loss},running_test_error={running_test_error}')
         ''' End of Epoch: collect stats'''
         train_loss_epoch, train_error_epoch = running_train_loss/(i+1), running_train_error/(i+1)
         test_loss_epoch, test_error_epoch = running_test_loss/(i+1), running_test_error/(i+1)
         stats_collector.collect_mdl_params_stats(net)
         stats_collector.append_losses_errors(train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch)
+        print(f'-->epoch={epoch}, train_loss_epoch={train_loss_epoch}, train_error_epoch={train_error_epoch}, test_loss_epoch={test_loss_epoch},test_error_epoch={test_error_epoch}')
