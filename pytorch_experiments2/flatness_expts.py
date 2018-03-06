@@ -44,8 +44,9 @@ def main():
     month = calendar.month_name[today_obj.month]
     start_time = time.time()
     ''' '''
+    label_corrupt_prob = 0
     results_root = './test_runs_flatness'
-    expt_path = 'flatness_debug2'
+    expt_path = f'flatness_label_corrupt_prob_{label_corrupt_prob}_debug2'
     matlab_file_name = f'flatness_{day}_{month}'
     ''' '''
     nb_epochs = 4
@@ -56,7 +57,7 @@ def main():
     data_path = './data'
     num_workers = 2 # how many subprocesses to use for data loading. 0 means that the data will be loaded in the main process.
     ''' get (gau)normalized range [-1, 1]'''
-    trainset,trainloader, testset,testloader, classes = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers)
+    trainset,trainloader, testset,testloader, classes = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,label_corrupt_prob)
     ''' get NN '''
     ## conv params
     nb_filters1,nb_filters2 = 6, 18
