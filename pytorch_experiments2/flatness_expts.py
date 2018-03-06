@@ -73,7 +73,7 @@ def main():
     seconds,minutes,hours = utils.report_times(start_time)
     print(f'Finished Training, hours={hours}')
     ''' Test the Network on the test data '''
-    print(f'train_loss_epoch={train_loss_epoch} \ntrain_error_epoch={ntrain_error_epoch} \ntest_loss_epoch={ntest_loss_epoch} \ntest_error_epoch={ntest_error_epoch}')
+    print(f'train_loss_epoch={train_loss_epoch} \ntrain_error_epoch={train_error_epoch} \ntest_loss_epoch={test_loss_epoch} \ntest_error_epoch={test_error_epoch}')
 
 if __name__ == '__main__':
     main()
