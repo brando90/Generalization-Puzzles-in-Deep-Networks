@@ -5,6 +5,12 @@ import torch.nn.functional as F
 
 from pdb import set_trace as st
 
+def count_nb_params(net):
+    count = 0
+    for p in net.parameters():
+        count += p.data.nelement()
+    return count
+
 class Net(nn.Module):
     # Cifar/MNIST example
     def __init__(self):

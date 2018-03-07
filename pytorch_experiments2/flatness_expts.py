@@ -70,7 +70,7 @@ def main():
     ''' get NN '''
     mdl = 'cifar_10_tutorial_net'
     #mdl = 'BoixNet'
-    #mdl = 'LiaoNet'
+    mdl = 'LiaoNet'
     ##
     if mdl == 'cifar_10_tutorial_net':
         do_bn = False
@@ -86,7 +86,7 @@ def main():
         net = nn_mdls.BoixNet(C,H,W,nb_filters1,nb_filters2, kernel_size1,kernel_size2, nb_units_fc1,nb_units_fc2,nb_units_fc3,do_bn)
     elif mdl == 'LiaoNet':
         do_bn=True
-        nb_conv_layers=5
+        nb_conv_layers=4
         ## conv params
         Fs = [16]*nb_conv_layers
         Ks = [5]*nb_conv_layers
@@ -96,6 +96,7 @@ def main():
         net = nn_mdls.LiaoNet(C,H,W,Fs,Ks,FC,do_bn)
     if args.enable_cuda:
         net.cuda()
+    nb_params = nn_mdls.count_nb_params(net)
     ''' Cross Entropy + Optmizer'''
     lr = 0.01
     momentum = 0
@@ -105,7 +106,10 @@ def main():
     ''' stats collector '''
     stats_collector = tr_alg.StatsCollector(net,None,None)
     ''' Train the Network '''
-    print(f'----\nSTART training: label_corrupt_prob={label_corrupt_prob},nb_epochs={nb_epochs},batch_size={batch_size},mdl={mdl},batch-norm={do_bn}')
+    print(f'----\nSTART training: label_corrupt_prob={label_corrupt_prob},nb_epochs={nb_epochs},batch_size={batch_size},mdl={mdl},batch-norm={do_bn},nb_params={nb_params}')
+    overparametrized = len(trainset)<nb_params # N < W ?
+    print(f'Model over parametrized? N, W = {len(trainset)} vs {nb_params}')
+    print(f'Model over parametrized? N < W = {overparametrized}')
     # We simply have to loop over our data iterator, and feed the inputs to the network and optimize.
     #tr_alg.train_cifar(args, nb_epochs, trainloader,testloader, net,optimizer,criterion)
     error_criterion = tr_alg.error_criterion
