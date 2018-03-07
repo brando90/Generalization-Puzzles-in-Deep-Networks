@@ -70,7 +70,6 @@ class LiaoNet(nn.Module):
             F,K = Fs[i], Ks[i]
             conv = nn.Conv2d(in_channels,F,K) #(in_channels, out_channels, kernel_size)
             setattr(self,f'conv{i}',conv)
-            self._set_init(conv)
             self.convs.append(conv)
             ##
             in_channels = F
