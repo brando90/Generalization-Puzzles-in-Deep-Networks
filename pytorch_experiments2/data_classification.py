@@ -114,10 +114,10 @@ def get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_wor
     ''' transform them to Tensors of normalized range [-1, 1]. '''
     transform = transforms.Compose([to_tensor,gaussian_normalize])
     ''' train data processor '''
-    #trainset = torchvision.datasets.CIFAR10(root=data_path, train=True,download=True, transform=transform)
-    trainset = CIFAR10RandomLabels(root=data_path, train=True, download=True,
-                            transform=transform, num_classes=10,
-                            corrupt_prob=label_corrupt_prob)
+    trainset = torchvision.datasets.CIFAR10(root=data_path, train=True,download=True, transform=transform)
+    # trainset = CIFAR10RandomLabels(root=data_path, train=True, download=True,
+    #                         transform=transform, num_classes=10,
+    #                         corrupt_prob=label_corrupt_prob)
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size_train,shuffle=True, num_workers=num_workers)
     ''' test data processor '''
     testset = torchvision.datasets.CIFAR10(root=data_path, train=False,download=True, transform=transform)
