@@ -88,7 +88,7 @@ def main():
     ''' save results from experiment '''
     save2matlab.save2matlab_flatness_expt(results_root,expt_path,matlab_file_name, stats_collector)
     ''' save net model '''
-    path = os.path.join(results_root,expt_path,'net')
+    path = os.path.join(results_root,expt_path,'net_{day}_{month}')
     utils.save_entire_mdl(path,net)
     restored_net = utils.restore_entire_mdl(path)
     loss_restored,error_restored = tr_alg.evalaute_mdl_data_set(criterion,error_criterion,restored_net,testloader,args.enable_cuda)
