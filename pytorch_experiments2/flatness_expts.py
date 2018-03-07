@@ -72,14 +72,16 @@ def main():
     mdl = 'LiaoNet'
     ##
     if mdl == 'BoixNet':
+        do_bn=True
         ## conv params
         nb_filters1,nb_filters2 = 6, 18
         kernel_size1,kernel_size2 = 5,5
         ## fc params
         nb_units_fc1,nb_units_fc2,nb_units_fc3 = 120,84,len(classes)
         C,H,W = 3,32,32
-        net = nn_mdls.BoixNet(C,H,W,nb_filters1,nb_filters2, kernel_size1,kernel_size2, nb_units_fc1,nb_units_fc2,nb_units_fc3)
+        net = nn_mdls.BoixNet(C,H,W,nb_filters1,nb_filters2, kernel_size1,kernel_size2, nb_units_fc1,nb_units_fc2,nb_units_fc3,do_bn)
     elif mdl == 'LiaoNet':
+        do_bn=True
         nb_conv_layers=5
         ## conv params
         Fs = [16]*nb_conv_layers
@@ -87,7 +89,7 @@ def main():
         ## fc params
         FC = len(classes)
         C,H,W = 3,32,32
-        net = nn_mdls.LiaoNet(C,H,W,Fs,Ks,FC)
+        net = nn_mdls.LiaoNet(C,H,W,Fs,Ks,FC,do_bn)
     if args.enable_cuda:
         net.cuda()
     ''' Cross Entropy + Optmizer'''
