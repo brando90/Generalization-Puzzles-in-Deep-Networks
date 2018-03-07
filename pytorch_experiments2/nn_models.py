@@ -58,17 +58,17 @@ class BoixNet(nn.Module):
         a_conv1 = F.relu(pre_act1)
         ##
         pre_act2 = self.bn_conv2(self.conv2(a_conv1)) if self.do_bn else self.conv2(a_conv1)
-        a_conv2 = F.relu(self.conv2(a_conv1))
+        a_conv2 = F.relu(pre_act2)
         ''' FC layers '''
         _,C,H,W = a_conv2.size()
         a_flat_conv2 = a_conv2.view(-1,C*H*W)
         ##
         pre_act_fc1 = self.fc1_bn(self.fc1(a_flat_conv2)) if self.do_bn else self.fc1(a_flat_conv2)
-        a_fc1 = F.relu(self.fc1(pre_act_fc1))
+        a_fc1 = F.relu(pre_act_fc1)
         pre_act_fc2 = self.fc2_bn(self.fc2(a_fc1)) if self.do_bn else self.fc2(a_fc1)
-        a_fc2 = F.relu(self.fc2(pre_act_fc2))
+        a_fc2 = F.relu(pre_act_fc2)
         pre_act_fc3 = self.fc3_bn(self.fc3(a_fc2)) if self.do_bn else self.fc3(a_fc2)
-        a_fc3 = self.fc3(pre_act_fc3)
+        a_fc3 = pre_act_fc3
         return a_fc3
 ##
 
