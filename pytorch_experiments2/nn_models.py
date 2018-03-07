@@ -1,3 +1,4 @@
+import torch
 from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
@@ -54,3 +55,37 @@ class BoixNet(nn.Module):
         a_fc2 = F.relu(self.fc2(a_fc1))
         a_fc3 = F.relu(self.fc3(a_fc2))
         return a_fc3
+##
+
+class LiaoNet(nn.Module):
+    ## 5 conv net FC
+    def __init__(self,C,H,W, Fs, Ks, FC):
+        super(LiaoNet, self).__init__()
+        self.nb_conv_layers = len(Fs)
+        ''' Initialize Conv layers '''
+        self.convs = []
+        out = Variable(torch.FloatTensor(1, C,H,W))
+        in_channels = C
+        for i in range(self.nb_conv_layers):
+            F,K = Fs[i], Ks[i]
+            conv = nn.Conv2d(in_channels,F,K) #(in_channels, out_channels, kernel_size)
+            setattr(self,f'conv{i}',conv)
+            self._set_init(conv)
+            self.convs.append(conv)
+            ##
+            in_channels = F
+            out = conv(out)
+        ''' Initialize FC layers'''
+        CHW = out.numel()
+        self.fc = nn.Linear(CHW,FC)
+
+    def forward(self, x):
+        ''' conv layers '''
+        for i in range(self.nb_conv_layers):
+            conv = self.convs[i]
+            x = F.relu(conv(x))
+        _,C,H,W = x.size()
+        x = x.view(-1,C*H*W)
+        ''' FC layers '''
+        x = self.fc(x)
+        return x

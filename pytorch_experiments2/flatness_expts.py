@@ -69,6 +69,7 @@ def main():
     trainset,trainloader, testset,testloader, classes = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,label_corrupt_prob)
     ''' get NN '''
     mdl = 'BoixNet'
+    mdl = 'LiaoNet'
     ##
     if mdl == 'BoixNet':
         ## conv params
@@ -78,6 +79,15 @@ def main():
         nb_units_fc1,nb_units_fc2,nb_units_fc3 = 120,84,len(classes)
         C,H,W = 3,32,32
         net = nn_mdls.BoixNet(C,H,W,nb_filters1,nb_filters2, kernel_size1,kernel_size2, nb_units_fc1,nb_units_fc2,nb_units_fc3)
+    elif mdl == 'LiaoNet':
+        nb_conv_layers=5
+        ## conv params
+        Fs = [16]*nb_conv_layers
+        Ks = [5]*nb_conv_layers
+        ## fc params
+        FC = len(classes)
+        C,H,W = 3,32,32
+        net = nn_mdls.LiaoNet(C,H,W,Fs,Ks,FC)
     if args.enable_cuda:
         net.cuda()
     ''' Cross Entropy + Optmizer'''
