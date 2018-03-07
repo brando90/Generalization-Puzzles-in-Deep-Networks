@@ -49,7 +49,7 @@ def main():
     expt_path = f'flatness_label_corrupt_prob_{label_corrupt_prob}_debug2'
     matlab_file_name = f'flatness_{day}_{month}'
     ''' '''
-    nb_epochs = 4
+    nb_epochs = 60
     batch_size = 64
     #batch_size_train,batch_size_test = batch_size,batch_size
     batch_size_train = batch_size
@@ -59,13 +59,16 @@ def main():
     ''' get (gau)normalized range [-1, 1]'''
     trainset,trainloader, testset,testloader, classes = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,label_corrupt_prob)
     ''' get NN '''
-    ## conv params
-    nb_filters1,nb_filters2 = 6, 18
-    kernel_size1,kernel_size2 = 5,5
-    ## fc params
-    nb_units_fc1,nb_units_fc2,nb_units_fc3 = 120,84,len(classes)
-    C,H,W = 3,32,32
-    net = nn_mdls.BoixNet(C,H,W,nb_filters1,nb_filters2, kernel_size1,kernel_size2, nb_units_fc1,nb_units_fc2,nb_units_fc3)
+    mdl = 'BoixNet'
+    ##
+    if mdl == 'BoixNet':
+        ## conv params
+        nb_filters1,nb_filters2 = 6, 18
+        kernel_size1,kernel_size2 = 5,5
+        ## fc params
+        nb_units_fc1,nb_units_fc2,nb_units_fc3 = 120,84,len(classes)
+        C,H,W = 3,32,32
+        net = nn_mdls.BoixNet(C,H,W,nb_filters1,nb_filters2, kernel_size1,kernel_size2, nb_units_fc1,nb_units_fc2,nb_units_fc3)
     if args.enable_cuda:
         net.cuda()
     ''' Cross Entropy + Optmizer'''
@@ -86,7 +89,8 @@ def main():
     ''' Test the Network on the test data '''
     print(f'train_loss_epoch={train_loss_epoch} \ntrain_error_epoch={train_error_epoch} \ntest_loss_epoch={test_loss_epoch} \ntest_error_epoch={test_error_epoch}')
     ''' save results from experiment '''
-    save2matlab.save2matlab_flatness_expt(results_root,expt_path,matlab_file_name, stats_collector)
+    other_stats = {'nb_epochs':nb_epochs,'batch_size':batch_size,'mdl':mdl,'lr':lr,'momentum':momentum}
+    save2matlab.save2matlab_flatness_expt(results_root,expt_path,matlab_file_name, stats_collector,other_stats=other_stats)
     ''' save net model '''
     path = os.path.join(results_root,expt_path,'net_{day}_{month}')
     utils.save_entire_mdl(path,net)
