@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 #SBATCH --mem=7000
 #SBATCH --time=0-11:00
-#SBATCH --array=60-100
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
 '''
@@ -102,7 +101,7 @@ def main():
     other_stats = {'nb_epochs':nb_epochs,'batch_size':batch_size,'mdl':mdl,'lr':lr,'momentum':momentum}
     save2matlab.save2matlab_flatness_expt(results_root,expt_path,matlab_file_name, stats_collector,other_stats=other_stats)
     ''' save net model '''
-    path = os.path.join(results_root,expt_path,'net_{day}_{month}')
+    path = os.path.join(results_root,expt_path,f'net_{day}_{month}')
     utils.save_entire_mdl(path,net)
     restored_net = utils.restore_entire_mdl(path)
     loss_restored,error_restored = tr_alg.evalaute_mdl_data_set(criterion,error_criterion,restored_net,testloader,args.enable_cuda)
