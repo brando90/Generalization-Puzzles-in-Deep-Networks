@@ -74,6 +74,7 @@ class BoixNet(nn.Module):
 
 class LiaoNet(nn.Module):
     ## 5 conv net FC
+    ## TODO: use ModuleList https://discuss.pytorch.org/t/is-setattr-something-we-need-when-creating-custom-nn-with-changing-layers/14555
     def __init__(self,C,H,W, Fs, Ks, FC,do_bn=False):
         super(LiaoNet, self).__init__()
         self.do_bn = do_bn

@@ -59,7 +59,7 @@ def main():
     matlab_file_name = f'flatness_{day}_{month}'
     ''' '''
     nb_epochs = 60
-    batch_size = 64
+    batch_size = 256
     #batch_size_train,batch_size_test = batch_size,batch_size
     batch_size_train = batch_size
     batch_size_test = 512
