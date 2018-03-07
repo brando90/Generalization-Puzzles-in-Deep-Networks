@@ -69,10 +69,11 @@ def main():
     trainset,trainloader, testset,testloader, classes = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,label_corrupt_prob)
     ''' get NN '''
     mdl = 'cifar_10_tutorial_net'
-    mdl = 'BoixNet'
+    #mdl = 'BoixNet'
     #mdl = 'LiaoNet'
     ##
     if mdl == 'cifar_10_tutorial_net':
+        do_bn = False
         net = nn_mdls.Net()
     elif mdl == 'BoixNet':
         do_bn=True
