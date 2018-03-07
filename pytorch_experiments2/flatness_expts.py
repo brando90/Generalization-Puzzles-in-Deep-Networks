@@ -89,6 +89,7 @@ def main():
     ''' stats collector '''
     stats_collector = tr_alg.StatsCollector(net,None,None)
     ''' Train the Network '''
+    print(f'----\nSTART training: label_corrupt_prob={label_corrupt_prob},nb_epochs={nb_epochs},batch_size={batch_size},mdl={mdl}')
     # We simply have to loop over our data iterator, and feed the inputs to the network and optimize.
     #tr_alg.train_cifar(args, nb_epochs, trainloader,testloader, net,optimizer,criterion)
     error_criterion = tr_alg.error_criterion
