@@ -32,6 +32,7 @@ import data_classification as data_class
 import nn_models as nn_mdls
 import training_algorithms as tr_alg
 import save_to_matlab_format as save2matlab
+import metrics
 import utils
 
 from pdb import set_trace as st
@@ -100,8 +101,8 @@ def main():
     ''' Cross Entropy + Optmizer'''
     lr = 0.01
     momentum = 0
-    #error_criterion = tr_alg.error_criterion
-    error_criterion = tr_alg.error_criterion2
+    #error_criterion = metrics.error_criterion
+    error_criterion = metrics.error_criterion2
     criterion = torch.nn.CrossEntropyLoss()
     #loss = torch.nn.MSELoss(size_average=True)
     optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)

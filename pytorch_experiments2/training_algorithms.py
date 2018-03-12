@@ -139,7 +139,7 @@ class StatsCollector:
         for index, W in enumerate(mdl.parameters()):
             self.w_norms[index].append( W.data.norm(2) )
             self.grads[index].append( W.grad.data.norm(2) )
-            if is_NaN(W.grad.data.norm(2)):
+            if N(W.grad.data.norm(2)):
                 raise ValueError(f'Nan Detected error happened at: i={i} loss_val={loss_val}, loss={loss}')
 
     def collect_stats(self, i, mdl, Xtr,Ytr,Xv,Yv,Xt,Yt):
@@ -155,7 +155,7 @@ class StatsCollector:
         for index, W in enumerate(mdl.parameters()):
             self.w_norms[index].append( W.data.norm(2) )
             self.grads[index].append( W.grad.data.norm(2) )
-            if is_NaN(W.grad.data.norm(2)):
+            if N(W.grad.data.norm(2)):
                 raise ValueError(f'Nan Detected error happened at: i={i} loss_val={loss_val}, loss={loss}')
         ''' Update the  '''
         if self.dynamic_stats_storer is not None:
