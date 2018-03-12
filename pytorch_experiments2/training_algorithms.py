@@ -25,13 +25,6 @@ def vectors_dims_dont_match(Y,Y_):
             return True
     return False
 
-def is_NaN(value):
-    '''
-    Checks is value is problematic by checking if the value:
-    is not finite, is infinite or is already NaN
-    '''
-    return not np.isfinite(value) or np.isinf(value) or np.isnan(value)
-
 def index_batch(X,batch_indices,dtype):
     '''
     returns the batch indexed/sliced batch
@@ -139,7 +132,7 @@ class StatsCollector:
         for index, W in enumerate(mdl.parameters()):
             self.w_norms[index].append( W.data.norm(2) )
             self.grads[index].append( W.grad.data.norm(2) )
-            if N(W.grad.data.norm(2)):
+            if utils.is_NaN(W.grad.data.norm(2)):
                 raise ValueError(f'Nan Detected error happened at: i={i} loss_val={loss_val}, loss={loss}')
 
     def collect_stats(self, i, mdl, Xtr,Ytr,Xv,Yv,Xt,Yt):
@@ -155,7 +148,7 @@ class StatsCollector:
         for index, W in enumerate(mdl.parameters()):
             self.w_norms[index].append( W.data.norm(2) )
             self.grads[index].append( W.grad.data.norm(2) )
-            if N(W.grad.data.norm(2)):
+            if utils.is_NaN(W.grad.data.norm(2)):
                 raise ValueError(f'Nan Detected error happened at: i={i} loss_val={loss_val}, loss={loss}')
         ''' Update the  '''
         if self.dynamic_stats_storer is not None:
@@ -221,7 +214,7 @@ def evalaute_mdl_data_set(loss,error,net,dataloader,enable_cuda):
         inputs, labels = extract_data(enable_cuda,data,wrap_in_variable=True)
         outputs = net(inputs)
         running_loss += loss(outputs,labels).data[0]
-        running_error += error_criterion(outputs,labels)
+        running_error += error(outputs,labels)
     return running_loss/(i+1),running_error/(i+1)
 
 def extract_data(enable_cuda,data,wrap_in_variable=False):

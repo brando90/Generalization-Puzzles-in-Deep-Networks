@@ -1,13 +1,8 @@
 import torch
 
-from pdb import set_trace as st
+from utils import is_NaN
 
-def is_NaN(value):
-    '''
-    Checks is value is problematic by checking if the value:
-    is not finite, is infinite or is already NaN
-    '''
-    return not np.isfinite(value) or np.isinf(value) or np.isnan(value)
+from pdb import set_trace as st
 
 def calc_loss(mdl,loss,X,Y):
     loss_val = loss(input=mdl(X),target=Y)

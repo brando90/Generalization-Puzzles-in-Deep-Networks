@@ -4,6 +4,15 @@ import time
 
 import torch
 
+def is_NaN(value):
+    '''
+    Checks is value is problematic by checking if the value:
+    is not finite, is infinite or is already NaN
+    '''
+    return not np.isfinite(value) or np.isinf(value) or np.isnan(value)
+
+##
+
 def make_and_check_dir(path):
     '''
         tries to make dir/file, if it exists already does nothing else creates it.
