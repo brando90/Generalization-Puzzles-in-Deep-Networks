@@ -100,19 +100,20 @@ def main():
     ''' Cross Entropy + Optmizer'''
     lr = 0.01
     momentum = 0
+    #error_criterion = tr_alg.error_criterion
+    error_criterion = tr_alg.error_criterion2
     criterion = torch.nn.CrossEntropyLoss()
     #loss = torch.nn.MSELoss(size_average=True)
     optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
     ''' stats collector '''
     stats_collector = tr_alg.StatsCollector(net,None,None)
     ''' Train the Network '''
-    print(f'----\nSTART training: label_corrupt_prob={label_corrupt_prob},nb_epochs={nb_epochs},batch_size={batch_size},mdl={mdl},batch-norm={do_bn},nb_params={nb_params}')
+    print(f'----\nSTART training: label_corrupt_prob={label_corrupt_prob},nb_epochs={nb_epochs},batch_size={batch_size},lr={lr},mdl={mdl},batch-norm={do_bn},nb_params={nb_params}')
     overparametrized = len(trainset)<nb_params # N < W ?
     print(f'Model over parametrized? N, W = {len(trainset)} vs {nb_params}')
     print(f'Model over parametrized? N < W = {overparametrized}')
     # We simply have to loop over our data iterator, and feed the inputs to the network and optimize.
     #tr_alg.train_cifar(args, nb_epochs, trainloader,testloader, net,optimizer,criterion)
-    error_criterion = tr_alg.error_criterion
     train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch = tr_alg.train_and_track_stats2(args, nb_epochs, trainloader,testloader, net,optimizer,criterion,error_criterion, stats_collector)
     seconds,minutes,hours = utils.report_times(start_time)
     print(f'Finished Training, hours={hours}')

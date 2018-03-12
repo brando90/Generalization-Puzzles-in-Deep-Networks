@@ -122,6 +122,15 @@ def calc_error(mdl,X,Y):
         raise ValueError(f'Nan Detected error happened at: i={i} loss_val={loss_val}, loss={loss}')
     return train_acc
 
+def calc_error2(mdl,X,Y):
+    # TODO: why can't we call .data.numpy() for train_acc as a whole?
+    max_vals, max_indices = torch.max(mdl(X),1)
+    train_acc = (max_indices != Y).sum().data[0]/max_indices.size()[0]
+    if is_NaN(train_acc):
+        loss = 'accuracy'
+        raise ValueError(f'Nan Detected error happened at: i={i} loss_val={loss_val}, loss={loss}')
+    return train_acc
+
 class StatsCollector:
     '''
     Class that has all the stats collected during training.
