@@ -1,7 +1,7 @@
 import os
 
 import time
-import np
+import numpy as np
 
 import torch
 

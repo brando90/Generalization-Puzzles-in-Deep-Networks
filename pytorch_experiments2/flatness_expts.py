@@ -59,11 +59,11 @@ def main():
     expt_path = f'flatness_label_corrupt_prob_{label_corrupt_prob}_debug2'
     matlab_file_name = f'flatness_{day}_{month}'
     ''' '''
-    nb_epochs = 60
-    batch_size = 256
+    nb_epochs = 2
+    batch_size = 4
     #batch_size_train,batch_size_test = batch_size,batch_size
     batch_size_train = batch_size
-    batch_size_test = 512
+    batch_size_test = 4
     data_path = './data'
     num_workers = 2 # how many subprocesses to use for data loading. 0 means that the data will be loaded in the main process.
     ''' get (gau)normalized range [-1, 1]'''
@@ -71,7 +71,7 @@ def main():
     ''' get NN '''
     mdl = 'cifar_10_tutorial_net'
     #mdl = 'BoixNet'
-    mdl = 'LiaoNet'
+    #mdl = 'LiaoNet'
     ##
     if mdl == 'cifar_10_tutorial_net':
         do_bn = False
@@ -95,12 +95,14 @@ def main():
         FC = len(classes)
         C,H,W = 3,32,32
         net = nn_mdls.LiaoNet(C,H,W,Fs,Ks,FC,do_bn)
+    # elif mdl == 'MMNISTNet':
+    #     net = MMNISTNet()
     if args.enable_cuda:
         net.cuda()
     nb_params = nn_mdls.count_nb_params(net)
     ''' Cross Entropy + Optmizer'''
-    lr = 0.01
-    momentum = 0
+    lr = 0.001
+    momentum = 0.9
     #error_criterion = metrics.error_criterion
     error_criterion = metrics.error_criterion2
     criterion = torch.nn.CrossEntropyLoss()

@@ -114,15 +114,32 @@ def get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_wor
     ''' transform them to Tensors of normalized range [-1, 1]. '''
     transform = transforms.Compose([to_tensor,gaussian_normalize])
     ''' train data processor '''
-    #trainset = torchvision.datasets.CIFAR10(root=data_path, train=True,download=True, transform=transform)
-    trainset = CIFAR10RandomLabels(root=data_path, train=True, download=True,
-                            transform=transform, num_classes=10,
-                            corrupt_prob=label_corrupt_prob)
+    trainset = torchvision.datasets.CIFAR10(root=data_path, train=True,download=True, transform=transform)
+    #trainset = CIFAR10RandomLabels(root=data_path, train=True, download=True,transform=transform, num_classes=10,corrupt_prob=label_corrupt_prob)
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size_train,shuffle=True, num_workers=num_workers)
     ''' test data processor '''
     testset = torchvision.datasets.CIFAR10(root=data_path, train=False,download=True, transform=transform)
+    #testset = CIFAR10RandomLabels(root=data_path, train=False, download=True,transform=transform, num_classes=10,corrupt_prob=label_corrupt_prob)
     testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size_test,shuffle=False, num_workers=num_workers)
     ''' classes '''
     classes = ('plane', 'car', 'bird', 'cat','deer', 'dog', 'frog', 'horse', 'ship', 'truck')
     ''' return trainer processors'''
     return trainset,trainloader, testset,testloader, classes
+
+#####
+
+def get_MNIST_data_processor(data_path,batch_size_train,batch_size_test,num_workers,label_corrupt_prob):
+    # TODO
+    kwargs = {'num_workers': 1, 'pin_memory': True}
+    ''' converts (HxWxC) in range [0,255] to [0.0,1.0] '''
+    to_tensor = transforms.ToTensor()
+    ''' Given meeans (M1,...,Mn) and std: (S1,..,Sn) for n channels, input[channel] = (input[channel] - mean[channel]) / std[channel] '''
+    gaussian_normalize = transforms.Compose( transforms.Normalize((0.1307,),(0.3081,)) )
+    ''' transform them to Tensors of normalized range [-1, 1]. '''
+    transform = transforms.Compose([to_tensor,gaussian_normalize])
+    ''' train data processor '''
+    trainset = datasets.MNIST(root=data_path, train=True,download=True,transform=transform)
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size_train,shuffle=True, num_workers=num_workers)
+    ''' test data processor '''
+    testset = torchvision.datasets.CIFAR10(root=data_path, train=False,download=True, transform=transform)
+    testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size_test,shuffle=False, num_workers=num_workers)
