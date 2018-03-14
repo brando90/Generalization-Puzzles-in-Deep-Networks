@@ -36,9 +36,9 @@ def main(plot):
     expt = 'BoixNet'
     #expt = 'LiaoNet'
     ''' declare variables '''
-    batch_size = 32
+    batch_size = 256
     num_classes = 10
-    nb_epochs = 2
+    nb_epochs = 60
     lr = 0.01
     ''' load cifar '''
     (x_train, y_train), (x_test, y_test) = load_cifar10(num_classes)
