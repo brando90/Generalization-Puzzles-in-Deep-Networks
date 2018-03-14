@@ -29,7 +29,8 @@ from nn_models import compile_mdl_with_sgd
 
 ## https://blog.plon.io/tutorials/cifar-10-classification-using-keras-tutorial/#comment-670
 
-def main():
+def main(plot):
+    start_time = time.time()
     ''' experiment type '''
     expt = 'BoixNet'
     #expt = 'LiaoNet'
@@ -58,31 +59,35 @@ def main():
     compile_mdl_with_sgd(cnn_n,lr, weight_decay=0,momentum=0,nesterov=False)
     ''' Fit model '''
     cnn = cnn_n.fit(x_train, y_train, batch_size=batch_size, epochs=nb_epochs, validation_data=(x_test,y_test),shuffle=True)
+    seconds,minutes,hours = utils.report_times(start_time)
+    print(f'\nFinished Training, hours={hours}\a')
     ''' Plots '''
-    # Plots for training and testing process: loss and accuracy
-    plt.figure(0)
-    plt.plot(cnn.history['acc'],'r')
-    plt.plot(cnn.history['val_acc'],'g')
-    plt.xticks(np.arange(0, 101, 2.0))
-    plt.rcParams['figure.figsize'] = (8, 6)
-    plt.xlabel("Num of Epochs")
-    plt.ylabel("Accuracy")
-    plt.title("Training Accuracy vs Validation Accuracy")
-    plt.legend(['train','validation'])
+    if plot:
+        # Plots for training and testing process: loss and accuracy
+        plt.figure(0)
+        plt.plot(cnn.history['acc'],'r')
+        plt.plot(cnn.history['val_acc'],'g')
+        plt.xticks(np.arange(0, 101, 2.0))
+        plt.rcParams['figure.figsize'] = (8, 6)
+        plt.xlabel("Num of Epochs")
+        plt.ylabel("Accuracy")
+        plt.title("Training Accuracy vs Validation Accuracy")
+        plt.legend(['train','validation'])
 
 
-    plt.figure(1)
-    plt.plot(cnn.history['loss'],'r')
-    plt.plot(cnn.history['val_loss'],'g')
-    plt.xticks(np.arange(0, 101, 2.0))
-    plt.rcParams['figure.figsize'] = (8, 6)
-    plt.xlabel("Num of Epochs")
-    plt.ylabel("Loss")
-    plt.title("Training Loss vs Validation Loss")
-    plt.legend(['train','validation'])
+        plt.figure(1)
+        plt.plot(cnn.history['loss'],'r')
+        plt.plot(cnn.history['val_loss'],'g')
+        plt.xticks(np.arange(0, 101, 2.0))
+        plt.rcParams['figure.figsize'] = (8, 6)
+        plt.xlabel("Num of Epochs")
+        plt.ylabel("Loss")
+        plt.title("Training Loss vs Validation Loss")
+        plt.legend(['train','validation'])
 
 if __name__ == '__main__':
-    main()
+    main(plot=False)
+    print('\a')
 
 
 plt.show()
