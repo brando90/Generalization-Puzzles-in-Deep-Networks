@@ -22,6 +22,8 @@ import sys
 current_directory = os.getcwd() #The method getcwd() returns current working directory of a process.
 sys.path.append(current_directory)
 
+import numpy as np
+
 import torch
 
 from torch.autograd import Variable
@@ -34,10 +36,14 @@ import training_algorithms as tr_alg
 import save_to_matlab_format as save2matlab
 import metrics
 import utils
+import plot_utils
 
 from pdb import set_trace as st
 
 import argparse
+
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser(description='PyTorch Example')
 parser.add_argument('-cuda','--enable-cuda',action='store_true',
@@ -47,7 +53,7 @@ if not torch.cuda.is_available() and args.enable_cuda:
     print('Cuda is enabled but the current system does not have cuda')
     sys.exit()
 
-def main():
+def main(plot=False):
     ''' date parameters setup'''
     today_obj = date.today() # contains datetime.date(year, month, day); accessible via .day etc
     day = today_obj.day
@@ -102,7 +108,7 @@ def main():
     nb_params = nn_mdls.count_nb_params(net)
     ''' Cross Entropy + Optmizer'''
     lr = 0.001
-    momentum = 0.9
+    momentum = 0.0
     #error_criterion = metrics.error_criterion
     error_criterion = metrics.error_criterion2
     criterion = torch.nn.CrossEntropyLoss()
@@ -130,8 +136,13 @@ def main():
     utils.save_entire_mdl(path,net)
     restored_net = utils.restore_entire_mdl(path)
     loss_restored,error_restored = tr_alg.evalaute_mdl_data_set(criterion,error_criterion,restored_net,testloader,args.enable_cuda)
-    print(f'\nloss_restored={loss_restored},error_restored={error_restored}')
+    print(f'\nloss_restored={loss_restored},error_restored={error_restored}\a')
+    ''' plot '''
+    if plot:
+        #TODO
+        plot_utils.plot_loss_and_accuracies(stats_collector)
+        plt.show()
 
 if __name__ == '__main__':
-    main()
+    main(plot=True)
     print('\a')

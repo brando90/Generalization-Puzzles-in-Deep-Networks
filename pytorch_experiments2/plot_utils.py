@@ -41,6 +41,7 @@ def plot_loss_classification_errors(iterations,stats_collector,legend_hyper_para
     fig=plt.figure()
     handles_4_legend = []
     ''' plot loss vs iterations of mdl'''
+    #st()
     train_line, = plt.plot(x_axis,stats_collector.train_errors,label=f'Train Error (S)GD model')
     # plt.plot(x_axis,stats_collector.val_losses)
     test_line, = plt.plot(x_axis,stats_collector.test_errors,label='Test Error (S)GD model')
@@ -76,6 +77,32 @@ def plot_loss_errors(iterations,stats_collector,test_error_pinv=None,legend_hype
     ''' set up title and legend '''
     plt.legend(handles=handles_4_legend)
     plt.title(f'Loss and Errors vs iterations {legend_hyper_params}')
+
+def plot_loss_and_accuracies(stats_collector):
+    '''
+        provides a single plot of Train and Test losses vs training iterations
+        (with appropriate legends and title)
+    '''
+    ''' set up x-axis grid as # iterations '''
+    x_axis = range(len(stats_collector.train_losses))
+    ''' Accuracies '''
+    plt.figure(0)
+    train_line, = plt.plot(x_axis,stats_collector.train_accs,label='Train')
+    test_line, = plt.plot(x_axis,stats_collector.test_accs,label='Validation')
+    plt.rcParams['figure.figsize'] = (8, 6)
+    plt.xlabel("Num of Epochs")
+    plt.ylabel("Accuracy")
+    plt.title("Training Accuracy vs Validation Accuracy")
+    plt.legend([train_line,test_line])
+    ''' Losses '''
+    plt.figure(1)
+    train_line, = plt.plot(x_axis,stats_collector.train_losses,label='Train')
+    test_line, = plt.plot(x_axis,stats_collector.test_losses,label='Validation')
+    plt.rcParams['figure.figsize'] = (8, 6)
+    plt.xlabel("Num of Epochs")
+    plt.ylabel("Accuracy")
+    plt.title("Training Loss vs Validation Loss")
+    plt.legend([train_line,test_line])
 
 def plot_sgd_vs_pinv_distance_during_training(iterations,stats_collector):
     '''

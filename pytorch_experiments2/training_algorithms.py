@@ -111,6 +111,7 @@ class StatsCollector:
         ''' loss & errors lists'''
         self.train_losses, self.val_losses, self.test_losses = [], [], []
         self.train_errors, self.val_errors, self.test_errors = [], [], []
+        self.train_accs, self.val_accs, self.test_accs = [], [], []
         ''' stats related to parameters'''
         nb_param_groups = len( list(mdl.parameters()) )
         self.grads = [ [] for i in range(nb_param_groups) ]
@@ -173,6 +174,8 @@ class StatsCollector:
         self.test_losses.append(test_loss)
         self.train_errors.append(train_error)
         self.test_errors.append(test_error)
+        self.train_accs.append(1.0-train_error)
+        self.test_accs.append(1.0-test_error)
 
 ####
 
@@ -288,7 +291,7 @@ def train_and_track_stats2(args, nb_epochs, trainloader,testloader, net,optimize
         ''' End of Epoch: collect stats'''
         train_loss_epoch, train_error_epoch = running_train_loss/(i+1), running_train_error/(i+1)
         test_loss_epoch, test_error_epoch = evalaute_mdl_data_set(criterion,error_criterion,net,testloader,enable_cuda)
-        #stats_collector.collect_mdl_params_stats(net)
-        #stats_collector.append_losses_errors(train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch)
+        stats_collector.collect_mdl_params_stats(net)
+        stats_collector.append_losses_errors(train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch)
         print(f'[{epoch}, {i+1}], (train_loss: {train_loss_epoch}, train error: {train_error_epoch}) , (test loss: {test_loss_epoch}, test error: {test_error_epoch})')
     return train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch
