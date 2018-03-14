@@ -26,6 +26,7 @@ import multiprocessing as mp
 from data_sets import load_cifar10
 from nn_models import model_convs_FCs
 from nn_models import compile_mdl_with_sgd
+import utils
 
 ## https://blog.plon.io/tutorials/cifar-10-classification-using-keras-tutorial/#comment-670
 
