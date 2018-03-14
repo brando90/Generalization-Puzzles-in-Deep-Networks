@@ -86,7 +86,7 @@ def main(plot):
         plt.legend(['train','validation'])
 
 if __name__ == '__main__':
-    main(plot=False)
+    main(plot=True)
     print('\a')
 
 
