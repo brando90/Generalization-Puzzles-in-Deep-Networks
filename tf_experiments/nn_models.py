@@ -94,15 +94,15 @@ def model_convs_FCs(CHW, nb_conv_layers,nb_fc_layers, nb_conv_filters,kernels, n
         # last layer is 10 neurons with softmax activation for classification
         raise ValueError(f'nb_fc_layers: {nb_fc_layers} is too low need at least 1')
     ''' make convolution layers '''
-    model.add(Conv2D(32, (3, 3), padding='same', input_shape=CHW))
+    model.add(Conv2D(nb_conv_filters[0], kernels[0], padding='same', input_shape=CHW))
     model.add(Activation('relu'))
-    for i in range(nb_conv_layers-1):
-        model.add(Conv2D(32,(3, 3)))
+    for i in range(1,nb_conv_layers):
+        model.add(Conv2D(nb_conv_filters[i],kernels[i]))
         model.add(Activation('relu'))
     ''' make fully connected layers '''
     model.add(Flatten())
-    for i in range(nb_fc_layers-1):
-        model.add(Dense(512))
+    for i in range(0,nb_fc_layers-1):
+        model.add(Dense(nb_units_fcs[i]))
         model.add(Activation('relu'))
     ##
     num_classes = nb_units_fcs[-1]
