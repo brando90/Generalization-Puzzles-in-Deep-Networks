@@ -41,7 +41,8 @@ def main(plot):
     nb_epochs = 60
     lr = 0.01
     ''' load cifar '''
-    (x_train, y_train), (x_test, y_test) = load_cifar10(num_classes)
+    standardize=True
+    (x_train, y_train), (x_test, y_test) = load_cifar10(num_classes,standardize=standardize)
     ''' params for cnn'''
     if expt == 'BoixNet':
         nb_conv_layers, nb_fc_layers = 2,3
