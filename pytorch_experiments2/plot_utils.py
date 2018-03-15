@@ -100,7 +100,7 @@ def plot_loss_and_accuracies(stats_collector):
     test_line, = plt.plot(x_axis,stats_collector.test_losses,label='Validation')
     plt.rcParams['figure.figsize'] = (8, 6)
     plt.xlabel("Num of Epochs")
-    plt.ylabel("Accuracy")
+    plt.ylabel("Loss")
     plt.title("Training Loss vs Validation Loss")
     plt.legend([train_line,test_line])
 
