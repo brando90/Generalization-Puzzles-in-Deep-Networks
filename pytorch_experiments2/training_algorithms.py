@@ -283,8 +283,8 @@ def train_and_track_stats2(args, nb_epochs, trainloader,testloader, net,optimize
             #print(f'running_train_loss = {running_train_loss}')
             running_train_error += error_criterion(outputs,labels)
             ''' print error first iteration'''
-            # if i == 0: # print on the first iteration
-            #     print(f'--\ni={i}, running_train_loss={running_train_loss}, running_train_error={running_train_error}')
+            if i == 0 and epoch == 0: # print on the first iteration
+                print(inputs)
             if i % 2000 == 1999:    # print every 2000 mini-batches
                 print('[%d, %5d] loss: %.3f' %(epoch + 1, i + 1, running_train_loss2 / 2000))
                 running_train_loss2 = 0
