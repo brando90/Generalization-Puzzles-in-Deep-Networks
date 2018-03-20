@@ -38,11 +38,12 @@ def main(plot):
     ''' declare variables '''
     batch_size = 256
     num_classes = 10
-    nb_epochs = 60
+    nb_epochs = 100
     lr = 0.01
     ''' load cifar '''
     standardize=True
     (x_train, y_train), (x_test, y_test) = load_cifar10(num_classes,standardize=standardize)
+    print(x_train[0,:])
     ''' params for cnn'''
     if expt == 'BoixNet':
         nb_conv_layers, nb_fc_layers = 2,3
