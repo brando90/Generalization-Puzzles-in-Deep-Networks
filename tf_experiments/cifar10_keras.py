@@ -47,9 +47,10 @@ def main(plot):
     ''' params for cnn'''
     print(f'expt = {expt}')
     if expt == 'BoixNet':
-        nb_conv_layers, nb_fc_layers = 2,3
+        nb_conv_layers = 2
         nb_conv_filters = [32]*nb_conv_layers
         kernels = [(5,5)]*nb_conv_layers
+        nb_fc_layers = 3
         nb_units_fcs = [512,256,num_classes]
     elif expt == 'LiaoNet':
         nb_conv_layers, nb_fc_layers = 5,1

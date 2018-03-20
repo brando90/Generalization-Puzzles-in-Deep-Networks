@@ -99,7 +99,7 @@ class CIFAR10RandomLabels(torchvision.datasets.CIFAR10):
     else:
       self.test_labels = labels
 
-def get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,label_corrupt_prob):
+def get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,label_corrupt_prob,standardize=False):
     '''
         The output of torchvision datasets are PILImage images of range [0, 1].
         We transform them to Tensors of (gau)normalized range [-1, 1].
@@ -107,12 +107,16 @@ def get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_wor
         Params:
             num_workers = how many subprocesses to use for data loading. 0 means that the data will be loaded in the main process.
     '''
+    transform = []
     ''' converts (HxWxC) in range [0,255] to [0.0,1.0] '''
     to_tensor = transforms.ToTensor()
+    transform.append(to_tensor)
     ''' Given meeans (M1,...,Mn) and std: (S1,..,Sn) for n channels, input[channel] = (input[channel] - mean[channel]) / std[channel] '''
-    gaussian_normalize = transforms.Normalize( (0.5, 0.5, 0.5), (0.5, 0.5, 0.5) )
+    if standardize:
+        gaussian_normalize = transforms.Normalize( (0.5, 0.5, 0.5), (0.5, 0.5, 0.5) )
+        transform.append(gaussian_normalize)
     ''' transform them to Tensors of normalized range [-1, 1]. '''
-    transform = transforms.Compose([to_tensor,gaussian_normalize])
+    transform = transforms.Compose(transform)
     ''' train data processor '''
     trainset = torchvision.datasets.CIFAR10(root=data_path, train=True,download=True, transform=transform)
     #trainset = CIFAR10RandomLabels(root=data_path, train=True, download=True,transform=transform, num_classes=10,corrupt_prob=label_corrupt_prob)
