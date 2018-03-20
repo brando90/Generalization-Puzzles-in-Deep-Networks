@@ -33,12 +33,12 @@ import utils
 def main(plot):
     start_time = time.time()
     ''' experiment type '''
-    expt = 'BoixNet'
-    #expt = 'LiaoNet'
+    #expt = 'BoixNet'
+    expt = 'LiaoNet'
     ''' declare variables '''
     batch_size = 256
     num_classes = 10
-    nb_epochs = 100
+    nb_epochs = 500
     lr = 0.01
     ''' load cifar '''
     standardize=True
