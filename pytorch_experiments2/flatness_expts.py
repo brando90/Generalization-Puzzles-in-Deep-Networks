@@ -65,37 +65,39 @@ def main(plot=False):
     expt_path = f'flatness_label_corrupt_prob_{label_corrupt_prob}_debug2'
     matlab_file_name = f'flatness_{day}_{month}'
     ''' '''
-    nb_epochs = 2
-    batch_size = 4
+    nb_epochs = 200
+    batch_size = 256
     #batch_size_train,batch_size_test = batch_size,batch_size
     batch_size_train = batch_size
-    batch_size_test = 4
+    batch_size_test = 256
     data_path = './data'
     num_workers = 2 # how many subprocesses to use for data loading. 0 means that the data will be loaded in the main process.
-    ''' get (gau)normalized range [-1, 1]'''
-    trainset,trainloader, testset,testloader, classes = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,label_corrupt_prob)
+    ''' get data set '''
+    standardize = True
+    trainset,trainloader, testset,testloader, classes = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,label_corrupt_prob,standardize=standardize)
     ''' get NN '''
     mdl = 'cifar_10_tutorial_net'
-    #mdl = 'BoixNet'
+    mdl = 'BoixNet'
     #mdl = 'LiaoNet'
     ##
+    print(f'model = {mdl}')
     if mdl == 'cifar_10_tutorial_net':
         do_bn = False
         net = nn_mdls.Net()
     elif mdl == 'BoixNet':
         do_bn=True
         ## conv params
-        nb_filters1,nb_filters2 = 6, 18
+        nb_filters1,nb_filters2 = 32, 32
         kernel_size1,kernel_size2 = 5,5
         ## fc params
-        nb_units_fc1,nb_units_fc2,nb_units_fc3 = 120,84,len(classes)
+        nb_units_fc1,nb_units_fc2,nb_units_fc3 = 512,256,len(classes)
         C,H,W = 3,32,32
         net = nn_mdls.BoixNet(C,H,W,nb_filters1,nb_filters2, kernel_size1,kernel_size2, nb_units_fc1,nb_units_fc2,nb_units_fc3,do_bn)
     elif mdl == 'LiaoNet':
         do_bn=True
-        nb_conv_layers=4
+        nb_conv_layers=5
         ## conv params
-        Fs = [16]*nb_conv_layers
+        Fs = [32]*nb_conv_layers
         Ks = [5]*nb_conv_layers
         ## fc params
         FC = len(classes)

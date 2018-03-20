@@ -1,4 +1,8 @@
 path='/Users/brandomiranda/home_simulation_research/overparametrized_experiments/pytorch_experiments2/test_runs_debug/unit_logistic_regression/N_train_81_N_test_121_batch_size_2_perturb_freq_1000_perturb_magnitude_0_momentum_0.99/expt_type_NB_VEC_ELEMENTS_1/satid_1_sid_1_February_9.mat';
+path='/Users/brandomiranda/home_simulation_research/overparametrized_experiments/pytorch_experiments2/test_runs_debug/unit_logistic_regression/N_train_81_N_test_121_batch_size_40_perturb_freq_1000_perturb_magnitude_0_momentum_0.99/expt_type_NB_VEC_ELEMENTS_1/satid_1_sid_1_February_10.mat'
+path='/Users/brandomiranda/home_simulation_research/overparametrized_experiments/pytorch_experiments2/test_runs_debug/unit_logistic_regression/N_train_81_N_test_121_batch_size_81_perturb_freq_1000_perturb_magnitude_0_momentum_0.99/expt_type_NB_VEC_ELEMENTS_1/satid_1_sid_1_February_10.mat'
+path='/Users/brandomiranda/home_simulation_research/overparametrized_experiments/pytorch_experiments2/test_runs_debug/unit_logistic_regression/N_train_81_N_test_529_batch_size_81_perturb_freq_1000_perturb_magnitude_0_momentum_0.0/expt_type_NB_VEC_ELEMENTS_1/satid_1_sid_1_February_10.mat'
+path='/Users/brandomiranda/home_simulation_research/overparametrized_experiments/pytorch_experiments2/test_runs_debug/unit_logistic_regression/N_train_81_N_test_529_batch_size_81_perturb_freq_1000_perturb_magnitude_0_momentum_0.0/expt_type_NB_VEC_ELEMENTS_1/satid_1_sid_1_February_12.mat'
 load(path);
 iterations=1:length(w_norms);
 %% plot w_norms
@@ -10,12 +14,12 @@ title('Weight norm vs iterations (for both classes)')
 fig_loss=figure;
 plot(iterations,[train_losses;test_losses])
 legend('train loss','test loss')
-title('train/test loss vs iterations)')
+title('train/test loss vs iterations')
 %% errors
 fig_error=figure;
-plot(iterations,[test_errors;train_errors])
+plot(iterations,[train_errors;test_errors])
 legend('train error','test error')
-title('train/test error vs iterations)')
+title('train/test error vs iterations')
 %%
 saveas(fig_w,'fig_w')
 saveas(fig_w,'fig_w','pdf')
