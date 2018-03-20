@@ -45,6 +45,7 @@ def main(plot):
     (x_train, y_train), (x_test, y_test) = load_cifar10(num_classes,standardize=standardize)
     print(x_train[0,:])
     ''' params for cnn'''
+    print(f'expt = {expt}')
     if expt == 'BoixNet':
         nb_conv_layers, nb_fc_layers = 2,3
         nb_conv_filters = [32]*nb_conv_layers
