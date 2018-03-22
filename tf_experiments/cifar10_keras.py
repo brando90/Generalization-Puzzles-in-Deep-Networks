@@ -33,8 +33,8 @@ import utils
 def main(plot):
     start_time = time.time()
     ''' experiment type '''
-    expt = 'BoixNet'
-    #expt = 'LiaoNet'
+    #expt = 'BoixNet'
+    expt = 'LiaoNet'
     ''' declare variables '''
     batch_size = 256
     num_classes = 10
@@ -53,10 +53,10 @@ def main(plot):
         nb_fc_layers = 3
         nb_units_fcs = [512,256,num_classes]
     elif expt == 'LiaoNet':
-        nb_conv_layers, nb_fc_layers = 5,1
+        nb_conv_layers, nb_fc_layers = 3,1
         nb_conv_filters = [32]*nb_conv_layers
         kernels = [(5,5)]*nb_conv_layers
-        nb_units_fcs = [512,num_classes]
+        nb_units_fcs = [num_classes]
     CHW = x_train.shape[1:] # (3, 32, 32)
     ''' get model '''
     cnn_n = model_convs_FCs(CHW, nb_conv_layers,nb_fc_layers, nb_conv_filters,kernels, nb_units_fcs)
