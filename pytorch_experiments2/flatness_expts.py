@@ -114,7 +114,7 @@ def main(plot=False):
     #error_criterion = metrics.error_criterion
     error_criterion = metrics.error_criterion2
     #criterion = torch.nn.CrossEntropyLoss()
-    ciretrion = torch.nn.MultiLabelMarginLoss()
+    criterion = torch.nn.MultiLabelMarginLoss()
     #loss = torch.nn.MSELoss(size_average=True)
     optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
     ''' stats collector '''
