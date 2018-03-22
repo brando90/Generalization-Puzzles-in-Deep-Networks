@@ -78,14 +78,14 @@ def main(plot=False):
     ''' get NN '''
     mdl = 'cifar_10_tutorial_net'
     mdl = 'BoixNet'
-    #mdl = 'LiaoNet'
+    mdl = 'LiaoNet'
     ##
     print(f'model = {mdl}')
     if mdl == 'cifar_10_tutorial_net':
         do_bn = False
         net = nn_mdls.Net()
     elif mdl == 'BoixNet':
-        do_bn=True
+        do_bn=False
         ## conv params
         nb_filters1,nb_filters2 = 32, 32
         kernel_size1,kernel_size2 = 5,5
@@ -94,8 +94,8 @@ def main(plot=False):
         C,H,W = 3,32,32
         net = nn_mdls.BoixNet(C,H,W,nb_filters1,nb_filters2, kernel_size1,kernel_size2, nb_units_fc1,nb_units_fc2,nb_units_fc3,do_bn)
     elif mdl == 'LiaoNet':
-        do_bn=True
-        nb_conv_layers=5
+        do_bn=False
+        nb_conv_layers=3
         ## conv params
         Fs = [32]*nb_conv_layers
         Ks = [5]*nb_conv_layers
@@ -109,11 +109,12 @@ def main(plot=False):
         net.cuda()
     nb_params = nn_mdls.count_nb_params(net)
     ''' Cross Entropy + Optmizer'''
-    lr = 0.001
+    lr = 0.01
     momentum = 0.0
     #error_criterion = metrics.error_criterion
     error_criterion = metrics.error_criterion2
-    criterion = torch.nn.CrossEntropyLoss()
+    #criterion = torch.nn.CrossEntropyLoss()
+    ciretrion = torch.nn.MultiLabelMarginLoss()
     #loss = torch.nn.MSELoss(size_average=True)
     optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
     ''' stats collector '''
