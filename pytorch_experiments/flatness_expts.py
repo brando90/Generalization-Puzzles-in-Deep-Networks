@@ -63,12 +63,17 @@ if not torch.cuda.is_available() and args.enable_cuda:
 
 def main(plot=False):
     ''' reproducibility setup/params'''
+    #num_workers = 2 # how many subprocesses to use for data loading. 0 means that the data will be loaded in the main process.
     githash = subprocess.check_output(["git", "describe", "--always"]).strip()
     seed = args.seed
     if seed is None: # if seed is None it has not been set, so get a random seed, else use the seed that was set
         seed = ord(os.urandom(1))
     print(f'seed: {seed}')
+    ## SET SEED/determinism
+    num_workers = 0
     torch.manual_seed(seed)
+    if enable_cuda:
+        torch.backends.cudnn.deterministic=True
     ''' date parameters setup'''
     today_obj = date.today() # contains datetime.date(year, month, day); accessible via .day etc
     day = today_obj.day
@@ -86,7 +91,6 @@ def main(plot=False):
     batch_size_train = batch_size
     batch_size_test = 256
     data_path = './data'
-    num_workers = 2 # how many subprocesses to use for data loading. 0 means that the data will be loaded in the main process.
     ''' get data set '''
     standardize = True # x - mu / std , [-1,+1]
     trainset,trainloader, testset,testloader, classes = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,label_corrupt_prob,standardize=standardize)
