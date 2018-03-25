@@ -54,6 +54,8 @@ parser.add_argument('-cuda','--enable-cuda',action='store_true',
                     help='Enable cuda/gpu')
 parser.add_argument("-seed", "--seed", type=int, default=None,
                     help="The number of games to simulate")
+parser.add_argument("-epochs", "--epochs", type=int, default=None,
+                    help="The number of games to simulate")
 args = parser.parse_args()
 if not torch.cuda.is_available() and args.enable_cuda:
     print('Cuda is enabled but the current system does not have cuda')
@@ -78,7 +80,7 @@ def main(plot=False):
     expt_path = f'flatness_label_corrupt_prob_{label_corrupt_prob}_debug2'
     matlab_file_name = f'flatness_{day}_{month}_{seed}'
     ''' experiment params '''
-    nb_epochs = 2
+    nb_epochs = 4 if args.epochs is None else args.epochs
     batch_size = 256
     #batch_size_train,batch_size_test = batch_size,batch_size
     batch_size_train = batch_size
