@@ -1,0 +1,140 @@
+/home/slurm/slurmd/job9700065/slurm_script:268: RankWarning: Polyfit may be poorly conditioned
+  c_pinv = np.polyfit( X_train.reshape((N_train,)) , Y_train.reshape((N_train,)) , Degree_mdl )[::-1]
+/home/brando90/home_simulation_research/overparametrized_experiments/pytorch_experiments
+SLURM_ARRAY_TASK_ID =  56
+SLURM_JOBID =  9700065
+
+--Degree_mdl=8 
+--degrees=[3, 4, 5, 6, 7, 8] 
+--SLURM_ARRAY_TASK_ID=56 
+
+reg_lambda =  0
+nb_iter =  200
+N_train=7, N_test=200
+--->training SP mdl
+nb =  200
+reg_lambda =  0
+reg_type =  
+mdl_sgd[0].weight=Parameter containing:
+    0     0     0     0     0     0     0     0     0
+[torch.FloatTensor of size 1x9]
+
+reg_lambda=0
+-------------
+i = 0, current_train_loss = [ 0.4252848]
+W.data = 
+1.00000e-03 *
+  0.0000  8.2479  8.2479  7.7896  7.3314  6.7841  6.1477  5.4685  4.7929
+[torch.FloatTensor of size 1x9]
+
+W.grad.data = 
+1.00000e-02 *
+  0.0000 -8.2479 -8.2479 -7.7896 -7.3314 -6.7841 -6.1477 -5.4685 -4.7929
+[torch.FloatTensor of size 1x9]
+
+-------------
+i = 20, current_train_loss = [ 0.41646937]
+W.data = 
+1.00000e-02 *
+ -7.6505  5.3708  5.4118  4.8337  4.2713  3.4716  2.4272  1.2414  0.0199
+[torch.FloatTensor of size 1x9]
+
+W.grad.data = 
+1.00000e-02 *
+  2.0974 -1.7183 -1.3752 -1.0008 -0.7126 -0.3375  0.1457  0.6942  1.2603
+[torch.FloatTensor of size 1x9]
+
+-------------
+i = 40, current_train_loss = [ 0.41461974]
+W.data = 
+-0.1030  0.0847  0.0767  0.0634  0.0524  0.0373  0.0175 -0.0050 -0.0283
+[torch.FloatTensor of size 1x9]
+
+W.grad.data = 
+1.00000e-02 *
+  0.9263 -1.4034 -0.9676 -0.6195 -0.3770 -0.0452  0.4011  0.9193  1.4608
+[torch.FloatTensor of size 1x9]
+
+-------------
+i = 60, current_train_loss = [ 0.41338021]
+W.data = 
+-0.1181  0.1098  0.0938  0.0745  0.0593  0.0382  0.0099 -0.0226 -0.0565
+[torch.FloatTensor of size 1x9]
+
+W.grad.data = 
+1.00000e-02 *
+  0.6446 -1.1238 -0.7652 -0.5046 -0.3329 -0.0554  0.3495  0.8357  1.3523
+[torch.FloatTensor of size 1x9]
+
+-------------
+i = 80, current_train_loss = [ 0.41248778]
+W.data = 
+-0.1295  0.1298  0.1075  0.0838  0.0659  0.0397  0.0038 -0.0382 -0.0821
+[torch.FloatTensor of size 1x9]
+
+W.grad.data = 
+1.00000e-02 *
+  0.5097 -0.8904 -0.6167 -0.4376 -0.3293 -0.0996  0.2692  0.7279  1.2230
+[torch.FloatTensor of size 1x9]
+
+-------------
+i = 100, current_train_loss = [ 0.411832]
+W.data = 
+-0.1386  0.1455  0.1185  0.0920  0.0725  0.0422 -0.0008 -0.0517 -0.1054
+[torch.FloatTensor of size 1x9]
+
+W.grad.data = 
+1.00000e-02 *
+  0.4121 -0.6977 -0.4962 -0.3858 -0.3307 -0.1410  0.1974  0.6328  1.1099
+[torch.FloatTensor of size 1x9]
+
+-------------
+i = 120, current_train_loss = [ 0.41133884]
+W.data = 
+-0.1460  0.1577  0.1273  0.0993  0.0792  0.0454 -0.0041 -0.0635 -0.1266
+[torch.FloatTensor of size 1x9]
+
+W.grad.data = 
+1.00000e-02 *
+  0.3335 -0.5389 -0.3965 -0.3429 -0.3321 -0.1759  0.1372  0.5531  1.0150
+[torch.FloatTensor of size 1x9]
+
+-------------
+i = 140, current_train_loss = [ 0.41095749]
+W.data = 
+-0.1520  0.1671  0.1344  0.1057  0.0858  0.0492 -0.0063 -0.0739 -0.1460
+[torch.FloatTensor of size 1x9]
+
+W.grad.data = 
+1.00000e-03 *
+  2.6890 -4.0833 -3.1384 -3.0693 -3.3286 -2.0460  0.8715  4.8668  9.3583
+[torch.FloatTensor of size 1x9]
+
+-------------
+i = 160, current_train_loss = [ 0.41065326]
+W.data = 
+-0.1568  0.1741  0.1399  0.1115  0.0925  0.0535 -0.0076 -0.0830 -0.1640
+[torch.FloatTensor of size 1x9]
+
+W.grad.data = 
+1.00000e-03 *
+  2.1556 -3.0101 -2.4510 -2.7667 -3.3312 -2.2820  0.4570  4.3143  8.6980
+[torch.FloatTensor of size 1x9]
+
+-------------
+i = 180, current_train_loss = [ 0.41040239]
+W.data = 
+-0.1606  0.1791  0.1442  0.1168  0.0991  0.0583 -0.0082 -0.0911 -0.1808
+[torch.FloatTensor of size 1x9]
+
+W.grad.data = 
+1.00000e-03 *
+  1.7156 -2.1293 -1.8790 -2.5109 -3.3292 -2.4753  0.1134  3.8541  8.1464
+[torch.FloatTensor of size 1x9]
+
+--- 0.21464824676513672 seconds ---
+--- 0.0035774707794189453 minutes ---
+--- 5.962451299031576e-05 hours ---
+
+plotting={'save_bulk_experiment': True, 'plotting': False}
+lb_test=
