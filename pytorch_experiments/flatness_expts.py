@@ -52,7 +52,7 @@ import matplotlib.pyplot as plt
 parser = argparse.ArgumentParser(description='PyTorch Example')
 parser.add_argument('-cuda','--enable-cuda',action='store_true',
                     help='Enable cuda/gpu')
-parser.add_argument("-s", "--seed", type=int, default=None,
+parser.add_argument("-seed", "--seed", type=int, default=None,
                     help="The number of games to simulate")
 args = parser.parse_args()
 if not torch.cuda.is_available() and args.enable_cuda:
