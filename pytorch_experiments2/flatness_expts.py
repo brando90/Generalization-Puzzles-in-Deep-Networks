@@ -65,7 +65,7 @@ def main(plot=False):
     expt_path = f'flatness_label_corrupt_prob_{label_corrupt_prob}_debug2'
     matlab_file_name = f'flatness_{day}_{month}'
     ''' '''
-    nb_epochs = 200
+    nb_epochs = 400
     batch_size = 256
     #batch_size_train,batch_size_test = batch_size,batch_size
     batch_size_train = batch_size
@@ -113,9 +113,8 @@ def main(plot=False):
     momentum = 0.0
     #error_criterion = metrics.error_criterion
     error_criterion = metrics.error_criterion2
-    #criterion = torch.nn.CrossEntropyLoss()
-    #criterion = torch.nn.MultiLabelMarginLoss()
-    criterion = torch.nn.MultiMarginLoss()
+    criterion = torch.nn.CrossEntropyLoss()
+    #criterion = torch.nn.MultiMarginLoss()
     #loss = torch.nn.MSELoss(size_average=True)
     optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
     ''' stats collector '''

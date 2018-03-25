@@ -275,6 +275,8 @@ def train_and_track_stats2(args, nb_epochs, trainloader,testloader, net,optimize
             ''' train step = forward + backward + optimize '''
             inputs, labels = extract_data(enable_cuda,data_train,wrap_in_variable=True)
             outputs = net(inputs)
+            #if epoch >= 300:
+            #    print(outputs)
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()

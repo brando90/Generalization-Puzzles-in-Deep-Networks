@@ -144,6 +144,6 @@ class LiaoNet(nn.Module):
         x = x.view(-1,C*H*W)
         ''' FC layers '''
         x = self.fc(x)
-        if self.do_bn:
-            x = self.bn_fc(x)
+        #if self.do_bn:
+        #    x = self.bn_fc(x)
         return x
