@@ -60,6 +60,8 @@ if not torch.cuda.is_available() and args.enable_cuda:
     sys.exit()
 
 def main(plot=False):
+    ''' reproducibility setup/params'''
+    githash = subprocess.check_output(["git", "describe", "--always"]).strip()
     seed = args.seed
     if seed is None: # if seed is None it has not been set, so get a random seed, else use the seed that was set
         seed = ord(os.urandom(1))
@@ -151,10 +153,10 @@ def main(plot=False):
     train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch = tr_alg.train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer,criterion,error_criterion, stats_collector)
     seconds,minutes,hours = utils.report_times(start_time)
     print(f'Finished Training, hours={hours}')
+    print(f'seed = {seed}, githash = {githash}')
     ''' Test the Network on the test data '''
     print(f'train_loss_epoch={train_loss_epoch} \ntrain_error_epoch={train_error_epoch} \ntest_loss_epoch={test_loss_epoch} \ntest_error_epoch={test_error_epoch}')
     ''' save results from experiment '''
-    githash = subprocess.check_output(["git", "describe", "--always"]).strip()
     other_stats = {'nb_epochs':nb_epochs,'batch_size':batch_size,'mdl':mdl,'lr':lr,'momentum':momentum, 'seed':seed,'githash':githash}
     save2matlab.save2matlab_flatness_expt(results_root,expt_path,matlab_file_name, stats_collector,other_stats=other_stats)
     ''' save net model '''
