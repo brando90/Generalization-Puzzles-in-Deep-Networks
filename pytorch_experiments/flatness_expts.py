@@ -72,7 +72,7 @@ def main(plot=False):
     ## SET SEED/determinism
     num_workers = 0
     torch.manual_seed(seed)
-    if enable_cuda:
+    if args.enable_cuda:
         torch.backends.cudnn.deterministic=True
     ''' date parameters setup'''
     today_obj = date.today() # contains datetime.date(year, month, day); accessible via .day etc
