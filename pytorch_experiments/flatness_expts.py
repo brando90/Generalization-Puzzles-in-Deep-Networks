@@ -61,6 +61,12 @@ if not torch.cuda.is_available() and args.enable_cuda:
     print('Cuda is enabled but the current system does not have cuda')
     sys.exit()
 
+satid = 0
+sj = 0
+if 'SLURM_ARRAY_TASK_ID' in os.environ and 'SLURM_JOBID' in os.environ:
+    satid = int(os.environ['SLURM_ARRAY_TASK_ID'])
+    sj = int(os.environ['SLURM_JOBID'])
+
 def main(plot=False):
     ''' reproducibility setup/params'''
     #num_workers = 2 # how many subprocesses to use for data loading. 0 means that the data will be loaded in the main process.
@@ -82,8 +88,8 @@ def main(plot=False):
     ''' filenames '''
     label_corrupt_prob = 0
     results_root = './test_runs_flatness'
-    expt_path = f'flatness_label_corrupt_prob_{label_corrupt_prob}_debug2'
-    matlab_file_name = f'flatness_{day}_{month}_seed_{seed}'
+    expt_path = f'flatness_{day}_{month}_label_corrupt_prob_{label_corrupt_prob}_sj_{sj}'
+    matlab_file_name = f'flatness_{day}_{month}_seed_{seed}_staid_{satid}'
     ''' experiment params '''
     nb_epochs = 4 if args.epochs is None else args.epochs
     batch_size = 256
@@ -108,8 +114,8 @@ def main(plot=False):
         do_bn=False
         nb_conv_layers=3
         ## conv params
-        Fs = [3]*nb_conv_layers
-        Ks = [2]*nb_conv_layers
+        Fs = [32]*nb_conv_layers
+        Ks = [5]*nb_conv_layers
         ## fc params
         FC = len(classes)
         C,H,W = 3,32,32
