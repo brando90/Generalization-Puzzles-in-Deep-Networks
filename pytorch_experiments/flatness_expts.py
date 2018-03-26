@@ -83,7 +83,7 @@ def main(plot=False):
     label_corrupt_prob = 0
     results_root = './test_runs_flatness'
     expt_path = f'flatness_label_corrupt_prob_{label_corrupt_prob}_debug2'
-    matlab_file_name = f'flatness_{day}_{month}_{seed}'
+    matlab_file_name = f'flatness_{day}_{month}_seed_{seed}'
     ''' experiment params '''
     nb_epochs = 4 if args.epochs is None else args.epochs
     batch_size = 256
@@ -163,7 +163,8 @@ def main(plot=False):
     ''' Test the Network on the test data '''
     print(f'train_loss_epoch={train_loss_epoch} \ntrain_error_epoch={train_error_epoch} \ntest_loss_epoch={test_loss_epoch} \ntest_error_epoch={test_error_epoch}')
     ''' save results from experiment '''
-    other_stats = {'nb_epochs':nb_epochs,'batch_size':batch_size,'mdl':mdl,'lr':lr,'momentum':momentum, 'seed':seed,'githash':githash}
+    other_stats = {'nb_epochs':nb_epochs,'batch_size':batch_size,'mdl':mdl,'lr':lr,'momentum':momentum, 'seed':seed,'githash':githash,
+        'seconds':seconds,'minutes':minutes,'hours':hours}
     save2matlab.save2matlab_flatness_expt(results_root,expt_path,matlab_file_name, stats_collector,other_stats=other_stats)
     ''' save net model '''
     path = os.path.join(results_root,expt_path,f'net_{day}_{month}_{seed}')
