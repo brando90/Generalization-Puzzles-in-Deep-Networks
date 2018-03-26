@@ -3,14 +3,12 @@
 #SBATCH --time=0-05:00
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
-'''
-    #SBATCH --gres=gpu:1
-'''
+#SBATCH --array=1-10
+#SBATCH --gres=gpu:1
 
 """
 training an image classifier so that it overfits
 ----------------------------
-
 """
 import time
 from datetime import date
