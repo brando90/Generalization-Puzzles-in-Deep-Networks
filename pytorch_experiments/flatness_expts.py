@@ -56,6 +56,8 @@ parser.add_argument("-epochs", "--epochs", type=int, default=None,
                     help="The number of games to simulate")
 parser.add_argument("-exptlabel", "--exptlabel", type=str, default='nolabel',
                     help="experiment label")
+parser.add_argument("-mdl", "--mdl", type=str, default='debug',
+                    help="experiment label") # options: debug, cifar_10_tutorial_net, BoixNet, LiaoNet
 args = parser.parse_args()
 if not torch.cuda.is_available() and args.enable_cuda:
     print('Cuda is enabled but the current system does not have cuda')
@@ -87,7 +89,7 @@ def main(plot=False):
     ''' filenames '''
     label_corrupt_prob = 0
     results_root = './test_runs_flatness'
-    expt_path = f'flatness_{day}_{month}_label_corrupt_prob_{label_corrupt_prob}_exptlabel_{arg.exptlabel}'
+    expt_path = f'flatness_{day}_{month}_label_corrupt_prob_{label_corrupt_prob}_exptlabel_{args.exptlabel}'
     matlab_file_name = f'flatness_{day}_{month}_seed_{seed}_staid_{satid}'
     ''' experiment params '''
     nb_epochs = 4 if args.epochs is None else args.epochs
@@ -100,10 +102,7 @@ def main(plot=False):
     standardize = True # x - mu / std , [-1,+1]
     trainset,trainloader, testset,testloader, classes = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,label_corrupt_prob,standardize=standardize)
     ''' get NN '''
-    #mdl = 'debug'
-    #mdl = 'cifar_10_tutorial_net'
-    mdl = 'BoixNet'
-    #mdl = 'LiaoNet'
+    mdl = args.mdl
     ##
     print(f'model = {mdl}')
     if mdl == 'cifar_10_tutorial_net':
