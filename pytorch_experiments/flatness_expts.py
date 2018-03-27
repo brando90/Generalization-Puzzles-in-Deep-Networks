@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #SBATCH --mem=7000
-#SBATCH --time=0-05:00
+#SBATCH --time=1-00:00
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
 #SBATCH --array=1-10
@@ -129,9 +129,9 @@ def main(plot=False):
         net = nn_mdls.BoixNet(C,H,W,nb_filters1,nb_filters2, kernel_size1,kernel_size2, nb_units_fc1,nb_units_fc2,nb_units_fc3,do_bn)
     elif mdl == 'LiaoNet':
         do_bn=False
-        nb_conv_layers=3
+        nb_conv_layers=5
         ## conv params
-        Fs = [64]*nb_conv_layers
+        Fs = [32]*nb_conv_layers
         Ks = [5]*nb_conv_layers
         ## fc params
         FC = len(classes)
