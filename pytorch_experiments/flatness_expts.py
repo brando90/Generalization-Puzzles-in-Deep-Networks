@@ -100,7 +100,7 @@ def main(plot=False):
     standardize = True # x - mu / std , [-1,+1]
     trainset,trainloader, testset,testloader, classes = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,label_corrupt_prob,standardize=standardize)
     ''' get NN '''
-    mdl = 'debug'
+    #mdl = 'debug'
     #mdl = 'cifar_10_tutorial_net'
     mdl = 'BoixNet'
     #mdl = 'LiaoNet'
@@ -132,7 +132,7 @@ def main(plot=False):
         do_bn=False
         nb_conv_layers=3
         ## conv params
-        Fs = [32]*nb_conv_layers
+        Fs = [64]*nb_conv_layers
         Ks = [5]*nb_conv_layers
         ## fc params
         FC = len(classes)
