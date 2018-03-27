@@ -1,4 +1,3 @@
-
 %%
 xaxis = 1:length(test_errors);
 figure;

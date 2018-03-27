@@ -54,11 +54,12 @@ parser.add_argument("-seed", "--seed", type=int, default=None,
                     help="The number of games to simulate")
 parser.add_argument("-epochs", "--epochs", type=int, default=None,
                     help="The number of games to simulate")
+parser.add_argument("-exptlabel", "--exptlabel", type=str, default='nolabel',
+                    help="experiment label")
 args = parser.parse_args()
 if not torch.cuda.is_available() and args.enable_cuda:
     print('Cuda is enabled but the current system does not have cuda')
     sys.exit()
-
 satid = 0
 sj = 0
 if 'SLURM_ARRAY_TASK_ID' in os.environ and 'SLURM_JOBID' in os.environ:
@@ -86,7 +87,7 @@ def main(plot=False):
     ''' filenames '''
     label_corrupt_prob = 0
     results_root = './test_runs_flatness'
-    expt_path = f'flatness_{day}_{month}_label_corrupt_prob_{label_corrupt_prob}_sj_{sj}'
+    expt_path = f'flatness_{day}_{month}_label_corrupt_prob_{label_corrupt_prob}_exptlabel_{arg.exptlabel}'
     matlab_file_name = f'flatness_{day}_{month}_seed_{seed}_staid_{satid}'
     ''' experiment params '''
     nb_epochs = 4 if args.epochs is None else args.epochs
@@ -101,7 +102,7 @@ def main(plot=False):
     ''' get NN '''
     mdl = 'debug'
     #mdl = 'cifar_10_tutorial_net'
-    #mdl = 'BoixNet'
+    mdl = 'BoixNet'
     #mdl = 'LiaoNet'
     ##
     print(f'model = {mdl}')
