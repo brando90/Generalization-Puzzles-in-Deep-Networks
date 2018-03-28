@@ -142,8 +142,14 @@ def main(plot=False):
         FC = len(classes)
         C,H,W = 3,32,32
         net = nn_mdls.LiaoNet(C,H,W,Fs,Ks,FC,do_bn)
-    # elif mdl == 'MMNISTNet':
-    #     net = MMNISTNet()
+    else:
+        ##
+        # example name of file, os.path.join(results_root,expt_path,f'net_{day}_{month}_{seed}')
+        # args.net_path = 'flatness_27_March_label_corrupt_prob_0_exptlabel_BoixNet_stand_600/net_27_Match_64'
+        path_to_mdl = args.mdl
+        path = os.path.join(results_root,path_to_mdl)
+        net = utils.restore_entire_mdl(path)
+        st()
     if args.enable_cuda:
         net.cuda()
     nb_params = nn_mdls.count_nb_params(net)
