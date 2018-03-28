@@ -48,7 +48,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser(description='PyTorch Example')
-''' experiment config params '''
+''' setup params '''
 parser.add_argument('-cuda','--enable-cuda',action='store_true',
                     help='Enable cuda/gpu')
 parser.add_argument("-seed", "--seed", type=int, default=None,
