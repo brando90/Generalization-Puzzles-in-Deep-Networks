@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 #SBATCH --mem=7000
-#SBATCH --time=1-00:00
+#SBATCH --time=0-08:00
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
-#SBATCH --array=1-10
+#SBATCH --array=1-5
 #SBATCH --gres=gpu:1
 
 """
@@ -87,7 +87,7 @@ def main(plot=False):
     month = calendar.month_name[today_obj.month]
     start_time = time.time()
     ''' filenames '''
-    label_corrupt_prob = 0
+    label_corrupt_prob = 1
     results_root = './test_runs_flatness'
     expt_path = f'flatness_{day}_{month}_label_corrupt_prob_{label_corrupt_prob}_exptlabel_{args.exptlabel}'
     matlab_file_name = f'flatness_{day}_{month}_seed_{seed}_staid_{satid}'
