@@ -48,16 +48,23 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser(description='PyTorch Example')
+''' experiment config params '''
 parser.add_argument('-cuda','--enable-cuda',action='store_true',
                     help='Enable cuda/gpu')
 parser.add_argument("-seed", "--seed", type=int, default=None,
                     help="The number of games to simulate")
-parser.add_argument("-epochs", "--epochs", type=int, default=None,
-                    help="The number of games to simulate")
 parser.add_argument("-exptlabel", "--exptlabel", type=str, default='nolabel',
                     help="experiment label")
+''' NN related arguments '''
+parser.add_argument("-epochs", "--epochs", type=int, default=None,
+                    help="The number of games to simulate")
 parser.add_argument("-mdl", "--mdl", type=str, default='debug',
                     help="experiment label") # options: debug, cifar_10_tutorial_net, BoixNet, LiaoNet
+parser.add_argument('-use_bn','--use_bn',action='store_true',
+                    help='turns on BN')
+parser.add_argument('-standardize_data','--standardize_data',action='store_true',
+                    help='uses x-u/s, standardize data')
+''' process args '''
 args = parser.parse_args()
 if not torch.cuda.is_available() and args.enable_cuda:
     print('Cuda is enabled but the current system does not have cuda')
@@ -99,27 +106,25 @@ def main(plot=False):
     batch_size_test = 256
     data_path = './data'
     ''' get data set '''
-    standardize = True # x - mu / std , [-1,+1]
+    standardize = args.standardize_data # x - mu / std , [-1,+1]
     trainset,trainloader, testset,testloader, classes = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,label_corrupt_prob,standardize=standardize)
     ''' get NN '''
     mdl = args.mdl
+    do_bn = args.use_bn
     ##
     print(f'model = {mdl}')
     if mdl == 'cifar_10_tutorial_net':
-        do_bn = False
         net = nn_mdls.Net()
     elif mdl == 'debug':
-        do_bn=False
-        nb_conv_layers=3
+        nb_conv_layers=1
         ## conv params
-        Fs = [32]*nb_conv_layers
-        Ks = [5]*nb_conv_layers
+        Fs = [3]*nb_conv_layers
+        Ks = [2]*nb_conv_layers
         ## fc params
         FC = len(classes)
         C,H,W = 3,32,32
         net = nn_mdls.LiaoNet(C,H,W,Fs,Ks,FC,do_bn)
     elif mdl == 'BoixNet':
-        do_bn=False
         ## conv params
         nb_filters1,nb_filters2 = 32, 32
         kernel_size1,kernel_size2 = 5,5
@@ -128,7 +133,6 @@ def main(plot=False):
         C,H,W = 3,32,32
         net = nn_mdls.BoixNet(C,H,W,nb_filters1,nb_filters2, kernel_size1,kernel_size2, nb_units_fc1,nb_units_fc2,nb_units_fc3,do_bn)
     elif mdl == 'LiaoNet':
-        do_bn=False
         nb_conv_layers=5
         ## conv params
         Fs = [32]*nb_conv_layers
