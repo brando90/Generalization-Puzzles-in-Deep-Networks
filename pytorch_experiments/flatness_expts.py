@@ -64,13 +64,14 @@ parser.add_argument('-use_bn','--use_bn',action='store_true',
                     help='turns on BN')
 parser.add_argument('-standardize_data','--standardize_data',action='store_true',
                     help='uses x-u/s, standardize data')
+parser.add_argument("-label_corrupt_prob", "--label_corrupt_prob", type=float, default=0.0,
+                    help="The probability of a label getting corrupted")
 ''' process args '''
 args = parser.parse_args()
 if not torch.cuda.is_available() and args.enable_cuda:
     print('Cuda is enabled but the current system does not have cuda')
     sys.exit()
-satid = 0
-sj = 0
+sj, satid = 0, 0
 if 'SLURM_ARRAY_TASK_ID' in os.environ and 'SLURM_JOBID' in os.environ:
     satid = int(os.environ['SLURM_ARRAY_TASK_ID'])
     sj = int(os.environ['SLURM_JOBID'])
@@ -94,7 +95,7 @@ def main(plot=False):
     month = calendar.month_name[today_obj.month]
     start_time = time.time()
     ''' filenames '''
-    label_corrupt_prob = 1
+    label_corrupt_prob = args.label_corrupt_prob
     results_root = './test_runs_flatness'
     expt_path = f'flatness_{day}_{month}_label_corrupt_prob_{label_corrupt_prob}_exptlabel_{args.exptlabel}'
     matlab_file_name = f'flatness_{day}_{month}_seed_{seed}_staid_{satid}'
