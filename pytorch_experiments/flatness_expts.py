@@ -153,6 +153,7 @@ def main(plot=False):
         path = os.path.join(results_root,path_to_mdl)
         net = utils.restore_entire_mdl(path)
     if args.enable_cuda:
+        set_default_tensor_type
         net.cuda()
     else:
         net.cpu()
@@ -176,20 +177,19 @@ def main(plot=False):
     print(f'Model over parametrized? N < W = {overparametrized}')
     if args.train_alg == 'SGD':
         # We simply have to loop over our data iterator, and feed the inputs to the network and optimize.
-        tr_alg.train_cifar(args, nb_epochs, trainloader,testloader, net,optimizer,criterion)
         train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch = tr_alg.train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer,criterion,error_criterion, stats_collector)
         ''' Test the Network on the test data '''
         print(f'train_loss_epoch={train_loss_epoch} \ntrain_error_epoch={train_error_epoch} \ntest_loss_epoch={test_loss_epoch} \ntest_error_epoch={test_error_epoch}')
-    elif args.train_alg == 'SGD':
+    elif args.train_alg == 'pert':
         perturbation_magnitudes = 5*[0.1] #TODO
         # TODO: collect by perburbing current model X number of times with current perturbation_magnitudes
         st()
-        other_stats = {{}, **other_stats} # TODO
+        other_stats = dict({}, **other_stats) # TODO
     seconds,minutes,hours = utils.report_times(start_time)
     print(f'Finished Training, hours={hours}')
     print(f'seed = {seed}, githash = {githash}')
     ''' save results from experiment '''
-    other_stats = dict({'seconds':seconds,'minutes':minutes,'hours':hours}, **other_stats}
+    other_stats = dict({'seconds':seconds,'minutes':minutes,'hours':hours}, **other_stats)
     save2matlab.save2matlab_flatness_expt(results_root,expt_path,matlab_file_name, stats_collector,other_stats=other_stats)
     ''' save net model '''
     path = os.path.join(results_root,expt_path,f'net_{day}_{month}_{seed}')
