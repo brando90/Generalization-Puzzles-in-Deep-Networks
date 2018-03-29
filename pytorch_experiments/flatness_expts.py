@@ -188,15 +188,15 @@ def main(plot=False):
         ''' Test the Network on the test data '''
         print(f'train_loss_epoch={train_loss_epoch} \ntrain_error_epoch={train_error_epoch} \ntest_loss_epoch={test_loss_epoch} \ntest_error_epoch={test_error_epoch}')
     elif args.train_alg == 'pert':
-        ## TODO set to data sizes
-        batch_size_train = 50*10**3
-        batch_size_test = 10*10**3
-        ##
+        ''' batch sizes '''
+        batch_size_train, batch_size_test = 50*10**3, 10*10**3
+        ''' number of repetitions '''
         nb_perturbation_trials = nb_epochs
-        ##
+        ''' noise level '''
         nb_layers = len(list(net.parameters()))
-        perturbation_magnitudes = nb_layers*[0.1]
-        ## TODO
+        noise_level = 0.1
+        perturbation_magnitudes = nb_layers*[noise_level]
+        ''' locate where to save it '''
         folder_name_noise = f'noise_{perturbation_magnitudes[0]}'
         expt_path = os.path.join(expt_path,folder_name_noise)
         utils.make_and_check_dir(expt_path)
@@ -205,12 +205,11 @@ def main(plot=False):
         use_w_norm2 = True
         train_loss,train_error,test_loss,test_error = get_errors_for_all_perturbations(net,perturbation_magnitudes,use_w_norm2,args.enable_cuda,nb_perturbation_trials,stats_collector,criterion,error_criterion,trainloader,testloader)
         print(f'train_loss,train_error,test_loss,test_error={train_loss},{train_error},{test_loss},{test_error}')
-        st()
-        other_stats = dict({}, **other_stats) # TODO
     seconds,minutes,hours = utils.report_times(start_time)
     other_stats = dict({'seconds':seconds,'minutes':minutes,'hours':hours}, **other_stats)
     print(f'Finished Training, hours={hours}')
     print(f'seed = {seed}, githash = {githash}')
+    st()
     ''' save results from experiment '''
     matlab_path_to_filename = os.path.join(expt_path,matlab_file_name)
     save2matlab.save2matlab_flatness_expt(matlab_path_to_filename, stats_collector,other_stats=other_stats)
