@@ -191,8 +191,8 @@ def main(plot=False):
         ## TODO set to data sizes
         batch_size_train = 50*10**3
         batch_size_test = 10*10**3
-        ## TODO check what values are sensible
-        nb_perturbation_trials = 1
+        ##
+        nb_perturbation_trials = nb_epochs
         # TODO nb_layers = lenght(net.parameters())
         perturbation_magnitudes = 5*[0.1]
         ## TODO
