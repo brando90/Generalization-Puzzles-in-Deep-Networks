@@ -49,9 +49,9 @@ def save2matlab(path_to_save,stats_collector,other_stats):
     ##
     scipy.io.savemat(path_to_save,experiment_results)
 
-def save2matlab_flatness_expt(results_root,expt_path,matlab_file_name, stats_collector, other_stats={}):
+def save2matlab_flatness_expt(path_to_filename, stats_collector, other_stats={}):
     '''
-    Saves the current results from flatness experiment.
+    Saves the current results from flatnes¯s experiment.
 
     results_root = location of main folder where results are. e.g. './test_runs_flatness'
     expt_path = path
@@ -59,7 +59,4 @@ def save2matlab_flatness_expt(results_root,expt_path,matlab_file_name, stats_col
     stats = stats_collector.get_stats_dict()
     experiment_results = NamedDict(stats,**other_stats)
     ##
-    path_to_save = os.path.join(results_root,expt_path)
-    utils.make_and_check_dir(path_to_save)
-    path_to_save = os.path.join(path_to_save,matlab_file_name)
-    scipy.io.savemat(path_to_save,experiment_results)
+    scipy.io.savemat(path_to_filename,experiment_results)

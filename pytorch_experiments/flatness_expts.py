@@ -37,7 +37,7 @@ from stats_collector import StatsCollector
 import metrics
 import utils
 import plot_utils
-import good_minima_discriminator
+from good_minima_discriminator import get_errors_for_all_perturbations, perturb_model
 
 from pdb import set_trace as st
 
@@ -100,10 +100,14 @@ def main(plot=False):
     month = calendar.month_name[today_obj.month]
     start_time = time.time()
     ''' filenames '''
-    label_corrupt_prob = args.label_corrupt_prob
     results_root = './test_runs_flatness'
-    expt_path = f'flatness_{day}_{month}_label_corrupt_prob_{label_corrupt_prob}_exptlabel_{args.exptlabel}'
-    matlab_file_name = f'flatness_{day}_{month}_seed_{seed}_staid_{satid}'
+    expt_folder = f'flatness_{day}_{month}_label_corrupt_prob_{args.label_corrupt_prob}_exptlabel_{args.exptlabel}'
+    ## filenames
+    matlab_file_name = f'flatness_{day}_{month}_seed_{seed}_sj_{sj}_staid_{satid}'
+    net_file_name = f'net_{day}_{month}_seed_{seed}_sj_{sj}_staid_{satid}'
+    ## experiment path
+    expt_path = os.path.join(results_root,expt_folder)
+    utils.make_and_check_dir(expt_path)
     ''' experiment params '''
     nb_epochs = 4 if args.epochs is None else args.epochs
     batch_size = 256
@@ -113,7 +117,7 @@ def main(plot=False):
     data_path = './data'
     ''' get data set '''
     standardize = args.standardize_data # x - mu / std , [-1,+1]
-    trainset,trainloader, testset,testloader, classes = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,label_corrupt_prob,standardize=standardize)
+    trainset,trainloader, testset,testloader, classes = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,args.label_corrupt_prob,standardize=standardize)
     ''' get NN '''
     mdl = args.mdl
     do_bn = args.use_bn
@@ -131,14 +135,14 @@ def main(plot=False):
         FC = len(classes)
         C,H,W = 3,32,32
         net = nn_mdls.LiaoNet(C,H,W,Fs,Ks,FC,do_bn)
-    elif mdl == 'BoixNet':
+    elif mdl == 'MirandaNet':
         ## conv params
         nb_filters1,nb_filters2 = 32, 32
         kernel_size1,kernel_size2 = 5,5
         ## fc params
         nb_units_fc1,nb_units_fc2,nb_units_fc3 = 512,256,len(classes)
         C,H,W = 3,32,32
-        net = nn_mdls.BoixNet(C,H,W,nb_filters1,nb_filters2, kernel_size1,kernel_size2, nb_units_fc1,nb_units_fc2,nb_units_fc3,do_bn)
+        net = nn_mdls.MirandaNet(C,H,W,nb_filters1,nb_filters2, kernel_size1,kernel_size2, nb_units_fc1,nb_units_fc2,nb_units_fc3,do_bn)
     elif mdl == 'LiaoNet':
         nb_conv_layers=5
         ## conv params
@@ -149,7 +153,7 @@ def main(plot=False):
         C,H,W = 3,32,32
         net = nn_mdls.LiaoNet(C,H,W,Fs,Ks,FC,do_bn)
     else:
-        ##
+        ''' RESTORED PRE-TRAINED NET '''
         # example name of file, os.path.join(results_root,expt_path,f'net_{day}_{month}_{seed}')
         # args.net_path = 'flatness_27_March_label_corrupt_prob_0_exptlabel_BoixNet_stand_600/net_27_Match_64'
         path_to_mdl = args.mdl
@@ -174,7 +178,7 @@ def main(plot=False):
     stats_collector = StatsCollector(net)
     other_stats = dict({'nb_epochs':nb_epochs,'batch_size':batch_size,'mdl':mdl,'lr':lr,'momentum':momentum, 'seed':seed,'githash':githash},**other_stats)
     ''' Train the Network '''
-    print(f'----\nSTART training: label_corrupt_prob={label_corrupt_prob},nb_epochs={nb_epochs},batch_size={batch_size},lr={lr},mdl={mdl},batch-norm={do_bn},nb_params={nb_params}')
+    print(f'----\nSTART training: label_corrupt_prob={args.label_corrupt_prob},nb_epochs={nb_epochs},batch_size={batch_size},lr={lr},mdl={mdl},batch-norm={do_bn},nb_params={nb_params}')
     overparametrized = len(trainset)<nb_params # N < W ?
     print(f'Model over parametrized? N, W = {len(trainset)} vs {nb_params}')
     print(f'Model over parametrized? N < W = {overparametrized}')
@@ -184,23 +188,37 @@ def main(plot=False):
         ''' Test the Network on the test data '''
         print(f'train_loss_epoch={train_loss_epoch} \ntrain_error_epoch={train_error_epoch} \ntest_loss_epoch={test_loss_epoch} \ntest_error_epoch={test_error_epoch}')
     elif args.train_alg == 'pert':
-        perturbation_magnitudes = 5*[0.1] #TODO
-        # TODO: collect by perburbing current model X number of times with current perturbation_magnitudes
-        add_perturbation(mdl,perturbation_magnitudes,use_w_norm2=False)
+        ## TODO set to data sizes
+        batch_size_train = 50*10**3
+        batch_size_test = 10*10**3
+        ## TODO check what values are sensible
+        nb_perturbation_trials = 1
+        # TODO nb_layers = lenght(net.parameters())
+        perturbation_magnitudes = 5*[0.1]
+        ## TODO
+        folder_name_noise = f'noise_{perturbation_magnitudes[0]}'
+        expt_path = os.path.join(expt_path,folder_name_noise)
+        utils.make_and_check_dir(expt_path)
+        matlab_file_name = f'noise_{perturbation_magnitudes}_{matlab_file_name}'
+        ## TODO collect by perburbing current model X number of times with current perturbation_magnitudes
+        use_w_norm2 = True
+        train_loss,train_error,test_loss,test_error = get_errors_for_all_perturbations(net,perturbation_magnitudes,use_w_norm2,args.enable_cuda,nb_perturbation_trials,stats_collector,criterion,error_criterion,trainloader,testloader)
+        print(f'train_loss,train_error,test_loss,test_error={train_loss},{train_error},{test_loss},{test_error}')
         st()
         other_stats = dict({}, **other_stats) # TODO
     seconds,minutes,hours = utils.report_times(start_time)
+    other_stats = dict({'seconds':seconds,'minutes':minutes,'hours':hours}, **other_stats)
     print(f'Finished Training, hours={hours}')
     print(f'seed = {seed}, githash = {githash}')
     ''' save results from experiment '''
-    other_stats = dict({'seconds':seconds,'minutes':minutes,'hours':hours}, **other_stats)
-    save2matlab.save2matlab_flatness_expt(results_root,expt_path,matlab_file_name, stats_collector,other_stats=other_stats)
+    matlab_path_to_filename = os.path.join(expt_path,matlab_file_name)
+    save2matlab.save2matlab_flatness_expt(matlab_path_to_filename, stats_collector,other_stats=other_stats)
     ''' save net model '''
-    path = os.path.join(results_root,expt_path,f'net_{day}_{month}_{seed}')
-    utils.save_entire_mdl(path,net)
+    net_path_to_filename = os.path.join(expt_path,net_file_name)
+    utils.save_entire_mdl(net_path_to_filename,net)
     # restored_net = utils.restore_entire_mdl(path)
     # loss_restored,error_restored = tr_alg.evalaute_mdl_data_set(criterion,error_criterion,restored_net,testloader,args.enable_cuda)
-    print(f'\nloss_restored={loss_restored},error_restored={error_restored}\a')
+    #print(f'\nloss_restored={loss_restored},error_restored={error_restored}\a')
     ''' plot '''
     if plot:
         #TODO

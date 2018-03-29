@@ -57,7 +57,7 @@ class MMNISTNet(nn.Module):
 
 ##
 
-class BoixNet(nn.Module):
+class MirandaNet(nn.Module):
     ## The network has 2 convolutional layers followed by 3 fully connected.
     ## Use ReLUs, and no batch normalization or regularizers.
     ## Trained with cross-entropy

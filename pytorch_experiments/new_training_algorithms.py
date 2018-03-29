@@ -26,7 +26,7 @@ def evalaute_mdl_data_set(loss,error,net,dataloader,enable_cuda):
 def extract_data(enable_cuda,data,wrap_in_variable=False):
     inputs, labels = data
     if enable_cuda:
-        inputs, labels = inputs.cuda(), labels.cuda()
+        inputs, labels = inputs.cuda(), labels.cuda() #TODO potential speed up?
     if wrap_in_variable:
         inputs, labels = Variable(inputs), Variable(labels)
     return inputs, labels
