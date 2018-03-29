@@ -38,6 +38,7 @@ class StatsCollector:
         stats = NamedDict(
             train_losses=self.train_losses,val_losses=self.val_losses,test_losses=self.test_losses,
             train_errors=self.train_errors,val_errors=self.val_errors,test_errors=self.test_errors,
+            train_accs=self.train_accs,val_accs=self.val_accs,test_accs=self.test_accs,
             grads=self.grads,
             w_norms=self.w_norms
         )

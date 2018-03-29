@@ -81,6 +81,7 @@ if 'SLURM_ARRAY_TASK_ID' in os.environ and 'SLURM_JOBID' in os.environ:
     sj = int(os.environ['SLURM_JOBID'])
 
 def main(plot=False):
+    other_stats = dict({'sj':sj,'satid':satid})
     ''' reproducibility setup/params'''
     #num_workers = 2 # how many subprocesses to use for data loading. 0 means that the data will be loaded in the main process.
     githash = subprocess.check_output(["git", "describe", "--always"]).strip()
@@ -116,6 +117,7 @@ def main(plot=False):
     ''' get NN '''
     mdl = args.mdl
     do_bn = args.use_bn
+    other_stats = dict({'mdl':mdl,'do_bn':do_bn},**other_stats)
     ##
     print(f'model = {mdl}')
     if mdl == 'cifar_10_tutorial_net':
@@ -154,7 +156,7 @@ def main(plot=False):
         path = os.path.join(results_root,path_to_mdl)
         net = utils.restore_entire_mdl(path)
     if args.enable_cuda:
-        set_default_tensor_type
+        #set_default_tensor_type
         net.cuda()
     else:
         net.cpu()
@@ -170,7 +172,7 @@ def main(plot=False):
     optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
     ''' stats collector '''
     stats_collector = StatsCollector(net)
-    other_stats = {'nb_epochs':nb_epochs,'batch_size':batch_size,'mdl':mdl,'lr':lr,'momentum':momentum, 'seed':seed,'githash':githash}
+    other_stats = dict({'nb_epochs':nb_epochs,'batch_size':batch_size,'mdl':mdl,'lr':lr,'momentum':momentum, 'seed':seed,'githash':githash},**other_stats)
     ''' Train the Network '''
     print(f'----\nSTART training: label_corrupt_prob={label_corrupt_prob},nb_epochs={nb_epochs},batch_size={batch_size},lr={lr},mdl={mdl},batch-norm={do_bn},nb_params={nb_params}')
     overparametrized = len(trainset)<nb_params # N < W ?
@@ -184,6 +186,7 @@ def main(plot=False):
     elif args.train_alg == 'pert':
         perturbation_magnitudes = 5*[0.1] #TODO
         # TODO: collect by perburbing current model X number of times with current perturbation_magnitudes
+        add_perturbation(mdl,perturbation_magnitudes,use_w_norm2=False)
         st()
         other_stats = dict({}, **other_stats) # TODO
     seconds,minutes,hours = utils.report_times(start_time)

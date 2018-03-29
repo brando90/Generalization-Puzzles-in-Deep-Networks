@@ -1,6 +1,6 @@
 import torch
 
-def add_perturbation(perturbation_magnitudes,use_w_norm2=False):
+def add_perturbation(mdl,perturbation_magnitudes,use_w_norm2=False):
     '''
         perturbs the whole model base on a array perturbations.
     '''
