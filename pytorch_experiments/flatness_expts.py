@@ -37,6 +37,7 @@ from stats_collector import StatsCollector
 import metrics
 import utils
 import plot_utils
+import good_minima_discriminator
 
 from pdb import set_trace as st
 
