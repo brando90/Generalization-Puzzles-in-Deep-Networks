@@ -195,7 +195,7 @@ def main(plot=False):
         nb_perturbation_trials = nb_epochs
         ##
         nb_layers = len(list(net.parameters()))
-        perturbation_magnitudes = 5*[0.1]
+        perturbation_magnitudes = nb_layers*[0.1]
         ## TODO
         folder_name_noise = f'noise_{perturbation_magnitudes[0]}'
         expt_path = os.path.join(expt_path,folder_name_noise)
