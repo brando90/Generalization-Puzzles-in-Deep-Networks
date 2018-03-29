@@ -67,8 +67,8 @@ parser.add_argument('-standardize_data','--standardize_data',action='store_true'
 parser.add_argument("-label_corrupt_prob", "--label_corrupt_prob", type=float, default=0.0,
                     help="The probability of a label getting corrupted")
 ''' training argument '''
-# parser.add_argument("-train_alg", "--train_alg", type=str, default='SGD',
-#                     help="Training algorithm to use")
+parser.add_argument("-train_alg", "--train_alg", type=str, default='SGD',
+                    help="Training algorithm to use")
 ''' process args '''
 args = parser.parse_args()
 if not torch.cuda.is_available() and args.enable_cuda:
@@ -168,28 +168,34 @@ def main(plot=False):
     optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
     ''' stats collector '''
     stats_collector = StatsCollector(net)
+    other_stats = {'nb_epochs':nb_epochs,'batch_size':batch_size,'mdl':mdl,'lr':lr,'momentum':momentum, 'seed':seed,'githash':githash}
     ''' Train the Network '''
     print(f'----\nSTART training: label_corrupt_prob={label_corrupt_prob},nb_epochs={nb_epochs},batch_size={batch_size},lr={lr},mdl={mdl},batch-norm={do_bn},nb_params={nb_params}')
     overparametrized = len(trainset)<nb_params # N < W ?
     print(f'Model over parametrized? N, W = {len(trainset)} vs {nb_params}')
     print(f'Model over parametrized? N < W = {overparametrized}')
-    # We simply have to loop over our data iterator, and feed the inputs to the network and optimize.
-    #tr_alg.train_cifar(args, nb_epochs, trainloader,testloader, net,optimizer,criterion)
-    #train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch = tr_alg.train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer,criterion,error_criterion, stats_collector)
-    #seconds,minutes,hours = utils.report_times(start_time)
+    if args.train_alg == 'SGD':
+        # We simply have to loop over our data iterator, and feed the inputs to the network and optimize.
+        tr_alg.train_cifar(args, nb_epochs, trainloader,testloader, net,optimizer,criterion)
+        train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch = tr_alg.train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer,criterion,error_criterion, stats_collector)
+        ''' Test the Network on the test data '''
+        print(f'train_loss_epoch={train_loss_epoch} \ntrain_error_epoch={train_error_epoch} \ntest_loss_epoch={test_loss_epoch} \ntest_error_epoch={test_error_epoch}')
+    elif args.train_alg == 'SGD':
+        perturbation_magnitudes = 5*[0.1] #TODO
+        # TODO: collect by perburbing current model X number of times with current perturbation_magnitudes
+        st()
+        other_stats = {{}, **other_stats} # TODO
+    seconds,minutes,hours = utils.report_times(start_time)
     print(f'Finished Training, hours={hours}')
     print(f'seed = {seed}, githash = {githash}')
-    ''' Test the Network on the test data '''
-    print(f'train_loss_epoch={train_loss_epoch} \ntrain_error_epoch={train_error_epoch} \ntest_loss_epoch={test_loss_epoch} \ntest_error_epoch={test_error_epoch}')
     ''' save results from experiment '''
-    other_stats = {'nb_epochs':nb_epochs,'batch_size':batch_size,'mdl':mdl,'lr':lr,'momentum':momentum, 'seed':seed,'githash':githash,
-        'seconds':seconds,'minutes':minutes,'hours':hours}
+    other_stats = dict({'seconds':seconds,'minutes':minutes,'hours':hours}, **other_stats}
     save2matlab.save2matlab_flatness_expt(results_root,expt_path,matlab_file_name, stats_collector,other_stats=other_stats)
     ''' save net model '''
     path = os.path.join(results_root,expt_path,f'net_{day}_{month}_{seed}')
     utils.save_entire_mdl(path,net)
-    restored_net = utils.restore_entire_mdl(path)
-    loss_restored,error_restored = tr_alg.evalaute_mdl_data_set(criterion,error_criterion,restored_net,testloader,args.enable_cuda)
+    # restored_net = utils.restore_entire_mdl(path)
+    # loss_restored,error_restored = tr_alg.evalaute_mdl_data_set(criterion,error_criterion,restored_net,testloader,args.enable_cuda)
     print(f'\nloss_restored={loss_restored},error_restored={error_restored}\a')
     ''' plot '''
     if plot:
