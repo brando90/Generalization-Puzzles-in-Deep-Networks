@@ -63,7 +63,7 @@ class MirandaNet(nn.Module):
     ## Trained with cross-entropy
     ## https://discuss.pytorch.org/t/when-creating-new-neural-net-from-scratch-how-does-one-statically-define-what-the-size-of-the-a-flatten-layer-is-not-at-runtime/14235
     def __init__(self,C,H,W, nb_filters1,nb_filters2, kernel_size1,kernel_size2, nb_units_fc1,nb_units_fc2,nb_units_fc3,do_bn=False):
-        super(BoixNet, self).__init__()
+        super(MirandaNet, self).__init__()
         self.do_bn = do_bn
         ''' Initialize conv layers'''
         self.conv1 = nn.Conv2d(3,nb_filters1, kernel_size1) #(in_channels, out_channels, kernel_size)
