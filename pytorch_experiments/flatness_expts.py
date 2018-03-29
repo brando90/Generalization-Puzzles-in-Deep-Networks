@@ -196,6 +196,7 @@ def main(plot=False):
         nb_layers = len(list(net.parameters()))
         noise_level = 0.1
         perturbation_magnitudes = nb_layers*[noise_level]
+        print(f'noise_level={noise_level}')
         ''' locate where to save it '''
         folder_name_noise = f'noise_{perturbation_magnitudes[0]}'
         expt_path = os.path.join(expt_path,folder_name_noise)
