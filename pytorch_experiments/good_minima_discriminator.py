@@ -17,8 +17,11 @@ def perturb_model(net,perturbation_magnitudes,use_w_norm2,enable_cuda,stats_coll
     ''' pertub model '''
     for index, W in enumerate(net.parameters()):
         reference_magnitude = 1 if use_w_norm2 else W.norm(2)
-        std = perturbation_magnitudes[index]*reference_magnitude
-        perturbation = torch.normal(means=0.0*torch.ones(W.size()),std=std)
+        if perturbation_magnitudes[index] != 0:
+            std = perturbation_magnitudes[index]*reference_magnitude
+            perturbation = torch.normal(means=0.0*torch.ones(W.size()),std=std)
+        else:
+            perturbation = torch.zeros(W.size())
         perturbation = perturbation.cuda() if enable_cuda else perturbation
         perturbations.append(perturbation)
         #with torch.no_grad():
