@@ -18,6 +18,6 @@ def remove_perturbation(perturbation_magnitudes,use_w_norm2=False):
     '''
         remove perturbion on whole model base on a array perturbations.
     '''
-    perturbation_magnitudes = [-1*delta for delta perturbation_magnitudes]
+    perturbation_magnitudes = [-1*delta for delta in perturbation_magnitudes]
     unperturbed_net = add_perturbation(perturbation_magnitudes,use_w_norm2=False)
     return unperturbed_net
