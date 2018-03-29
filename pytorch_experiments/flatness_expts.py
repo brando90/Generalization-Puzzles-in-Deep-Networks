@@ -207,6 +207,7 @@ def main(plot=False):
         print(f'noise_level={noise_level},train_loss,train_error,test_loss,test_error={train_loss},{train_error},{test_loss},{test_error}')
     seconds,minutes,hours = utils.report_times(start_time)
     other_stats = dict({'seconds':seconds,'minutes':minutes,'hours':hours}, **other_stats)
+    print(f'nb_epochs = {nb_epochs}')
     print(f'Finished Training, hours={hours}')
     print(f'seed = {seed}, githash = {githash}')
     st()
