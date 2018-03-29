@@ -94,7 +94,7 @@ class BoixNet(nn.Module):
         a_fc1 = F.relu(pre_act_fc1)
         pre_act_fc2 = self.fc2_bn(self.fc2(a_fc1)) if self.do_bn else self.fc2(a_fc1)
         a_fc2 = F.relu(pre_act_fc2)
-        pre_act_fc3 = self.fc3(a_fc2)
+        pre_act_fc3 = self.fc3_bn(self.fc3(a_fc2)) if self.do_bn else self.fc3(a_fc2)
         a_fc3 = pre_act_fc3
         return a_fc3
 
