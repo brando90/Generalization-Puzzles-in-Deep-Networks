@@ -2,6 +2,8 @@ import torch
 
 from new_training_algorithms import evalaute_mdl_data_set
 
+from pdb import set_trace as st
+
 def get_errors_for_all_perturbations(net,perturbation_magnitudes,use_w_norm2,enable_cuda,nb_perturbation_trials,stats_collector,criterion,error_criterion,trainloader,testloader):
     '''
         Evaluate the errors of perturbed models.
