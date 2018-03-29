@@ -57,13 +57,13 @@ class MMNISTNet(nn.Module):
 
 ##
 
-class MirandaNet(nn.Module):
+class BoixNet(nn.Module):
     ## The network has 2 convolutional layers followed by 3 fully connected.
     ## Use ReLUs, and no batch normalization or regularizers.
     ## Trained with cross-entropy
     ## https://discuss.pytorch.org/t/when-creating-new-neural-net-from-scratch-how-does-one-statically-define-what-the-size-of-the-a-flatten-layer-is-not-at-runtime/14235
     def __init__(self,C,H,W, nb_filters1,nb_filters2, kernel_size1,kernel_size2, nb_units_fc1,nb_units_fc2,nb_units_fc3,do_bn=False):
-        super(MirandaNet, self).__init__()
+        super(BoixNet, self).__init__()
         self.do_bn = do_bn
         ''' Initialize conv layers'''
         self.conv1 = nn.Conv2d(3,nb_filters1, kernel_size1) #(in_channels, out_channels, kernel_size)
