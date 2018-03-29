@@ -204,7 +204,7 @@ def main(plot=False):
         ## TODO collect by perburbing current model X number of times with current perturbation_magnitudes
         use_w_norm2 = True
         train_loss,train_error,test_loss,test_error = get_errors_for_all_perturbations(net,perturbation_magnitudes,use_w_norm2,args.enable_cuda,nb_perturbation_trials,stats_collector,criterion,error_criterion,trainloader,testloader)
-        print(f'train_loss,train_error,test_loss,test_error={train_loss},{train_error},{test_loss},{test_error}')
+        print(f'noise_level={noise_level},train_loss,train_error,test_loss,test_error={train_loss},{train_error},{test_loss},{test_error}')
     seconds,minutes,hours = utils.report_times(start_time)
     other_stats = dict({'seconds':seconds,'minutes':minutes,'hours':hours}, **other_stats)
     print(f'Finished Training, hours={hours}')
