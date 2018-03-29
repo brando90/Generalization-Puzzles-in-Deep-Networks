@@ -210,7 +210,6 @@ def main(plot=False):
     print(f'nb_epochs = {nb_epochs}')
     print(f'Finished Training, hours={hours}')
     print(f'seed = {seed}, githash = {githash}')
-    st()
     ''' save results from experiment '''
     matlab_path_to_filename = os.path.join(expt_path,matlab_file_name)
     save2matlab.save2matlab_flatness_expt(matlab_path_to_filename, stats_collector,other_stats=other_stats)
