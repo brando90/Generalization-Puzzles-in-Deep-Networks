@@ -193,7 +193,8 @@ def main(plot=False):
         batch_size_test = 10*10**3
         ##
         nb_perturbation_trials = nb_epochs
-        # TODO nb_layers = lenght(net.parameters())
+        ##
+        nb_layers = len(list(net.parameters()))
         perturbation_magnitudes = 5*[0.1]
         ## TODO
         folder_name_noise = f'noise_{perturbation_magnitudes[0]}'
