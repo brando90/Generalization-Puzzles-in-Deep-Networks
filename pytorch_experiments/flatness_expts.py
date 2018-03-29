@@ -66,6 +66,9 @@ parser.add_argument('-standardize_data','--standardize_data',action='store_true'
                     help='uses x-u/s, standardize data')
 parser.add_argument("-label_corrupt_prob", "--label_corrupt_prob", type=float, default=0.0,
                     help="The probability of a label getting corrupted")
+''' training argument '''
+# parser.add_argument("-train_alg", "--train_alg", type=str, default='SGD',
+#                     help="Training algorithm to use")
 ''' process args '''
 args = parser.parse_args()
 if not torch.cuda.is_available() and args.enable_cuda:
@@ -149,9 +152,10 @@ def main(plot=False):
         path_to_mdl = args.mdl
         path = os.path.join(results_root,path_to_mdl)
         net = utils.restore_entire_mdl(path)
-        st()
     if args.enable_cuda:
         net.cuda()
+    else:
+        net.cpu()
     nb_params = nn_mdls.count_nb_params(net)
     ''' Cross Entropy + Optmizer'''
     lr = 0.01
@@ -171,8 +175,8 @@ def main(plot=False):
     print(f'Model over parametrized? N < W = {overparametrized}')
     # We simply have to loop over our data iterator, and feed the inputs to the network and optimize.
     #tr_alg.train_cifar(args, nb_epochs, trainloader,testloader, net,optimizer,criterion)
-    train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch = tr_alg.train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer,criterion,error_criterion, stats_collector)
-    seconds,minutes,hours = utils.report_times(start_time)
+    #train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch = tr_alg.train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer,criterion,error_criterion, stats_collector)
+    #seconds,minutes,hours = utils.report_times(start_time)
     print(f'Finished Training, hours={hours}')
     print(f'seed = {seed}, githash = {githash}')
     ''' Test the Network on the test data '''
