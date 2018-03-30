@@ -87,7 +87,7 @@ def main(plot=False):
     githash = subprocess.check_output(["git", "describe", "--always"]).strip()
     seed = args.seed
     if seed is None: # if seed is None it has not been set, so get a random seed, else use the seed that was set
-        seed = ord(os.urandom(1))
+        seed = int.from_bytes(os.urandom(8), byteorder="big")
     print(f'seed: {seed}')
     ## SET SEED/determinism
     num_workers = 0
@@ -103,8 +103,8 @@ def main(plot=False):
     results_root = './test_runs_flatness'
     expt_folder = f'flatness_{day}_{month}_label_corrupt_prob_{args.label_corrupt_prob}_exptlabel_{args.exptlabel}'
     ## filenames
-    matlab_file_name = f'flatness_{day}_{month}_seed_{seed}_sj_{sj}_staid_{satid}'
-    net_file_name = f'net_{day}_{month}_seed_{seed}_sj_{sj}_staid_{satid}'
+    matlab_file_name = f'flatness_{day}_{month}_sj_{sj}_staid_{satid}_seed_{seed}'
+    net_file_name = f'net_{day}_{month}_sj_{sj}_staid_{satid}_seed_{seed}'
     ## experiment path
     expt_path = os.path.join(results_root,expt_folder)
     utils.make_and_check_dir(expt_path)
