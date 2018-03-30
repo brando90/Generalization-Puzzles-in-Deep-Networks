@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-#SBATCH --mem=7000
-#SBATCH --time=0-08:00
+#SBATCH --mem=9000
+#SBATCH --time=0-03:30
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
-#SBATCH --array=1-5
+#SBATCH --array=1-1
 #SBATCH --gres=gpu:1
 
 """
@@ -72,7 +72,7 @@ parser.add_argument("-train_alg", "--train_alg", type=str, default='SGD',
                     help="Training algorithm to use")
 parser.add_argument("-noise_level", "--noise_level", type=float, default=0.0001,
                     help="Noise level for perturbation")
-parser.add_argument("-not_pert_w_norm2", "--not_pert_w_norm2", type=float, action='store_false',
+parser.add_argument("-not_pert_w_norm2", "--not_pert_w_norm2",action='store_false',
                     help="Noise level for perturbation")
 ''' process args '''
 args = parser.parse_args()
