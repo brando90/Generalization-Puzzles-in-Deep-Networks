@@ -70,6 +70,10 @@ parser.add_argument("-label_corrupt_prob", "--label_corrupt_prob", type=float, d
 ''' training argument '''
 parser.add_argument("-train_alg", "--train_alg", type=str, default='SGD',
                     help="Training algorithm to use")
+parser.add_argument("-noise_level", "--noise_level", type=float, default=0.0001,
+                    help="Noise level for perturbation")
+parser.add_argument("-not_pert_w_norm2", "--not_pert_w_norm2", type=float, action='store_false',
+                    help="Noise level for perturbation")
 ''' process args '''
 args = parser.parse_args()
 if not torch.cuda.is_available() and args.enable_cuda:
@@ -194,7 +198,7 @@ def main(plot=False):
         nb_perturbation_trials = nb_epochs
         ''' noise level '''
         nb_layers = len(list(net.parameters()))
-        noise_level = 0.1
+        noise_level = args.noise_level
         perturbation_magnitudes = nb_layers*[noise_level]
         print(f'noise_level={noise_level}')
         ''' locate where to save it '''
@@ -203,7 +207,7 @@ def main(plot=False):
         utils.make_and_check_dir(expt_path)
         matlab_file_name = f'noise_{perturbation_magnitudes}_{matlab_file_name}'
         ## TODO collect by perburbing current model X number of times with current perturbation_magnitudes
-        use_w_norm2 = True
+        use_w_norm2 = args.not_pert_w_norm2
         train_loss,train_error,test_loss,test_error = get_errors_for_all_perturbations(net,perturbation_magnitudes,use_w_norm2,args.enable_cuda,nb_perturbation_trials,stats_collector,criterion,error_criterion,trainloader,testloader)
         print(f'noise_level={noise_level},train_loss,train_error,test_loss,test_error={train_loss},{train_error},{test_loss},{test_error}')
     seconds,minutes,hours = utils.report_times(start_time)
