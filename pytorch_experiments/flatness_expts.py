@@ -91,7 +91,7 @@ def main(plot=False):
     githash = subprocess.check_output(["git", "describe", "--always"]).strip()
     seed = args.seed
     if seed is None: # if seed is None it has not been set, so get a random seed, else use the seed that was set
-        seed = int.from_bytes(os.urandom(8), byteorder="big")
+        seed = int.from_bytes(os.urandom(7), byteorder="big")
     print(f'seed: {seed}')
     ## SET SEED/determinism
     num_workers = 0
