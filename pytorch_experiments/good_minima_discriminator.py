@@ -53,7 +53,7 @@ def get_landscapes_stats_between_nets(net1,net2, nb_interpolations, enable_cuda,
     interpolated_net = copy.deepcopy(net1)
     for i,alpha in enumerate(interpolations):
         ''' interpolate nets with current alpha '''
-        interpolated_net = convex_interpolate_nets(net1,net2,alpha)
+        interpolated_net = convex_interpolate_nets(interpolated_net,net1,net2,alpha)
         ''' evalaute model '''
         net = interpolated_net
         train_loss, train_error = evalaute_mdl_data_set(criterion,error_criterion,net,trainloader,enable_cuda)
