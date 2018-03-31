@@ -157,7 +157,7 @@ def main(plot=False):
         FC = len(classes)
         C,H,W = 3,32,32
         net = nn_mdls.LiaoNet(C,H,W,Fs,Ks,FC,do_bn)
-    elif mdl= 'interpolate'
+    elif mdl == 'interpolate'
         path_nl = 'flatness_28_March_label_corrupt_prob_0.0_exptlabel_BoixNet_polestar_300_stand_natural_labels/net_28_March_206'
         path_rl_nl = 'flatness_28_March_label_corrupt_prob_0.0_exptlabel_re_train_RLBoixNet_noBN_polestar_150/net_28_March_18'
         net_nl = utils.restore_entire_mdl(path_nl)
