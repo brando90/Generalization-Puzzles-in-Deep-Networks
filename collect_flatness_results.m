@@ -3,21 +3,27 @@ clc;clear;
 dot = '/Users/brandomiranda/home_simulation_research/overparametrized_experiments/';
 cd(dot);
 %% Get perturbation errors for natural label experiment
-path_natural_label='/pytorch_experiments/test_runs_flatness/flatness_29_March_label_corrupt_prob_0.0_exptlabel_pert_retrained_Random_Label_on_Natural_Label_BoixNet';
+path_random_label='/pytorch_experiments/test_runs_flatness/flatness_29_March_label_corrupt_prob_0.0_exptlabel_pert_retrained_Random_Label_on_Natural_Label_BoixNet';
+expt_path = fullfile(dot,path_random_label);
+results_random_label = get_results(expt_path);
+%% Get perturbation errors for random label experiment
+path_natural_label='/pytorch_experiments/test_runs_flatness/flatness_29_March_label_corrupt_prob_0.0_exptlabel_pert_Natural_Label_BoixNet';
 expt_path = fullfile(dot,path_natural_label);
 results_natural_label = get_results(expt_path);
-%% Get perturbation errors for random label experiment
-path_random_label='/pytorch_experiments/test_runs_flatness/flatness_29_March_label_corrupt_prob_0.0_exptlabel_pert_Natural_Label_BoixNet';
-expt_path = fullfile(dot,path_natural_label);
-results_random_label = get_results(expt_path);
 %% Plot Results for random label
 noises = cell2list( keys(results_random_label.M_tests_accs) );
-[means_test, stds_test] = get_stats_experiment(results_random_label.M_tests_accs);
-[means_train, stds_train] = get_stats_experiment(results_random_label.M_train_accs);
+[means_test_random, stds_test_random] = get_stats_experiment(results_random_label.M_tests_accs);
+means_test_random
+[means_test_natural, stds_test_natural] = get_stats_experiment(results_natural_label.M_tests_accs);
+means_test_natural
+%[means_train, stds_train] = get_stats_experiment(results_random_label.M_train_accs);
 figure;
-errorbar(noises,means_test,stds_test)
-figure;
-errorbar(noises,means_train,stds_train)
+errorbar(noises,means_test_random,stds_test_random,'-o');hold;
+errorbar(noises,means_test_natural,stds_test_natural,'-x')
+% plot(noises,means_test_random,'-o');hold;
+% plot(noises,means_test_natural,'-x')
+legend('mean test on random label','mean test on natural label');
+title('Errors vs noise magnitude');
 %% return to script folder
 cd(dot)
 %% Helper function
@@ -66,9 +72,9 @@ function [means, stds] = get_stats_experiment(M)
     vals = values(M);
     means = length(noises);
     stds = length(noises);
-    for i=length(noises)
-        mu = mean(vals{1});
-        stddev = std(vals{1});
+    for i=1:length(noises)
+        mu = mean(vals{i});
+        stddev = std(vals{i});
         means(i) = mu;
         stds(i) = stddev;
     end
