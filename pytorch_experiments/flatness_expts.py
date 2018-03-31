@@ -38,6 +38,7 @@ import metrics
 import utils
 import plot_utils
 from good_minima_discriminator import get_errors_for_all_perturbations, perturb_model
+from good_minima_discriminator import get_landscapes_stats_between_nets
 
 from pdb import set_trace as st
 
@@ -156,6 +157,11 @@ def main(plot=False):
         FC = len(classes)
         C,H,W = 3,32,32
         net = nn_mdls.LiaoNet(C,H,W,Fs,Ks,FC,do_bn)
+    elif mdl= 'ineterpolation'
+        path_nl = 'flatness_28_March_label_corrupt_prob_0.0_exptlabel_BoixNet_polestar_300_stand_natural_labels/net_28_March_206'
+        path_rl_nl = 'flatness_28_March_label_corrupt_prob_0.0_exptlabel_re_train_RLBoixNet_noBN_polestar_150/net_28_March_18'
+        net_nl = utils.restore_entire_mdl(path_nl)
+        net_rl_nl = utils.restore_entire_mdl(path_rl_nl)
     else:
         ''' RESTORED PRE-TRAINED NET '''
         # example name of file, os.path.join(results_root,expt_path,f'net_{day}_{month}_{seed}')
@@ -211,6 +217,11 @@ def main(plot=False):
         train_loss,train_error,test_loss,test_error = get_errors_for_all_perturbations(net,perturbation_magnitudes,use_w_norm2,args.enable_cuda,nb_perturbation_trials,stats_collector,criterion,error_criterion,trainloader,testloader)
         print(f'noise_level={noise_level},train_loss,train_error,test_loss,test_error={train_loss},{train_error},{test_loss},{test_error}')
         other_stats = dict({'noise_level':noise_level,'minutes':minutes,'hours':hours}, **other_stats)
+    elif args.train_alg = 'interpolate':
+        #
+        nb_interpolations = nb_epochs
+        enable_cuda = args.enable_cuda
+        get_landscapes_stats_between_nets(net_nl,net_rl_nl,nb_interpolations, enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
     seconds,minutes,hours = utils.report_times(start_time)
     other_stats = dict({'seconds':seconds,'perturbation_magnitudes':perturbation_magnitudes}, **other_stats)
     print(f'nb_epochs = {nb_epochs}')
