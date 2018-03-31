@@ -70,6 +70,7 @@ def convex_interpolate_nets(interpolated_net,net1,net2,alpha):
     params1 = net1.named_parameters()
     params2 = net2.named_parameters()
     params_interpolated = interpolated_net.named_parameters()
+    dict_params2 = dict(params2)
     dict_params_interpolated = dict(params_interpolated)
     for name1, param1 in params1:
         if name1 in dict_params_interpolated:
