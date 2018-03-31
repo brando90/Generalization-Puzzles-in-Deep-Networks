@@ -1,7 +1,7 @@
 import torch
 import copy
 
-import numps as np
+import numpy as np
 
 from new_training_algorithms import evalaute_mdl_data_set
 
