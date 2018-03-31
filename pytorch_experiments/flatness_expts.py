@@ -128,9 +128,11 @@ def main(plot=False):
     do_bn = args.use_bn
     other_stats = dict({'mdl':mdl,'do_bn':do_bn},**other_stats)
     ##
+    nets = []
     print(f'model = {mdl}')
     if mdl == 'cifar_10_tutorial_net':
         net = nn_mdls.Net()
+        nets.append(net)
     elif mdl == 'debug':
         nb_conv_layers=1
         ## conv params
@@ -140,6 +142,7 @@ def main(plot=False):
         FC = len(classes)
         C,H,W = 3,32,32
         net = nn_mdls.LiaoNet(C,H,W,Fs,Ks,FC,do_bn)
+        nets.append(net)
     elif mdl == 'MirandaNet':
         ## conv params
         nb_filters1,nb_filters2 = 32, 32
@@ -148,6 +151,7 @@ def main(plot=False):
         nb_units_fc1,nb_units_fc2,nb_units_fc3 = 512,256,len(classes)
         C,H,W = 3,32,32
         net = nn_mdls.MirandaNet(C,H,W,nb_filters1,nb_filters2, kernel_size1,kernel_size2, nb_units_fc1,nb_units_fc2,nb_units_fc3,do_bn)
+        nets.append(net)
     elif mdl == 'LiaoNet':
         nb_conv_layers=5
         ## conv params
@@ -157,11 +161,14 @@ def main(plot=False):
         FC = len(classes)
         C,H,W = 3,32,32
         net = nn_mdls.LiaoNet(C,H,W,Fs,Ks,FC,do_bn)
+        nets.append(net)
     elif mdl == 'interpolate':
         path_nl = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_BoixNet_polestar_300_stand_natural_labels/net_28_March_206')
         path_rl_nl = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_re_train_RLBoixNet_noBN_polestar_150/net_28_March_18')
         net_nl = utils.restore_entire_mdl(path_nl)
         net_rl_nl = utils.restore_entire_mdl(path_rl_nl)
+        nets.append(net_nl)
+        nets.append(net_rl_nl)
     else:
         ''' RESTORED PRE-TRAINED NET '''
         # example name of file, os.path.join(results_root,expt_path,f'net_{day}_{month}_{seed}')
@@ -169,11 +176,14 @@ def main(plot=False):
         path_to_mdl = args.mdl
         path = os.path.join(results_root,path_to_mdl)
         net = utils.restore_entire_mdl(path)
+        nets.append(net)
     if args.enable_cuda:
         #set_default_tensor_type
-        net.cuda()
+        for net in nets:
+            net.cuda()
     else:
-        net.cpu()
+        for net in nets:
+            net.cpu()
     nb_params = nn_mdls.count_nb_params(net)
     ''' Cross Entropy + Optmizer'''
     lr = 0.01
