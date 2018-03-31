@@ -1,6 +1,8 @@
 import torch
 import copy
 
+import numps as np
+
 from new_training_algorithms import evalaute_mdl_data_set
 
 from pdb import set_trace as st
