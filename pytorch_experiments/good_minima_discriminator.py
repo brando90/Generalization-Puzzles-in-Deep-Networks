@@ -67,8 +67,8 @@ def convex_interpolate_nets(interpolated_net,net1,net2,alpha):
     '''
         Convex interpolation of two nets alpha*W_l + (1-alpha)*W_l.
     '''
-    params1 = model1.named_parameters()
-    params2 = model2.named_parameters()
+    params1 = net1.named_parameters()
+    params2 = net2.named_parameters()
     params_interpolated = interpolated_net.named_parameters()
     dict_params_interpolated = dict(params_interpolated)
     for name1, param1 in params1:
