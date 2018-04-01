@@ -232,10 +232,11 @@ def main(plot=False):
         print(f'noise_level={noise_level},train_loss,train_error,test_loss,test_error={train_loss},{train_error},{test_loss},{test_error}')
         other_stats = dict({'noise_level':noise_level,'minutes':minutes,'hours':hours,'perturbation_magnitudes':perturbation_magnitudes}, **other_stats)
     elif args.train_alg == 'interpolate':
-        #
         nb_interpolations = nb_epochs
         enable_cuda = args.enable_cuda
-        get_landscapes_stats_between_nets(net_nl,net_rl_nl,nb_interpolations, enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
+        ##
+        interpolations = np.linspace(0,1,nb_interpolations)
+        get_landscapes_stats_between_nets(net_nl,net_rl_nl,interpolations, enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
     seconds,minutes,hours = utils.report_times(start_time)
     other_stats = dict({'seconds':seconds}, **other_stats)
     print(f'nb_epochs = {nb_epochs}')

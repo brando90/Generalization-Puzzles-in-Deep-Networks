@@ -43,12 +43,11 @@ def perturb_model(net,perturbation_magnitudes,use_w_norm2,enable_cuda,stats_coll
 
 ####
 
-def get_landscapes_stats_between_nets(net1,net2, nb_interpolations, enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader):
+def get_landscapes_stats_between_nets(net1,net2, interpolations, enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader):
     '''
         Records the errors for the path by convexly averaging two nets. The goal
         is to be able to estimate the size of the wall between the two different minimums.
     '''
-    interpolations = np.linspace(0,1,nb_interpolations)
     ''' '''
     interpolated_net = copy.deepcopy(net1)
     for i,alpha in enumerate(interpolations):
@@ -60,7 +59,7 @@ def get_landscapes_stats_between_nets(net1,net2, nb_interpolations, enable_cuda,
         ''' record result '''
         stats_collector.append_losses_errors_accs(train_loss, train_error, test_loss, test_error)
         stats_collector.collect_mdl_params_stats(interpolated_net)
-    return train_loss, train_error, test_loss, test_error #note this is just some random trial
+    return train_loss, train_error, test_loss, test_error, interpolations #note this is just some random trial
 
 def convex_interpolate_nets(interpolated_net,net1,net2,alpha):
     '''
