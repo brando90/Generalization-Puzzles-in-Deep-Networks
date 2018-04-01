@@ -239,7 +239,7 @@ def main(plot=False):
         get_landscapes_stats_between_nets(net_nl,net_rl_nl,interpolations, enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
         other_stats = dict({'interpolations':interpolations},**other_stats)
     seconds,minutes,hours = utils.report_times(start_time)
-    other_stats = dict({'seconds':seconds}, **other_stats)
+    other_stats = dict({'seconds':seconds,'minutes':minutes,'hours':hours}, **other_stats)
     print(f'nb_epochs = {nb_epochs}')
     print(f'Finished Training, hours={hours}')
     print(f'seed = {seed}, githash = {githash}')
