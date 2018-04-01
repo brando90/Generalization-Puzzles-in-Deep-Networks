@@ -237,6 +237,7 @@ def main(plot=False):
         ##
         interpolations = np.linspace(0,1,nb_interpolations)
         get_landscapes_stats_between_nets(net_nl,net_rl_nl,interpolations, enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
+        other_stats = dict({'interpolations':interpolations},**other_stats)
     seconds,minutes,hours = utils.report_times(start_time)
     other_stats = dict({'seconds':seconds}, **other_stats)
     print(f'nb_epochs = {nb_epochs}')
