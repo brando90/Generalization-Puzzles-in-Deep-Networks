@@ -22,9 +22,10 @@ class StatsCollector:
         ''' log parameter stats'''
         for index, W in enumerate(mdl.parameters()):
             self.w_norms[index].append( W.data.norm(2) )
-            self.grads[index].append( W.grad.data.norm(2) )
-            if utils.is_NaN(W.grad.data.norm(2)):
-                raise ValueError(f'Nan Detected error happened at: i={i} loss_val={loss_val}, loss={loss}')
+            if W.grad is not None:
+                self.grads[index].append( W.grad.data.norm(2) )
+                if utils.is_NaN(W.grad.data.norm(2)):
+                    raise ValueError(f'Nan Detected error happened at: i={i} loss_val={loss_val}, loss={loss}')
 
     def append_losses_errors_accs(self,train_loss, train_error, test_loss, test_error):
         self.train_losses.append(train_loss)

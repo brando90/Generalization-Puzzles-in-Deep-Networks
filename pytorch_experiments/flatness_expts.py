@@ -165,6 +165,10 @@ def main(plot=False):
     elif mdl == 'interpolate':
         path_nl = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_BoixNet_polestar_300_stand_natural_labels/net_28_March_206')
         path_rl_nl = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_re_train_RLBoixNet_noBN_polestar_150/net_28_March_18')
+        ''' debug nets '''
+        path_nl = os.path.join(results_root,'flatness_31_March_label_corrupt_prob_0.0_exptlabel_nolabel/net_31_March_sj_0_staid_0_seed_12582084601958904')
+        path_rl_nl = os.path.join(results_root,'flatness_31_March_label_corrupt_prob_0.0_exptlabel_nolabel2/net_31_March_sj_0_staid_0_seed_32556446453331013')
+        ''' restore nets'''
         net_nl = utils.restore_entire_mdl(path_nl)
         net_rl_nl = utils.restore_entire_mdl(path_rl_nl)
         nets.append(net_nl)
@@ -226,14 +230,14 @@ def main(plot=False):
         use_w_norm2 = args.not_pert_w_norm2
         train_loss,train_error,test_loss,test_error = get_errors_for_all_perturbations(net,perturbation_magnitudes,use_w_norm2,args.enable_cuda,nb_perturbation_trials,stats_collector,criterion,error_criterion,trainloader,testloader)
         print(f'noise_level={noise_level},train_loss,train_error,test_loss,test_error={train_loss},{train_error},{test_loss},{test_error}')
-        other_stats = dict({'noise_level':noise_level,'minutes':minutes,'hours':hours}, **other_stats)
+        other_stats = dict({'noise_level':noise_level,'minutes':minutes,'hours':hours,'perturbation_magnitudes':perturbation_magnitudes}, **other_stats)
     elif args.train_alg == 'interpolate':
         #
         nb_interpolations = nb_epochs
         enable_cuda = args.enable_cuda
         get_landscapes_stats_between_nets(net_nl,net_rl_nl,nb_interpolations, enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
     seconds,minutes,hours = utils.report_times(start_time)
-    other_stats = dict({'seconds':seconds,'perturbation_magnitudes':perturbation_magnitudes}, **other_stats)
+    other_stats = dict({'seconds':seconds}, **other_stats)
     print(f'nb_epochs = {nb_epochs}')
     print(f'Finished Training, hours={hours}')
     print(f'seed = {seed}, githash = {githash}')
