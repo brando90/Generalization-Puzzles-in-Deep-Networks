@@ -7,40 +7,51 @@ from new_training_algorithms import evalaute_mdl_data_set
 
 from pdb import set_trace as st
 
-def get_errors_for_all_perturbations(net,perturbation_magnitudes,use_w_norm2,enable_cuda,nb_perturbation_trials,stats_collector,criterion,error_criterion,trainloader,testloader):
+def get_errors_for_all_perturbations(net,perturbation_magnitudes,relative,std_dict_params,enable_cuda,nb_perturbation_trials,stats_collector,criterion,error_criterion,trainloader,testloader):
     '''
         Evaluate the errors of perturbed models.
     '''
+    std_dict_params = get_std_of_net(net)
     for index_perturbation_trial in range(nb_perturbation_trials):
-        train_loss, train_error, test_loss, test_error = perturb_model(net,perturbation_magnitudes,use_w_norm2,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
+        train_loss, train_error, test_loss, test_error = perturb_model(net,perturbation_magnitudes,std_dict_params,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
     return train_loss, train_error, test_loss, test_error #note this is just some random trial
 
-def perturb_model(net,perturbation_magnitudes,use_w_norm2,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader):
+def perturb_model(net,perturbation_magnitudes,std_dict_params,relative,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader):
     perturbations = []
     ''' pertub model '''
-    for index, W in enumerate(net.parameters()):
-        reference_magnitude = 1 if use_w_norm2 else W.norm(2)
+    params = net.named_parameters()
+    index = 0
+    for name, W in params:
         if perturbation_magnitudes[index] != 0:
+            reference_magnitude = std_dict_params[name] if relative else 1
             std = perturbation_magnitudes[index]*reference_magnitude
             perturbation = torch.normal(means=0.0*torch.ones(W.size()),std=std)
         else:
             perturbation = torch.zeros(W.size())
         perturbation = perturbation.cuda() if enable_cuda else perturbation
-        perturbations.append(perturbation)
-        #with torch.no_grad():
         W.data.copy_(W.data + perturbation)
+        ##
+        perturbations.append(perturbation.norm(2))
+        i+=1
     ''' evalaute model '''
     train_loss, train_error = evalaute_mdl_data_set(criterion,error_criterion,net,trainloader,enable_cuda)
     test_loss, test_error = evalaute_mdl_data_set(criterion,error_criterion,net,testloader,enable_cuda)
     ''' record result '''
     stats_collector.append_losses_errors_accs(train_loss, train_error, test_loss, test_error)
     stats_collector.collect_mdl_params_stats(net)
+    stats_collector.add_perturbation_norms_from_perturbations(perturbations)
     ''' undo the perturbation '''
     for index, W in enumerate(net.parameters()):
         #with torch.no_grad():
         W.data.copy_(W.data - perturbation[index])
     return train_loss, train_error, test_loss, test_error #note this is just some random trial
 
+def get_std_of_net(net):
+    params = net.named_parameters()
+    std_dict_params = dict(params)
+    for name, param in params:
+        dict_params[name] = param.std()
+    return std_dict_params
 ####
 
 def get_landscapes_stats_between_nets(net1,net2, interpolations, enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader):

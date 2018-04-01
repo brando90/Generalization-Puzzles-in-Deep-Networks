@@ -17,6 +17,7 @@ class StatsCollector:
         nb_param_groups = len( list(net.parameters()) )
         self.grads = [ [] for i in range(nb_param_groups) ]
         self.w_norms = [ [] for i in range(nb_param_groups) ]
+        self.perturbations_norms = [ [] for i in range(nb_param_groups) ]
 
     def collect_mdl_params_stats(self,mdl):
         ''' log parameter stats'''
@@ -35,12 +36,17 @@ class StatsCollector:
         self.train_accs.append(1.0-train_error)
         self.test_accs.append(1.0-test_error)
 
+    def add_perturbation_norms_from_perturbations(self,net,perturbations):
+        for index, W in enumerate(mdl.parameters()):
+            self.perturbations_norms[index].append( perturbations[index].norm(2) )
+
     def get_stats_dict(self):
         stats = NamedDict(
             train_losses=self.train_losses,val_losses=self.val_losses,test_losses=self.test_losses,
             train_errors=self.train_errors,val_errors=self.val_errors,test_errors=self.test_errors,
             train_accs=self.train_accs,val_accs=self.val_accs,test_accs=self.test_accs,
             grads=self.grads,
-            w_norms=self.w_norms
+            w_norms=self.w_norms,
+            self.perturbations
         )
         return stats
