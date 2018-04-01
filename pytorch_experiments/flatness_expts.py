@@ -166,8 +166,8 @@ def main(plot=False):
         path_nl = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_BoixNet_polestar_300_stand_natural_labels/net_28_March_206')
         path_rl_nl = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_re_train_RLBoixNet_noBN_polestar_150/net_28_March_18')
         ''' debug nets '''
-        path_nl = os.path.join(results_root,'flatness_31_March_label_corrupt_prob_0.0_exptlabel_nolabel/net_31_March_sj_0_staid_0_seed_12582084601958904')
-        path_rl_nl = os.path.join(results_root,'flatness_31_March_label_corrupt_prob_0.0_exptlabel_nolabel2/net_31_March_sj_0_staid_0_seed_32556446453331013')
+        #path_nl = os.path.join(results_root,'flatness_31_March_label_corrupt_prob_0.0_exptlabel_nolabel/net_31_March_sj_0_staid_0_seed_12582084601958904')
+        #path_rl_nl = os.path.join(results_root,'flatness_31_March_label_corrupt_prob_0.0_exptlabel_nolabel2/net_31_March_sj_0_staid_0_seed_32556446453331013')
         ''' restore nets'''
         net_nl = utils.restore_entire_mdl(path_nl)
         net_rl_nl = utils.restore_entire_mdl(path_rl_nl)
