@@ -4,6 +4,7 @@ import copy
 import numpy as np
 
 from new_training_algorithms import evalaute_mdl_data_set
+import nn_models as nn_mdls
 
 from pdb import set_trace as st
 
@@ -86,3 +87,54 @@ def convex_interpolate_nets(interpolated_net,net1,net2,alpha):
             dict_params_interpolated[name1].data.copy_(alpha*param1.data + (1-alpha)*dict_params2[name1].data)
     interpolated_net.load_state_dict(dict_params_interpolated)
     return interpolated_net
+
+##
+
+def get_errors_list(net,r_large,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader):
+    '''
+        Computes I = [..., I(W+r*dx),...]. A sequence of errors/losses
+        from a starting minimum W to the final minum net r*dx.
+        The goal of this is for the easy of computation of the epsilon radius of
+        a network which is defined as follows:
+            r(dx,eps,W) = sup{r \in R : |I(W) - I(W+r*dx)|<=eps}
+        W_all = r*dx
+        dx = isotropic unit vector from the net
+    '''
+    ''' record reference errors/losses '''
+    stats_collector.record_errors_loss_reference_net(criterion,error_criterion,net,trainloader,testloader,enable_cuda)
+    ''' get isotropic direction '''
+    nb_params = nn_mdls.count_nb_params(net)
+    v = torch.distributions.multivariate_normal.MultivariateNormal(torch.zeros(nb_params), torch.eye(nb_params))
+    dx = v/v.norm(2)
+    ''' fill up I list '''
+    net_r = copy.deepcopy(net)
+    rs = np.linspace(0,r_large,nb_interpolation)
+    for r in rs:
+        ''' compute I(W+r*dx) = I(W+W_all)'''
+        net_r = translate_net_by_rdx(net,net_r,r,dx)
+        Er_train_loss, Er_train_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,trainloader,enable_cuda)
+        Er_test_loss, Er_test_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,testloader,enable_cuda)
+        ''' record result '''
+        stats_collector.append_losses_errors_accs(Er_train_loss, Er_train_error, Er_test_loss, Er_test_error)
+    return
+
+def translate_net_by_rdx(net,net_r,r,dx):
+    '''
+        translate reference net net by r*dx and store it in net_r
+    '''
+    params_r = net_r.named_parameters()
+    dict_params_r = dict(params_r)
+    W_all = r*dx
+    ''' '''
+    i_start, i_end = 0, 0
+    for name, W in enumerate(net.parameters()):
+        ''' get relevant parameters from random translation '''
+        i_end = i+W.numel()
+        #W_relevant = W_all[i_start:i_end] #index is exclusive
+        W_relevant = W_all[i_start:i_end].view(W.size())
+        ''' translate original net by r*dx[relevant] = W_all[relevant]'''
+        dict_params_r[name].data.copy_(W+W_relevant)
+        ''' change index to the next relevant params from the random translation '''
+        i_start = i_end # index is exclusive so we are already at the right place
+    net_r.load_state_dict(dict_params_r)
+    return net_r
