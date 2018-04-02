@@ -39,6 +39,7 @@ import utils
 import plot_utils
 from good_minima_discriminator import get_errors_for_all_perturbations, perturb_model
 from good_minima_discriminator import get_landscapes_stats_between_nets
+from good_minima_discriminator import get_radius_errors_loss_list
 
 from pdb import set_trace as st
 
@@ -173,6 +174,15 @@ def main(plot=False):
         net_rl_nl = utils.restore_entire_mdl(path_rl_nl)
         nets.append(net_nl)
         nets.append(net_rl_nl)
+    elif mdl == 'radius_flatness':
+        # path = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_BoixNet_polestar_300_stand_natural_labels/net_28_March_206')
+        # path = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_re_train_RLBoixNet_noBN_polestar_150/net_28_March_18')
+        ''' debug nets '''
+        path = os.path.join(results_root,'flatness_31_March_label_corrupt_prob_0.0_exptlabel_nolabel/net_31_March_sj_0_staid_0_seed_12582084601958904')
+        path = os.path.join(results_root,'flatness_31_March_label_corrupt_prob_0.0_exptlabel_nolabel2/net_31_March_sj_0_staid_0_seed_32556446453331013')
+        ''' restore nets'''
+        net = utils.restore_entire_mdl(path)
+        nets.append(net)
     else:
         ''' RESTORED PRE-TRAINED NET '''
         # example name of file, os.path.join(results_root,expt_path,f'net_{day}_{month}_{seed}')
@@ -238,6 +248,15 @@ def main(plot=False):
         interpolations = np.linspace(0,1,nb_interpolations)
         get_landscapes_stats_between_nets(net_nl,net_rl_nl,interpolations, enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
         other_stats = dict({'interpolations':interpolations},**other_stats)
+    elif args.train_alg == 'brando_chiyuan_radius':
+        enable_cuda = args.enable_cuda
+        r_large = 20 ## check if this number is good
+        #epsilon = 0.05 ## check if this number is good
+        nb_radius_samples = nb_epochs
+        rs = np.linspace(0,r_large,nb_radius_samples)
+        get_radius_errors_loss_list(net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
+        other_stats = dict({'rs':rs,'nb_radius_samples':nb_radius_samples,'r_large':r_large},**other_stats)
+    ''' save times '''
     seconds,minutes,hours = utils.report_times(start_time)
     other_stats = dict({'seconds':seconds,'minutes':minutes,'hours':hours}, **other_stats)
     print(f'nb_epochs = {nb_epochs}')

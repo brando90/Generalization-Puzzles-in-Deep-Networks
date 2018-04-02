@@ -90,7 +90,7 @@ def convex_interpolate_nets(interpolated_net,net1,net2,alpha):
 
 ##
 
-def get_errors_list(net,r_large,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader):
+def get_radius_errors_loss_list(net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader):
     '''
         Computes I = [..., I(W+r*dx),...]. A sequence of errors/losses
         from a starting minimum W to the final minum net r*dx.
@@ -104,11 +104,12 @@ def get_errors_list(net,r_large,enable_cuda,stats_collector,criterion,error_crit
     stats_collector.record_errors_loss_reference_net(criterion,error_criterion,net,trainloader,testloader,enable_cuda)
     ''' get isotropic direction '''
     nb_params = nn_mdls.count_nb_params(net)
-    v = torch.distributions.multivariate_normal.MultivariateNormal(torch.zeros(nb_params), torch.eye(nb_params))
+    #mvg_sampler = torch.distributions.multivariate_normal.MultivariateNormal(torch.zeros(nb_params), torch.eye(nb_params))
+    #v = mvg_sampler.sample().cuda()
+    v = torch.normal(torch.zeros(nb_params),torch.eye(nb_params)).cuda() if enable_cuda else torch.normal(torch.zeros(nb_params),torch.ones(nb_params))
     dx = v/v.norm(2)
     ''' fill up I list '''
     net_r = copy.deepcopy(net)
-    rs = np.linspace(0,r_large,nb_interpolation)
     for r in rs:
         ''' compute I(W+r*dx) = I(W+W_all)'''
         net_r = translate_net_by_rdx(net,net_r,r,dx)
@@ -116,7 +117,7 @@ def get_errors_list(net,r_large,enable_cuda,stats_collector,criterion,error_crit
         Er_test_loss, Er_test_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,testloader,enable_cuda)
         ''' record result '''
         stats_collector.append_losses_errors_accs(Er_train_loss, Er_train_error, Er_test_loss, Er_test_error)
-    return
+    return Er_train_loss, Er_train_error, Er_test_loss, Er_test_error, net_r
 
 def translate_net_by_rdx(net,net_r,r,dx):
     '''
@@ -127,13 +128,14 @@ def translate_net_by_rdx(net,net_r,r,dx):
     W_all = r*dx
     ''' '''
     i_start, i_end = 0, 0
-    for name, W in enumerate(net.parameters()):
+    for name, W in enumerate(net_r.parameters()):
         ''' get relevant parameters from random translation '''
-        i_end = i+W.numel()
+        i_end = i_start+W.numel()
         #W_relevant = W_all[i_start:i_end] #index is exclusive
         W_relevant = W_all[i_start:i_end].view(W.size())
         ''' translate original net by r*dx[relevant] = W_all[relevant]'''
-        dict_params_r[name].data.copy_(W+W_relevant)
+        if name in dict_params_r:
+            dict_params_r[name].data.copy_(W+W_relevant)
         ''' change index to the next relevant params from the random translation '''
         i_start = i_end # index is exclusive so we are already at the right place
     net_r.load_state_dict(dict_params_r)

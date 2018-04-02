@@ -2,6 +2,8 @@ from pdb import set_trace as st
 
 from maps import NamedDict
 
+from new_training_algorithms import evalaute_mdl_data_set
+
 import utils
 
 class StatsCollector:
@@ -57,9 +59,9 @@ class StatsCollector:
             train_accs=self.train_accs,val_accs=self.val_accs,test_accs=self.test_accs,
             grads=self.grads,
             w_norms=self.w_norms,
-            perturbations=self.perturbations,
+            perturbations_norms=self.perturbations_norms,
             ref_train_losses=self.ref_train_losses,ref_val_losses=self.ref_val_losses,ref_test_losses=self.ref_test_losses,
-            ref_train_errors=self.ref_train_errors, ref_val_errors=self.ref_val_errors,ref_test_errors=self.ref_test_errors
+            ref_train_errors=self.ref_train_errors, ref_val_errors=self.ref_val_errors,ref_test_errors=self.ref_test_errors,
             ref_train_accs=self.ref_train_accs,ref_val_accs=self.ref_val_accs,ref_test_accs=self.ref_test_accs
         )
         return stats
