@@ -163,7 +163,7 @@ def main(plot=False):
         nets.append(net)
     elif mdl == 'interpolate':
         iterations = inf # controls how many epochs to stop before returning the data set error
-        iterations = 2 # controls how many epochs to stop before returning the data set error
+        iterations = 1 # controls how many epochs to stop before returning the data set error
         ''' '''
         path_nl = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_BoixNet_polestar_300_stand_natural_labels/net_28_March_206')
         path_rl_nl = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_re_train_RLBoixNet_noBN_polestar_150/net_28_March_18')
@@ -179,7 +179,7 @@ def main(plot=False):
         suffle_test = True
         batch_size = 256
         batch_size_train, batch_size_test = batch_size, batch_size
-        iterations = 2 # controls how many epochs to stop before returning the data set error
+        iterations = 1 # controls how many epochs to stop before returning the data set error
         ''' '''
         path = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_BoixNet_polestar_300_stand_natural_labels/net_28_March_206')
         path = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_re_train_RLBoixNet_noBN_polestar_150/net_28_March_18')
