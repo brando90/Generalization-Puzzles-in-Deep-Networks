@@ -106,7 +106,7 @@ def get_radius_errors_loss_list(net,r_large,rs,enable_cuda,stats_collector,crite
     nb_params = nn_mdls.count_nb_params(net)
     #mvg_sampler = torch.distributions.multivariate_normal.MultivariateNormal(torch.zeros(nb_params), torch.eye(nb_params))
     #v = mvg_sampler.sample().cuda()
-    v = torch.normal(torch.zeros(nb_params),torch.eye(nb_params)).cuda() if enable_cuda else torch.normal(torch.zeros(nb_params),torch.ones(nb_params))
+    v = torch.normal(torch.zeros(nb_params),torch.ones(nb_params)).cuda() if enable_cuda else torch.normal(torch.zeros(nb_params),torch.ones(nb_params))
     dx = v/v.norm(2)
     ''' fill up I list '''
     net_r = copy.deepcopy(net)
