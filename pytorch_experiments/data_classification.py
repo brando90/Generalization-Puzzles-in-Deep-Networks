@@ -99,7 +99,7 @@ class CIFAR10RandomLabels(torchvision.datasets.CIFAR10):
     else:
       self.test_labels = labels
 
-def get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,label_corrupt_prob,standardize=False):
+def get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,label_corrupt_prob,shuffle_train=True,suffle_test=False,standardize=False):
     '''
         The output of torchvision datasets are PILImage images of range [0, 1].
         We transform them to Tensors of (gau)normalized range [-1, 1].
@@ -120,11 +120,11 @@ def get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_wor
     ''' train data processor '''
     #trainset = torchvision.datasets.CIFAR10(root=data_path, train=True,download=True, transform=transform)
     trainset = CIFAR10RandomLabels(root=data_path, train=True, download=True,transform=transform, num_classes=10,corrupt_prob=label_corrupt_prob)
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size_train,shuffle=True, num_workers=num_workers)
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size_train,shuffle=shuffle_train, num_workers=num_workers)
     ''' test data processor '''
     #testset = torchvision.datasets.CIFAR10(root=data_path, train=False,download=True, transform=transform)
     testset = CIFAR10RandomLabels(root=data_path, train=False, download=True,transform=transform, num_classes=10,corrupt_prob=label_corrupt_prob)
-    testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size_test,shuffle=False, num_workers=num_workers)
+    testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size_test,shuffle=suffle_test, num_workers=num_workers)
     ''' classes '''
     classes = ('plane', 'car', 'bird', 'cat','deer', 'dog', 'frog', 'horse', 'ship', 'truck')
     ''' return trainer processors'''

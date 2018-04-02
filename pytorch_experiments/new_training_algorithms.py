@@ -9,14 +9,18 @@ from maps import NamedDict
 import data_utils
 import utils
 
+from math import inf
+
 from pdb import set_trace as st
 
-def evalaute_mdl_data_set(loss,error,net,dataloader,enable_cuda):
+def evalaute_mdl_data_set(loss,error,net,dataloader,enable_cuda,iterations=inf):
     '''
     Evaluate the error of the model under some loss and error with a specific data set.
     '''
     running_loss,running_error = 0,0
     for i,data in enumerate(dataloader):
+        if i >= iterations:
+            break
         inputs, labels = extract_data(enable_cuda,data,wrap_in_variable=True)
         outputs = net(inputs)
         running_loss += loss(outputs,labels).data[0]

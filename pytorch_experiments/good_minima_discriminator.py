@@ -2,6 +2,7 @@ import torch
 import copy
 
 import numpy as np
+from math import inf
 
 from new_training_algorithms import evalaute_mdl_data_set
 import nn_models as nn_mdls
@@ -55,7 +56,7 @@ def get_std_of_net(net):
     return std_dict_params
 ####
 
-def get_landscapes_stats_between_nets(net1,net2, interpolations, enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader):
+def get_landscapes_stats_between_nets(net1,net2, interpolations, enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader,iterations):
     '''
         Records the errors for the path by convexly averaging two nets. The goal
         is to be able to estimate the size of the wall between the two different minimums.
@@ -66,8 +67,8 @@ def get_landscapes_stats_between_nets(net1,net2, interpolations, enable_cuda,sta
         ''' interpolate nets with current alpha '''
         interpolated_net = convex_interpolate_nets(interpolated_net,net1,net2,alpha)
         ''' evalaute model '''
-        train_loss, train_error = evalaute_mdl_data_set(criterion,error_criterion,interpolated_net,trainloader,enable_cuda)
-        test_loss, test_error = evalaute_mdl_data_set(criterion,error_criterion,interpolated_net,testloader,enable_cuda)
+        train_loss, train_error = evalaute_mdl_data_set(criterion,error_criterion,interpolated_net,trainloader,enable_cuda,iterations)
+        test_loss, test_error = evalaute_mdl_data_set(criterion,error_criterion,interpolated_net,testloader,enable_cuda,iterations)
         ''' record result '''
         stats_collector.append_losses_errors_accs(train_loss, train_error, test_loss, test_error)
         stats_collector.collect_mdl_params_stats(interpolated_net)

@@ -22,6 +22,7 @@ current_directory = os.getcwd() #The method getcwd() returns current working dir
 sys.path.append(current_directory)
 
 import numpy as np
+from math import inf
 
 import torch
 
@@ -121,9 +122,6 @@ def main(plot=False):
     batch_size_train = batch_size
     batch_size_test = 256
     data_path = './data'
-    ''' get data set '''
-    standardize = args.standardize_data # x - mu / std , [-1,+1]
-    trainset,trainloader, testset,testloader, classes = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,args.label_corrupt_prob,standardize=standardize)
     ''' get NN '''
     mdl = args.mdl
     do_bn = args.use_bn
@@ -164,6 +162,9 @@ def main(plot=False):
         net = nn_mdls.LiaoNet(C,H,W,Fs,Ks,FC,do_bn)
         nets.append(net)
     elif mdl == 'interpolate':
+        iterations = inf # controls how many epochs to stop before returning the data set error
+        iterations = 2 # controls how many epochs to stop before returning the data set error
+        ''' '''
         path_nl = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_BoixNet_polestar_300_stand_natural_labels/net_28_March_206')
         path_rl_nl = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_re_train_RLBoixNet_noBN_polestar_150/net_28_March_18')
         ''' debug nets '''
@@ -175,6 +176,11 @@ def main(plot=False):
         nets.append(net_nl)
         nets.append(net_rl_nl)
     elif mdl == 'radius_flatness':
+        suffle_test = True
+        batch_size = 256
+        batch_size_train, batch_size_test = batch_size, batch_size
+        iterations = 2 # controls how many epochs to stop before returning the data set error
+        ''' '''
         path = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_BoixNet_polestar_300_stand_natural_labels/net_28_March_206')
         path = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_re_train_RLBoixNet_noBN_polestar_150/net_28_March_18')
         ''' debug nets '''
@@ -191,6 +197,7 @@ def main(plot=False):
         path = os.path.join(results_root,path_to_mdl)
         net = utils.restore_entire_mdl(path)
         nets.append(net)
+    ''' cuda/gpu '''
     if args.enable_cuda:
         #set_default_tensor_type
         for net in nets:
@@ -199,6 +206,9 @@ def main(plot=False):
         for net in nets:
             net.cpu()
     nb_params = nn_mdls.count_nb_params(net)
+    ''' get data set '''
+    standardize = args.standardize_data # x - mu / std , [-1,+1]
+    trainset,trainloader, testset,testloader, classes = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,args.label_corrupt_prob,suffle_test=suffle_test,standardize=standardize)
     ''' Cross Entropy + Optmizer'''
     lr = 0.01
     momentum = 0.0
@@ -246,12 +256,11 @@ def main(plot=False):
         enable_cuda = args.enable_cuda
         ##
         interpolations = np.linspace(0,1,nb_interpolations)
-        get_landscapes_stats_between_nets(net_nl,net_rl_nl,interpolations, enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
+        get_landscapes_stats_between_nets(net_nl,net_rl_nl,interpolations, enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader,iterations)
         other_stats = dict({'interpolations':interpolations},**other_stats)
     elif args.train_alg == 'brando_chiyuan_radius':
         enable_cuda = args.enable_cuda
         r_large = 20 ## check if this number is good
-        #epsilon = 0.05 ## check if this number is good
         nb_radius_samples = nb_epochs
         rs = np.linspace(0,r_large,nb_radius_samples)
         get_radius_errors_loss_list(net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
