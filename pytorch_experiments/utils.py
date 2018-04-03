@@ -66,7 +66,7 @@ def weight_diff_btw_nets(net1,net2):
     dict_params2 = dict(params2)
     total_norm_squared = 0
     for name1, param1 in params1:
-        if name1 in dict_params_interpolated:
+        if name1 in dict_params2:
             W1 = param1.data
             W2 = dict_params2[name1].data
             total_norm_squared += (W1-W2).norm(2)**2
