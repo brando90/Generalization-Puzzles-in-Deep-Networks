@@ -162,6 +162,9 @@ def main(plot=False):
         net = nn_mdls.LiaoNet(C,H,W,Fs,Ks,FC,do_bn)
         nets.append(net)
     elif mdl == 'interpolate':
+        suffle_test = True
+        batch_size = 256
+        batch_size_train, batch_size_test = batch_size, batch_size
         iterations = inf # controls how many epochs to stop before returning the data set error
         iterations = 1 # controls how many epochs to stop before returning the data set error
         ''' '''
