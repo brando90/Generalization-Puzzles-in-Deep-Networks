@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-#SBATCH --mem=9000
-#SBATCH --time=0-03:30
+#SBATCH --mem=10000
+#SBATCH --time=1-00:30
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
-#SBATCH --array=1-1
+#SBATCH --array=1-3
 #SBATCH --gres=gpu:1
 
 """
@@ -268,7 +268,7 @@ def main(plot=False):
         nb_radius_samples = nb_epochs
         rs = np.linspace(0,r_large,nb_radius_samples)
         ''' '''
-        nb_dirs = 2
+        nb_dirs = 250
         stats_collector = StatsCollector(net,nb_dirs,nb_epochs)
         get_all_radius_errors_loss_list(nb_dirs,net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
         #get_radius_errors_loss_list(net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
