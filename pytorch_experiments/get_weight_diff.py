@@ -1,6 +1,7 @@
 import torch
 
 import utils
+import os
 
 results_root = './test_runs_flatness'
 enable_cuda=True
