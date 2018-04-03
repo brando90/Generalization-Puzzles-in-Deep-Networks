@@ -189,7 +189,7 @@ def main(plot=False):
         path = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_re_train_RLBoixNet_noBN_polestar_150/net_28_March_18')
         ''' debug nets '''
         #path = os.path.join(results_root,'flatness_31_March_label_corrupt_prob_0.0_exptlabel_nolabel/net_31_March_sj_0_staid_0_seed_12582084601958904')
-        #path = os.path.join(results_root,'flatness_31_March_label_corrupt_prob_0.0_exptlabel_nolabel2/net_31_March_sj_0_staid_0_seed_32556446453331013')
+        path = os.path.join(results_root,'flatness_31_March_label_corrupt_prob_0.0_exptlabel_nolabel2/net_31_March_sj_0_staid_0_seed_32556446453331013')
         ''' restore nets'''
         net = utils.restore_entire_mdl(path)
         nets.append(net)
@@ -289,11 +289,11 @@ def main(plot=False):
     # loss_restored,error_restored = tr_alg.evalaute_mdl_data_set(criterion,error_criterion,restored_net,testloader,args.enable_cuda)
     #print(f'\nloss_restored={loss_restored},error_restored={error_restored}\a')
     ''' plot '''
-    if plot:
+    if sj == 0:
         #TODO
         plot_utils.plot_loss_and_accuracies(stats_collector)
         plt.show()
 
 if __name__ == '__main__':
-    main(plot=True)
+    main()
     print('\a')

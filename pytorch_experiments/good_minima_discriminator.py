@@ -63,6 +63,7 @@ def get_landscapes_stats_between_nets(net1,net2, interpolations, enable_cuda,sta
     '''
     ''' '''
     interpolated_net = copy.deepcopy(net1)
+    rs = np.zeros((1,nb_interpolations))
     for i,alpha in enumerate(interpolations):
         ''' interpolate nets with current alpha '''
         interpolated_net = convex_interpolate_nets(interpolated_net,net1,net2,alpha)
@@ -72,7 +73,9 @@ def get_landscapes_stats_between_nets(net1,net2, interpolations, enable_cuda,sta
         ''' record result '''
         stats_collector.append_losses_errors_accs(train_loss, train_error, test_loss, test_error)
         stats_collector.collect_mdl_params_stats(interpolated_net)
-    return train_loss, train_error, test_loss, test_error, interpolations #note this is just some random trial
+        ''' record distance '''
+
+    return train_loss, train_error, test_loss, test_error, interpolations, rs #note this is just some random trial
 
 def convex_interpolate_nets(interpolated_net,net1,net2,alpha):
     '''
@@ -118,6 +121,7 @@ def get_radius_errors_loss_list(dir_index, net,r_large,rs,enable_cuda,stats_coll
     ''' fill up I list '''
     net_r = copy.deepcopy(net)
     for epoch,r in enumerate(rs):
+        st()
         ''' compute I(W+r*dx) = I(W+W_all)'''
         net_r = translate_net_by_rdx(net,net_r,r,dx)
         Er_train_loss, Er_train_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,trainloader,enable_cuda)

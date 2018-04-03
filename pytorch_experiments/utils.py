@@ -57,3 +57,17 @@ def restore_entire_mdl(path_to_restore):
     '''
     the_model = torch.load(path_to_restore)
     return the_model
+
+####
+
+def weight_diff_btw_nets(net1,net2):
+    params1 = net1.named_parameters()
+    params2 = net2.named_parameters()
+    dict_params2 = dict(params2)
+    total_norm_squared = 0
+    for name1, param1 in params1:
+        if name1 in dict_params_interpolated:
+            W1 = param1.data
+            W2 = dict_params2[name1].data
+            total_norm_squared += (W1-W2).norm(2)**2
+    return total_norm_squared**0.5
