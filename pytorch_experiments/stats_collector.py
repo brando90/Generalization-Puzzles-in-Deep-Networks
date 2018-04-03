@@ -1,4 +1,6 @@
-from pdb import set_trace as st
+import torch
+
+import numpy as np
 
 from maps import NamedDict
 
@@ -6,11 +8,13 @@ from new_training_algorithms import evalaute_mdl_data_set
 
 import utils
 
+from pdb import set_trace as st
+
 class StatsCollector:
     '''
     Class that has all the stats collected during training.
     '''
-    def __init__(self,net):
+    def __init__(self,net,trials=1,epochs=0):
         ''' loss & errors lists'''
         self.train_losses, self.val_losses, self.test_losses = [], [], []
         self.train_errors, self.val_errors, self.test_errors = [], [], []
@@ -24,6 +28,11 @@ class StatsCollector:
         self.ref_train_losses, self.ref_val_losses, self.ref_test_losses = -1, -1, -1
         self.ref_train_errors, self.ref_val_errors, self.ref_test_errors = -1, -1, -1
         self.ref_train_accs, self.ref_val_accs, self.ref_test_accs = -1, -1, -1
+        ''' '''
+        D=(trials,epochs)
+        self.all_train_losses, self.all_val_losses, self.all_test_losses = np.zeros(D), [],  np.zeros(D)
+        self.all_train_errors, self.all_val_errors, self.all_test_errors =  np.zeros(D), [],  np.zeros(D)
+        self.all_train_accs, self.all_val_accs, self.all_test_accs = np.zeros(D), [],  np.zeros(D)
 
     def collect_mdl_params_stats(self,mdl):
         ''' log parameter stats'''
@@ -52,6 +61,15 @@ class StatsCollector:
         self.ref_train_losses, self.ref_test_losses = train_loss, train_error
         self.ref_train_accs, self.ref_test_accs = test_loss, test_error
 
+    def append_all_losses_errors_accs(self,dir_index,epoch,errors_losses):
+        (Er_train_loss,Er_train_error,Er_test_loss,Er_test_error) = errors_losses
+        self.all_train_losses[dir_index,epoch] = Er_train_loss
+        self.all_test_losses[dir_index,epoch] = Er_test_loss
+        self.all_train_errors[dir_index,epoch] = Er_train_error
+        self.all_test_errors[dir_index,epoch] = Er_test_error
+        self.all_train_accs[dir_index,epoch] = 1.0 - Er_train_error
+        self.all_test_accs[dir_index,epoch] = 1.0 - Er_test_error
+
     def get_stats_dict(self):
         stats = NamedDict(
             train_losses=self.train_losses,val_losses=self.val_losses,test_losses=self.test_losses,
@@ -62,6 +80,9 @@ class StatsCollector:
             perturbations_norms=self.perturbations_norms,
             ref_train_losses=self.ref_train_losses,ref_val_losses=self.ref_val_losses,ref_test_losses=self.ref_test_losses,
             ref_train_errors=self.ref_train_errors, ref_val_errors=self.ref_val_errors,ref_test_errors=self.ref_test_errors,
-            ref_train_accs=self.ref_train_accs,ref_val_accs=self.ref_val_accs,ref_test_accs=self.ref_test_accs
+            ref_train_accs=self.ref_train_accs,ref_val_accs=self.ref_val_accs,ref_test_accs=self.ref_test_accs,
+            all_train_losses=self.all_train_losses,all_val_losses=self.all_val_losses,all_test_losses=self.all_test_losses,
+            all_train_errors=self.all_train_errors,all_val_errors=self.all_val_errors,all_test_errors=self.all_test_errors,
+            all_train_accs=self.all_train_accs,all_val_accs=self.all_val_accs,all_test_accs=self.all_test_accs
         )
         return stats

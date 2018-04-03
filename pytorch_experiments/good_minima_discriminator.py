@@ -91,7 +91,13 @@ def convex_interpolate_nets(interpolated_net,net1,net2,alpha):
 
 ##
 
-def get_radius_errors_loss_list(net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader):
+def get_all_radius_errors_loss_list(nb_dirs, net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader):
+    '''
+    '''
+    for dir_index in range(nb_dirs):
+        get_radius_errors_loss_list(dir_index, net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
+
+def get_radius_errors_loss_list(dir_index, net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader):
     '''
         Computes I = [..., I(W+r*dx),...]. A sequence of errors/losses
         from a starting minimum W to the final minum net r*dx.
@@ -111,13 +117,15 @@ def get_radius_errors_loss_list(net,r_large,rs,enable_cuda,stats_collector,crite
     dx = v/v.norm(2)
     ''' fill up I list '''
     net_r = copy.deepcopy(net)
-    for r in rs:
+    for epoch,r in enumerate(rs):
         ''' compute I(W+r*dx) = I(W+W_all)'''
         net_r = translate_net_by_rdx(net,net_r,r,dx)
         Er_train_loss, Er_train_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,trainloader,enable_cuda)
         Er_test_loss, Er_test_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,testloader,enable_cuda)
         ''' record result '''
         stats_collector.append_losses_errors_accs(Er_train_loss, Er_train_error, Er_test_loss, Er_test_error)
+        errors_losses = [Er_train_loss,Er_train_error,Er_test_loss,Er_test_error]
+        stats_collector.append_all_losses_errors_accs(dir_index,epoch,errors_losses)
     return Er_train_loss, Er_train_error, Er_test_loss, Er_test_error, net_r
 
 def translate_net_by_rdx(net,net_r,r,dx):
