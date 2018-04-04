@@ -264,7 +264,7 @@ def main(plot=False):
         other_stats = dict({'interpolations':interpolations},**other_stats)
     elif args.train_alg == 'brando_chiyuan_radius':
         enable_cuda = args.enable_cuda
-        r_large = 20 ## check if this number is good
+        r_large = 45 ## check if this number is good
         nb_radius_samples = nb_epochs
         rs = np.linspace(0,r_large,nb_radius_samples)
         ''' '''
