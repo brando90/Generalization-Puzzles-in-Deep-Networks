@@ -1,6 +1,6 @@
 import torch
 
-import utils
+from good_minima_discriminator import weight_diff_btw_nets
 import os
 
 results_root = './test_runs_flatness'
@@ -14,5 +14,5 @@ net_nl = torch.load(path_nl)
 path_rlnl = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_re_train_RLBoixNet_noBN_polestar_150/net_28_March_18')
 net_rlnl = torch.load(path_rlnl)
 ''' compute weight diff '''
-total_norm = utils.weight_diff_btw_nets(net_nl,net_rlnl)
-print('||W1 - W2||')
+total_norm = weight_diff_btw_nets(net_nl,net_rlnl)
+print(f'||W1 - W2|| = {total_norm}')

@@ -63,7 +63,7 @@ def get_landscapes_stats_between_nets(net1,net2, interpolations, enable_cuda,sta
     '''
     ''' '''
     interpolated_net = copy.deepcopy(net1)
-    rs = np.zeros((1,nb_interpolations))
+    diff_W1_W2 = weight_diff_btw_nets(net1,net2)
     for i,alpha in enumerate(interpolations):
         ''' interpolate nets with current alpha '''
         interpolated_net = convex_interpolate_nets(interpolated_net,net1,net2,alpha)
@@ -74,7 +74,8 @@ def get_landscapes_stats_between_nets(net1,net2, interpolations, enable_cuda,sta
         stats_collector.append_losses_errors_accs(train_loss, train_error, test_loss, test_error)
         stats_collector.collect_mdl_params_stats(interpolated_net)
         ''' record distance '''
-
+        r = alpha*diff_W1_W2
+        stats_collector.rs.append(r)
     return train_loss, train_error, test_loss, test_error, interpolations, rs #note this is just some random trial
 
 def convex_interpolate_nets(interpolated_net,net1,net2,alpha):
@@ -91,6 +92,21 @@ def convex_interpolate_nets(interpolated_net,net1,net2,alpha):
             dict_params_interpolated[name1].data.copy_(alpha*param1.data + (1-alpha)*dict_params2[name1].data)
     interpolated_net.load_state_dict(dict_params_interpolated)
     return interpolated_net
+
+def weight_diff_btw_nets(net1,net2):
+    '''
+        Computes the difference between the net1 & net2 in the weight space.
+    '''
+    params1 = net1.named_parameters()
+    params2 = net2.named_parameters()
+    dict_params2 = dict(params2)
+    total_norm_squared = 0
+    for name1, param1 in params1:
+        if name1 in dict_params2:
+            W1 = param1.data
+            W2 = dict_params2[name1].data
+            total_norm_squared += (W1-W2).norm(2)**2
+    return total_norm_squared**0.5
 
 ##
 

@@ -29,6 +29,8 @@ class StatsCollector:
         self.ref_train_errors, self.ref_val_errors, self.ref_test_errors = -1, -1, -1
         self.ref_train_accs, self.ref_val_accs, self.ref_test_accs = -1, -1, -1
         ''' '''
+        self.rs = []
+        ''' '''
         D=(trials,epochs)
         self.all_train_losses, self.all_val_losses, self.all_test_losses = np.zeros(D), [],  np.zeros(D)
         self.all_train_errors, self.all_val_errors, self.all_test_errors =  np.zeros(D), [],  np.zeros(D)
