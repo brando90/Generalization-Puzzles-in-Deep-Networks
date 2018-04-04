@@ -137,7 +137,6 @@ def get_radius_errors_loss_list(dir_index, net,r_large,rs,enable_cuda,stats_coll
     ''' fill up I list '''
     net_r = copy.deepcopy(net)
     for epoch,r in enumerate(rs):
-        st()
         ''' compute I(W+r*dx) = I(W+W_all)'''
         net_r = translate_net_by_rdx(net,net_r,r,dx)
         Er_train_loss, Er_train_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,trainloader,enable_cuda)
@@ -169,3 +168,42 @@ def translate_net_by_rdx(net,net_r,r,dx):
         i_start = i_end # index is exclusive so we are already at the right place
     net_r.load_state_dict(dict_params_r)
     return net_r
+
+def get_all_radius_errors_loss_list_interpolate(nb_dirs, net,r_large,interpolations,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader):
+    '''
+    '''
+    for dir_index in range(nb_dirs):
+        get_radius_errors_loss_list(dir_index, net,r_large,interpolations,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
+
+def get_radius_errors_loss_list_via_interpolation(dir_index, net,r_large,interpolations,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader):
+    '''
+        Computes I = [..., I(W+r*dx),...]. A sequence of errors/losses
+        from a starting minimum W to the final minum net r*dx.
+        The goal of this is for the easy of computation of the epsilon radius of
+        a network which is defined as follows:
+            r(dx,eps,W) = sup{r \in R : |I(W) - I(W+r*dx)|<=eps}
+        W_all = r*dx
+        dx = isotropic unit vector from the net
+    '''
+    ''' record reference errors/losses '''
+    stats_collector.record_errors_loss_reference_net(criterion,error_criterion,net,trainloader,testloader,enable_cuda)
+    ''' get isotropic direction '''
+    nb_params = nn_mdls.count_nb_params(net)
+    v = torch.normal(torch.zeros(nb_params),torch.ones(nb_params)).cuda() if enable_cuda else torch.normal(torch.zeros(nb_params),torch.ones(nb_params))
+    dx = v/v.norm(2)
+    ''' fill up I list '''
+    net_end = translate_net_by_rdx(net,net_r,r_large,dx)
+    net_r = copy.deepcopy(net)
+    for epoch,alpha in enumerate(interpolations):
+        ''' compute I(W+r*dx) = I(W+W_all)'''
+        net_r = convex_interpolate_nets(net_r,net,net_end,alpha)
+        Er_train_loss, Er_train_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,trainloader,enable_cuda)
+        Er_test_loss, Er_test_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,testloader,enable_cuda)
+        ''' record result '''
+        stats_collector.append_losses_errors_accs(Er_train_loss, Er_train_error, Er_test_loss, Er_test_error)
+        errors_losses = [Er_train_loss,Er_train_error,Er_test_loss,Er_test_error]
+        stats_collector.append_all_losses_errors_accs(dir_index,epoch,errors_losses)
+        ''' record current r '''
+        r = alpha*r_large
+        stats_collector.rs.append(r)
+    return Er_train_loss, Er_train_error, Er_test_loss, Er_test_error, net_r

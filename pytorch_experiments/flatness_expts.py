@@ -181,7 +181,7 @@ def main(plot=False):
         nets.append(net_rl_nl)
     elif mdl == 'radius_flatness':
         suffle_test = True
-        batch_size = 256*2
+        batch_size = 256
         batch_size_train, batch_size_test = batch_size, batch_size
         iterations = 1 # controls how many epochs to stop before returning the data set error
         ''' '''
@@ -273,6 +273,17 @@ def main(plot=False):
         get_all_radius_errors_loss_list(nb_dirs,net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
         #get_radius_errors_loss_list(net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
         other_stats = dict({'nb_dirs':nb_dirs,'rs':rs,'nb_radius_samples':nb_radius_samples,'r_large':r_large},**other_stats)
+    elif args.train_alg == 'brando_chiyuan_radius_inter':
+        enable_cuda = args.enable_cuda
+        r_large = 45 ## check if this number is good
+        nb_radius_samples = nb_epochs
+        interpolations = np.linspace(0,1,nb_radius_samples)
+        ''' '''
+        nb_dirs = 250
+        stats_collector = StatsCollector(net,nb_dirs,nb_epochs)
+        get_radius_errors_loss_list_via_interpolation(nb_dirs,net,r_large,interpolations,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
+        #get_radius_errors_loss_list(net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
+        other_stats = dict({'nb_dirs':nb_dirs,'interpolations':interpolations,'nb_radius_samples':nb_radius_samples,'r_large':r_large},**other_stats)
     ''' save times '''
     seconds,minutes,hours = utils.report_times(start_time)
     other_stats = dict({'seconds':seconds,'minutes':minutes,'hours':hours}, **other_stats)
