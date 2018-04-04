@@ -117,7 +117,7 @@ def get_all_radius_errors_loss_list(nb_dirs, net,r_large,rs,enable_cuda,stats_co
     '''
     '''
     for dir_index in range(nb_dirs):
-        get_radius_errors_loss_list(dir_index, net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
+        get_radius_errors_loss_list(dir_index, net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader,iterations)
 
 def get_radius_errors_loss_list(dir_index, net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader,iterations):
     '''
