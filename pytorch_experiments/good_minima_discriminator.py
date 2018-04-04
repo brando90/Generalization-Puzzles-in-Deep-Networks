@@ -201,6 +201,7 @@ def get_radius_errors_loss_list_via_interpolation(dir_index, net,r_large,interpo
     ''' fill up I list '''
     net_r = copy.deepcopy(net)
     net_end = translate_net_by_rdx(net,net_r,r_large,dx)
+    print(f'||net1 - net2|| = {weight_diff_btw_nets(net1,net2)}')
     for epoch,alpha in enumerate(interpolations):
         ''' compute I(W+r*dx) = I(W+W_all)'''
         net_r = convex_interpolate_nets(net_r,net1=net_end,net2=net,alpha=alpha) # alpha*net_end+(1-alpha)*net
