@@ -1,5 +1,8 @@
 import torch
+from torch.autograd import Variable
 import copy
+
+import sys
 
 import numpy as np
 from math import inf
@@ -151,19 +154,21 @@ def translate_net_by_rdx(net,net_r,r,dx):
     '''
         translate reference net net by r*dx and store it in net_r
     '''
+    params = net.named_parameters()
     params_r = net_r.named_parameters()
     dict_params_r = dict(params_r)
     W_all = r*dx
     ''' '''
     i_start, i_end = 0, 0
-    for name, W in enumerate(net_r.parameters()):
+    #print(f'dict_params_r = {dict_params_r}')
+    for name, W in params:
         ''' get relevant parameters from random translation '''
         i_end = i_start+W.numel()
         #W_relevant = W_all[i_start:i_end] #index is exclusive
         W_relevant = W_all[i_start:i_end].view(W.size())
         ''' translate original net by r*dx[relevant] = W_all[relevant]'''
         if name in dict_params_r:
-            dict_params_r[name].data.copy_(W+W_relevant)
+            dict_params_r[name].data.copy_(W.data+W_relevant)
         ''' change index to the next relevant params from the random translation '''
         i_start = i_end # index is exclusive so we are already at the right place
     net_r.load_state_dict(dict_params_r)
@@ -194,6 +199,7 @@ def get_radius_errors_loss_list_via_interpolation(dir_index, net,r_large,interpo
     ''' fill up I list '''
     net_r = copy.deepcopy(net)
     net_end = translate_net_by_rdx(net,net_r,r_large,dx)
+    Er_train_loss, Er_train_error = evalaute_mdl_data_set(criterion,error_criterion,net_end,trainloader,enable_cuda)
     for epoch,alpha in enumerate(interpolations):
         ''' compute I(W+r*dx) = I(W+W_all)'''
         net_r = convex_interpolate_nets(net_r,net,net_end,alpha)
