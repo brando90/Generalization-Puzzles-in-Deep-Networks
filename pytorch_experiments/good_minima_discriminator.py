@@ -173,7 +173,7 @@ def get_all_radius_errors_loss_list_interpolate(nb_dirs, net,r_large,interpolati
     '''
     '''
     for dir_index in range(nb_dirs):
-        get_radius_errors_loss_list(dir_index, net,r_large,interpolations,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
+        get_radius_errors_loss_list_via_interpolation(dir_index, net,r_large,interpolations,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
 
 def get_radius_errors_loss_list_via_interpolation(dir_index, net,r_large,interpolations,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader):
     '''
