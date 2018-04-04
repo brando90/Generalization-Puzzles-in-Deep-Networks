@@ -296,4 +296,4 @@ def main(plot=False):
 
 if __name__ == '__main__':
     main()
-    print('\a')
+    print('\a\a')
