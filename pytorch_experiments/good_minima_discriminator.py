@@ -113,13 +113,13 @@ def weight_diff_btw_nets(net1,net2):
 
 ##
 
-def get_all_radius_errors_loss_list(nb_dirs, net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader):
+def get_all_radius_errors_loss_list(nb_dirs, net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader,iterations):
     '''
     '''
     for dir_index in range(nb_dirs):
         get_radius_errors_loss_list(dir_index, net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
 
-def get_radius_errors_loss_list(dir_index, net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader):
+def get_radius_errors_loss_list(dir_index, net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader,iterations):
     '''
         Computes I = [..., I(W+r*dx),...]. A sequence of errors/losses
         from a starting minimum W to the final minum net r*dx.
@@ -174,13 +174,13 @@ def translate_net_by_rdx(net,net_r,r,dx):
     net_r.load_state_dict(dict_params_r)
     return net_r
 
-def get_all_radius_errors_loss_list_interpolate(nb_dirs, net,r_large,interpolations,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader):
+def get_all_radius_errors_loss_list_interpolate(nb_dirs, net,r_large,interpolations,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader,iterations):
     '''
     '''
     for dir_index in range(nb_dirs):
-        get_radius_errors_loss_list_via_interpolation(dir_index, net,r_large,interpolations,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
+        get_radius_errors_loss_list_via_interpolation(dir_index, net,r_large,interpolations,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader,iterations)
 
-def get_radius_errors_loss_list_via_interpolation(dir_index, net,r_large,interpolations,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader):
+def get_radius_errors_loss_list_via_interpolation(dir_index, net,r_large,interpolations,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader,iterations):
     '''
         Computes I = [..., I(W+r*dx),...]. A sequence of errors/losses
         from a starting minimum W to the final minum net r*dx.
@@ -202,8 +202,8 @@ def get_radius_errors_loss_list_via_interpolation(dir_index, net,r_large,interpo
     for epoch,alpha in enumerate(interpolations):
         ''' compute I(W+r*dx) = I(W+W_all)'''
         net_r = convex_interpolate_nets(net_r,net,net_end,alpha)
-        Er_train_loss, Er_train_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,trainloader,enable_cuda)
-        Er_test_loss, Er_test_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,testloader,enable_cuda)
+        Er_train_loss, Er_train_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,trainloader,enable_cuda,iterations)
+        Er_test_loss, Er_test_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,testloader,enable_cuda,iterations)
         ''' record result '''
         stats_collector.append_losses_errors_accs(Er_train_loss, Er_train_error, Er_test_loss, Er_test_error)
         errors_losses = [Er_train_loss,Er_train_error,Er_test_loss,Er_test_error]
