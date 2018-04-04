@@ -137,7 +137,6 @@ def get_radius_errors_loss_list(dir_index, net,r_large,rs,enable_cuda,stats_coll
     ''' fill up I list '''
     net_r = copy.deepcopy(net)
     for epoch,r in enumerate(rs):
-        st()
         ''' compute I(W+r*dx) = I(W+W_all)'''
         net_r = translate_net_by_rdx(net,net_r,r,dx)
         Er_train_loss, Er_train_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,trainloader,enable_cuda)
