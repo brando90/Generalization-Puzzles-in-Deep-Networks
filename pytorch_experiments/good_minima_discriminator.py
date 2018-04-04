@@ -192,8 +192,8 @@ def get_radius_errors_loss_list_via_interpolation(dir_index, net,r_large,interpo
     v = torch.normal(torch.zeros(nb_params),torch.ones(nb_params)).cuda() if enable_cuda else torch.normal(torch.zeros(nb_params),torch.ones(nb_params))
     dx = v/v.norm(2)
     ''' fill up I list '''
-    net_end = translate_net_by_rdx(net,net_r,r_large,dx)
     net_r = copy.deepcopy(net)
+    net_end = translate_net_by_rdx(net,net_r,r_large,dx)
     for epoch,alpha in enumerate(interpolations):
         ''' compute I(W+r*dx) = I(W+W_all)'''
         net_r = convex_interpolate_nets(net_r,net,net_end,alpha)
