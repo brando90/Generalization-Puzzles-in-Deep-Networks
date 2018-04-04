@@ -174,6 +174,8 @@ def translate_net_by_rdx(net,net_r,r,dx):
     net_r.load_state_dict(dict_params_r)
     return net_r
 
+##
+
 def get_all_radius_errors_loss_list_interpolate(nb_dirs, net,r_large,interpolations,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader,iterations):
     '''
     '''
@@ -201,7 +203,7 @@ def get_radius_errors_loss_list_via_interpolation(dir_index, net,r_large,interpo
     net_end = translate_net_by_rdx(net,net_r,r_large,dx)
     for epoch,alpha in enumerate(interpolations):
         ''' compute I(W+r*dx) = I(W+W_all)'''
-        net_r = convex_interpolate_nets(net_r,net,net_end,alpha)
+        net_r = convex_interpolate_nets(net_r,net1=net_end,net2=net,alpha=alpha) # alpha*net_end+(1-alpha)*net
         Er_train_loss, Er_train_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,trainloader,enable_cuda,iterations)
         Er_test_loss, Er_test_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,testloader,enable_cuda,iterations)
         ''' record result '''
