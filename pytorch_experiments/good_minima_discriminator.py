@@ -76,7 +76,7 @@ def get_landscapes_stats_between_nets(net1,net2, interpolations, enable_cuda,sta
         ''' record distance '''
         r = alpha*diff_W1_W2
         stats_collector.rs.append(r)
-    return train_loss, train_error, test_loss, test_error, interpolations, rs #note this is just some random trial
+    return train_loss, train_error, test_loss, test_error, interpolations #note this is just some random trial
 
 def convex_interpolate_nets(interpolated_net,net1,net2,alpha):
     '''
