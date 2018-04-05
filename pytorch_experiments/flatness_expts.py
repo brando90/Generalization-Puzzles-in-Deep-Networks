@@ -134,12 +134,15 @@ def main(plot=False):
     do_bn = args.use_bn
     other_stats = dict({'mdl':mdl,'do_bn':do_bn},**other_stats)
     ##
+    classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
     nets = []
     print(f'model = {mdl}')
     if mdl == 'cifar_10_tutorial_net':
+        suffle_test = False
         net = nn_mdls.Net()
         nets.append(net)
     elif mdl == 'debug':
+        suffle_test = False
         nb_conv_layers=1
         ## conv params
         Fs = [3]*nb_conv_layers
@@ -149,16 +152,18 @@ def main(plot=False):
         C,H,W = 3,32,32
         net = nn_mdls.LiaoNet(C,H,W,Fs,Ks,FC,do_bn)
         nets.append(net)
-    elif mdl == 'MirandaNet':
+    elif mdl == 'BoixNet':
+        suffle_test = False
         ## conv params
         nb_filters1,nb_filters2 = 32, 32
         kernel_size1,kernel_size2 = 5,5
         ## fc params
         nb_units_fc1,nb_units_fc2,nb_units_fc3 = 512,256,len(classes)
         C,H,W = 3,32,32
-        net = nn_mdls.MirandaNet(C,H,W,nb_filters1,nb_filters2, kernel_size1,kernel_size2, nb_units_fc1,nb_units_fc2,nb_units_fc3,do_bn)
+        net = nn_mdls.BoixNet(C,H,W,nb_filters1,nb_filters2, kernel_size1,kernel_size2, nb_units_fc1,nb_units_fc2,nb_units_fc3,do_bn)
         nets.append(net)
     elif mdl == 'LiaoNet':
+        suffle_test = False
         nb_conv_layers=5
         ## conv params
         Fs = [32]*nb_conv_layers
@@ -222,7 +227,9 @@ def main(plot=False):
     nb_params = nn_mdls.count_nb_params(net)
     ''' get data set '''
     standardize = args.standardize_data # x - mu / std , [-1,+1]
-    trainset,trainloader, testset,testloader, classes = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,args.label_corrupt_prob,suffle_test=suffle_test,standardize=standardize)
+    trainset,trainloader, testset,testloader, classes_data = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,args.label_corrupt_prob,suffle_test=suffle_test,standardize=standardize)
+    if classes_data != classes:
+        raise ValueError(f'Pre specificed classes {classes} does not match data classes {classes_data}.')
     ''' Cross Entropy + Optmizer'''
     lr = 0.01
     momentum = 0.0
@@ -294,6 +301,8 @@ def main(plot=False):
         get_all_radius_errors_loss_list_interpolate(nb_dirs,net,r_large,interpolations,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader,iterations)
         #get_radius_errors_loss_list(net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
         other_stats = dict({'nb_dirs':nb_dirs,'interpolations':interpolations,'nb_radius_samples':nb_radius_samples,'r_large':r_large},**other_stats)
+    elif args.train_alg == 'no_train':
+        print('NO TRAIN BRANCH')
     ''' save times '''
     seconds,minutes,hours = utils.report_times(start_time)
     other_stats = dict({'seconds':seconds,'minutes':minutes,'hours':hours}, **other_stats)
