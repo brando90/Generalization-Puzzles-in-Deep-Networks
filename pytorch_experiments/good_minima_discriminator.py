@@ -150,29 +150,29 @@ def get_radius_errors_loss_list(dir_index, net,r_large,rs,enable_cuda,stats_coll
         stats_collector.append_all_losses_errors_accs(dir_index,epoch,errors_losses)
     return Er_train_loss, Er_train_error, Er_test_loss, Er_test_error, net_r
 
-def translate_net_by_rdx(net,net_r,r,dx):
+def produce_new_translated_net(net_start,r,dx):
     '''
         translate reference net net by r*dx and store it in net_r
     '''
-    params = net.named_parameters()
-    params_r = net_r.named_parameters()
-    dict_params_r = dict(params_r)
+    net_translated = copy.deepcopy(net_start)
+    params_translated = net_translated.named_parameters()
+    dict_params_transalted = dict(params_translated)
     W_all = r*dx
     ''' '''
+    params = net_start.named_parameters()
     i_start, i_end = 0, 0
-    #print(f'dict_params_r = {dict_params_r}')
     for name, W in params:
         ''' get relevant parameters from random translation '''
         i_end = i_start+W.numel()
         #W_relevant = W_all[i_start:i_end] #index is exclusive
         W_relevant = W_all[i_start:i_end].view(W.size())
         ''' translate original net by r*dx[relevant] = W_all[relevant]'''
-        if name in dict_params_r:
-            dict_params_r[name].data.copy_(W.data+W_relevant)
+        if name in dict_params_transalted:
+            dict_params_transalted[name].data.copy_(W.data+W_relevant)
         ''' change index to the next relevant params from the random translation '''
         i_start = i_end # index is exclusive so we are already at the right place
-    net_r.load_state_dict(dict_params_r)
-    return net_r
+    net_translated.load_state_dict(dict_params_transalted)
+    return net_translated
 
 ##
 
@@ -200,7 +200,7 @@ def get_radius_errors_loss_list_via_interpolation(dir_index, net,r_large,interpo
     dx = v/v.norm(2)
     ''' fill up I list '''
     net_r = copy.deepcopy(net)
-    net_end = translate_net_by_rdx(net,net_r,r_large,dx)
+    net_end = translate_net_by_rdx(net,r_large,dx)
     Er_train_loss, Er_train_error1 = evalaute_mdl_data_set(criterion,error_criterion,net_end,trainloader,enable_cuda,iterations)
     Er_train_loss, Er_train_error2 = evalaute_mdl_data_set(criterion,error_criterion,net_r,trainloader,enable_cuda,iterations)
     Er_train_loss, Er_train_error3 = evalaute_mdl_data_set(criterion,error_criterion,net,trainloader,enable_cuda,iterations)
