@@ -276,11 +276,11 @@ def main(plot=False):
         other_stats = dict({'nb_dirs':nb_dirs,'rs':rs,'nb_radius_samples':nb_radius_samples,'r_large':r_large},**other_stats)
     elif args.train_alg == 'brando_chiyuan_radius_inter':
         enable_cuda = args.enable_cuda
-        r_large = 100 ## check if this number is good
+        r_large = 50 ## check if this number is good
         nb_radius_samples = nb_epochs
         interpolations = np.linspace(0,1,nb_radius_samples)
         ''' '''
-        nb_dirs = 1
+        nb_dirs = 100
         stats_collector = StatsCollector(net,nb_dirs,nb_epochs)
         get_all_radius_errors_loss_list_interpolate(nb_dirs,net,r_large,interpolations,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader,iterations)
         #get_radius_errors_loss_list(net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
