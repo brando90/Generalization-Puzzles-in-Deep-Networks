@@ -209,9 +209,10 @@ def main(plot=False):
         net = utils.restore_entire_mdl(path)
         nets.append(net)
     else:
+        suffle_test = False
         ''' RESTORED PRE-TRAINED NET '''
         # example name of file, os.path.join(results_root,expt_path,f'net_{day}_{month}_{seed}')
-        # args.net_path = 'flatness_27_March_label_corrupt_prob_0_exptlabel_BoixNet_stand_600/net_27_Match_64'
+        # args.net_path = 'flatness_27_March_label_corrupt_prob_0_exptlabel_BoixNet_stand_600_OM/net_27_Match_64'
         path_to_mdl = args.mdl
         path = os.path.join(results_root,path_to_mdl)
         net = utils.restore_entire_mdl(path)
