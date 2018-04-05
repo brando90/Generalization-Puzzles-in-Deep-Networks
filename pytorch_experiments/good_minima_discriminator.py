@@ -201,6 +201,12 @@ def get_radius_errors_loss_list_via_interpolation(dir_index, net,r_large,interpo
     ''' fill up I list '''
     net_r = copy.deepcopy(net)
     net_end = translate_net_by_rdx(net,net_r,r_large,dx)
+    Er_train_loss, Er_train_error1 = evalaute_mdl_data_set(criterion,error_criterion,net_end,trainloader,enable_cuda,iterations)
+    Er_train_loss, Er_train_error2 = evalaute_mdl_data_set(criterion,error_criterion,net_r,trainloader,enable_cuda,iterations)
+    Er_train_loss, Er_train_error3 = evalaute_mdl_data_set(criterion,error_criterion,net,trainloader,enable_cuda,iterations)
+    print(f'Er_train_error net_end ={Er_train_error1}')
+    print(f'Er_train_error net_r ={Er_train_error2}')
+    print(f'Er_train_error net={Er_train_error3}')
     print(f'||net1 - net2|| = {weight_diff_btw_nets(net_end,net)}')
     for epoch,alpha in enumerate(interpolations):
         ''' compute I(W+r*dx) = I(W+W_all)'''
