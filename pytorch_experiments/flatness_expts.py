@@ -79,6 +79,11 @@ parser.add_argument("-noise_level", "--noise_level", type=float, default=0.0001,
                     help="Noise level for perturbation")
 parser.add_argument("-not_pert_w_norm2", "--not_pert_w_norm2",action='store_false',
                     help="Noise level for perturbation")
+''' '''
+parser.add_argument("-net_name", "--net_name", type=str, default='NL',
+                    help="Training algorithm to use")
+parser.add_argument("-nb_dirs", "--nb_dirs", type=int, default=100,
+                    help="Noise level for perturbation")
 ''' process args '''
 args = parser.parse_args()
 if not torch.cuda.is_available() and args.enable_cuda:
@@ -170,8 +175,10 @@ def main(plot=False):
         iterations = inf # controls how many epochs to stop before returning the data set error
         iterations = 1 # controls how many epochs to stop before returning the data set error
         ''' '''
-        path_nl = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_BoixNet_polestar_300_stand_natural_labels/net_28_March_206')
-        path_rl_nl = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_re_train_RLBoixNet_noBN_polestar_150/net_28_March_18')
+        if args.net_name == 'NL':
+            path = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_BoixNet_polestar_300_stand_natural_labels/net_28_March_206')
+        else:
+            path = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_re_train_RLBoixNet_noBN_polestar_150/net_28_March_18')
         ''' debug nets '''
         #path_nl = os.path.join(results_root,'flatness_31_March_label_corrupt_prob_0.0_exptlabel_nolabel/net_31_March_sj_0_staid_0_seed_12582084601958904')
         #path_rl_nl = os.path.join(results_root,'flatness_31_March_label_corrupt_prob_0.0_exptlabel_nolabel2/net_31_March_sj_0_staid_0_seed_32556446453331013')
@@ -186,8 +193,10 @@ def main(plot=False):
         batch_size_train, batch_size_test = batch_size, batch_size
         iterations = 1 # controls how many epochs to stop before returning the data set error
         ''' '''
-        path = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_BoixNet_polestar_300_stand_natural_labels/net_28_March_206')
-        path = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_re_train_RLBoixNet_noBN_polestar_150/net_28_March_18')
+        if args.net_name == 'NL':
+            path = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_BoixNet_polestar_300_stand_natural_labels/net_28_March_206')
+        else:
+            path = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_re_train_RLBoixNet_noBN_polestar_150/net_28_March_18')
         ''' debug nets '''
         #path = os.path.join(results_root,'flatness_31_March_label_corrupt_prob_0.0_exptlabel_nolabel/net_31_March_sj_0_staid_0_seed_12582084601958904')
         #path = os.path.join(results_root,'flatness_31_March_label_corrupt_prob_0.0_exptlabel_nolabel2/net_31_March_sj_0_staid_0_seed_32556446453331013')
@@ -280,7 +289,7 @@ def main(plot=False):
         nb_radius_samples = nb_epochs
         interpolations = np.linspace(0,1,nb_radius_samples)
         ''' '''
-        nb_dirs = 100
+        nb_dirs = args.nb_dirs
         stats_collector = StatsCollector(net,nb_dirs,nb_epochs)
         get_all_radius_errors_loss_list_interpolate(nb_dirs,net,r_large,interpolations,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader,iterations)
         #get_radius_errors_loss_list(net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
