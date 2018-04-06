@@ -1,4 +1,4 @@
-import torch
+#import torch
 
 import numpy as np
 
@@ -8,7 +8,7 @@ from new_training_algorithms import evalaute_mdl_data_set
 
 import utils
 
-from pdb import set_trace as st
+#from pdb import set_trace as st
 
 class StatsCollector:
     '''
@@ -85,6 +85,7 @@ class StatsCollector:
             ref_train_accs=self.ref_train_accs,ref_val_accs=self.ref_val_accs,ref_test_accs=self.ref_test_accs,
             all_train_losses=self.all_train_losses,all_val_losses=self.all_val_losses,all_test_losses=self.all_test_losses,
             all_train_errors=self.all_train_errors,all_val_errors=self.all_val_errors,all_test_errors=self.all_test_errors,
-            all_train_accs=self.all_train_accs,all_val_accs=self.all_val_accs,all_test_accs=self.all_test_accs
+            all_train_accs=self.all_train_accs,all_val_accs=self.all_val_accs,all_test_accs=self.all_test_accs,
+            rs=self.rs
         )
         return stats
