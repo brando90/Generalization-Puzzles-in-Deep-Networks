@@ -35,7 +35,7 @@ def extract_data(enable_cuda,data,wrap_in_variable=False):
         inputs, labels = Variable(inputs), Variable(labels)
     return inputs, labels
 
-def train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer,criterion,error_criterion ,stats_collector):
+def train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer,criterion,error_criterion ,stats_collector,iterations=inf):
     enable_cuda = args.enable_cuda
     ##
     print('about to start training')
@@ -57,7 +57,7 @@ def train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer
                 print(inputs)
         ''' End of Epoch: collect stats'''
         train_loss_epoch, train_error_epoch = running_train_loss/(i+1), running_train_error/(i+1)
-        test_loss_epoch, test_error_epoch = evalaute_mdl_data_set(criterion,error_criterion,net,testloader,enable_cuda)
+        test_loss_epoch, test_error_epoch = evalaute_mdl_data_set(criterion,error_criterion,net,testloader,enable_cuda,iterations)
         stats_collector.collect_mdl_params_stats(net)
         stats_collector.append_losses_errors_accs(train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch)
         print(f'[{epoch}, {i+1}], (train_loss: {train_loss_epoch}, train error: {train_error_epoch}) , (test loss: {test_loss_epoch}, test error: {test_error_epoch})')

@@ -29,6 +29,8 @@ import torch
 from torch.autograd import Variable
 import torch.optim as optim
 
+import math
+
 import data_classification as data_class
 
 import nn_models as nn_mdls
@@ -43,6 +45,7 @@ from good_minima_discriminator import get_landscapes_stats_between_nets
 from good_minima_discriminator import get_radius_errors_loss_list
 from good_minima_discriminator import get_all_radius_errors_loss_list
 from good_minima_discriminator import get_all_radius_errors_loss_list_interpolate
+from new_training_algorithms import evalaute_mdl_data_set
 
 from pdb import set_trace as st
 
@@ -61,6 +64,8 @@ parser.add_argument("-seed", "--seed", type=int, default=None,
                     help="The number of games to simulate")
 parser.add_argument("-exptlabel", "--exptlabel", type=str, default='nolabel',
                     help="experiment label")
+parser.add_argument('-dont_save_expt_results','--dont_save_expt_results',action='store_true',
+                    help='If on it does not saves experiment results')
 ''' NN related arguments '''
 parser.add_argument("-epochs", "--epochs", type=int, default=None,
                     help="The number of games to simulate")
@@ -79,7 +84,7 @@ parser.add_argument("-noise_level", "--noise_level", type=float, default=0.0001,
                     help="Noise level for perturbation")
 parser.add_argument("-not_pert_w_norm2", "--not_pert_w_norm2",action='store_false',
                     help="Noise level for perturbation")
-''' '''
+''' radius expt params '''
 parser.add_argument("-net_name", "--net_name", type=str, default='NL',
                     help="Training algorithm to use")
 parser.add_argument("-nb_dirs", "--nb_dirs", type=int, default=100,
@@ -209,6 +214,7 @@ def main(plot=False):
         net = utils.restore_entire_mdl(path)
         nets.append(net)
     else:
+        print('RESTORED FROM PRE-TRAINED NET')
         suffle_test = False
         ''' RESTORED PRE-TRAINED NET '''
         # example name of file, os.path.join(results_root,expt_path,f'net_{day}_{month}_{seed}')
@@ -248,9 +254,16 @@ def main(plot=False):
     overparametrized = len(trainset)<nb_params # N < W ?
     print(f'Model over parametrized? N, W = {len(trainset)} vs {nb_params}')
     print(f'Model over parametrized? N < W = {overparametrized}')
+    ''' '''
+    train_loss_epoch, train_error_epoch = evalaute_mdl_data_set(criterion, error_criterion, net, trainloader, True)
+    test_loss_epoch, test_error_epoch = evalaute_mdl_data_set(criterion, error_criterion, net, testloader, True)
+    print(f'train_loss_epoch, train_error_epoch  = {train_loss_epoch}, {train_error_epoch}')
+    print(f'test_loss_epoch, test_error_epoch  = {test_loss_epoch}, {test_error_epoch}')
+    st()
     if args.train_alg == 'SGD':
+        iterations = 4 # the number of iterations to get a sense of test error, smaller faster larger more accurate. Grows as sqrt(n) though.
         # We simply have to loop over our data iterator, and feed the inputs to the network and optimize.
-        train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch = tr_alg.train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer,criterion,error_criterion, stats_collector)
+        train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch = tr_alg.train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer,criterion,error_criterion, stats_collector,iterations)
         ''' Test the Network on the test data '''
         print(f'train_loss_epoch={train_loss_epoch} \ntrain_error_epoch={train_error_epoch} \ntest_loss_epoch={test_loss_epoch} \ntest_error_epoch={test_error_epoch}')
     elif args.train_alg == 'pert':
@@ -311,11 +324,12 @@ def main(plot=False):
     print(f'Finished Training, hours={hours}')
     print(f'seed = {seed}, githash = {githash}')
     ''' save results from experiment '''
-    matlab_path_to_filename = os.path.join(expt_path,matlab_file_name)
-    save2matlab.save2matlab_flatness_expt(matlab_path_to_filename, stats_collector,other_stats=other_stats)
-    ''' save net model '''
-    net_path_to_filename = os.path.join(expt_path,net_file_name)
-    utils.save_entire_mdl(net_path_to_filename,net)
+    if args.dont_save_expt_results:
+        matlab_path_to_filename = os.path.join(expt_path,matlab_file_name)
+        save2matlab.save2matlab_flatness_expt(matlab_path_to_filename, stats_collector,other_stats=other_stats)
+        ''' save net model '''
+        net_path_to_filename = os.path.join(expt_path,net_file_name)
+        utils.save_entire_mdl(net_path_to_filename,net)
     # restored_net = utils.restore_entire_mdl(path)
     # loss_restored,error_restored = tr_alg.evalaute_mdl_data_set(criterion,error_criterion,restored_net,testloader,args.enable_cuda)
     #print(f'\nloss_restored={loss_restored},error_restored={error_restored}\a')

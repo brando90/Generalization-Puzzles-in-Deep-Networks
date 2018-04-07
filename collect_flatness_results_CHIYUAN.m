@@ -7,6 +7,7 @@ path_all_expts_NL = fullfile(path,'flatness_4_April_label_corrupt_prob_0.0_exptl
 %RLNL
 path_all_expts_RLNL = fullfile(path,'flatness_4_April_label_corrupt_prob_0.0_exptlabel_RadiusFlatnessRLNL_samples15_RLarge50')
 eps = 0.05;
+nb_bins=15;
 %% go through NL files
 [all_train_error_r_eps,all_train_losses_r_eps,all_test_error_r_eps,all_test_losses_r_eps] = get_all_radius_arrays(path_all_expts_NL,eps);
 %% plots
@@ -14,7 +15,7 @@ mean_radius_nl = mean(all_train_error_r_eps)
 std_radius_nl = std(all_train_error_r_eps)
 fig_nl = figure;
 size(all_train_error_r_eps)
-histogram(all_train_error_r_eps,50);
+histogram(all_train_error_r_eps,nb_bins);
 title('histogram of when landscape makes epsilon jump, Natural Label (NL)');
 xlabel('radius random direction made epsilon jump');
 ylabel('counts');
@@ -25,7 +26,7 @@ mean_radius_rlnl = mean(all_train_error_r_eps)
 std_radius_rlnl = std(all_train_error_r_eps)
 fig_rlnl = figure;
 size(all_train_error_r_eps)
-histogram(all_train_error_r_eps,50);
+histogram(all_train_error_r_eps,nb_bins);
 title('histogram of when landscape makes epsilon jump, pretrained Random Labels retrained Natural Label (RLNL)');
 xlabel('radius random direction made epsilon jump');
 ylabel('counts');
