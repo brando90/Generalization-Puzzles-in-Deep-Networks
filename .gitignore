@@ -160,3 +160,6 @@ octave-workspace
 
 .autorelabel
 .readahead
+
+.idea/
+
