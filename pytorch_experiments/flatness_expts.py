@@ -3,7 +3,7 @@
 #SBATCH --time=1-00:30
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
-#SBATCH --array=1-2
+#SBATCH --array=1-1
 #SBATCH --gres=gpu:1
 
 """
@@ -73,7 +73,7 @@ parser.add_argument("-mdl", "--mdl", type=str, default='debug',
                     help="experiment label") # options: debug, cifar_10_tutorial_net, BoixNet, LiaoNet
 parser.add_argument('-use_bn','--use_bn',action='store_true',
                     help='turns on BN')
-parser.add_argument('-standardize_data','--standardize_data',action='store_true',
+parser.add_argument('-dont_standardize_data','--dont_standardize_data',action='store_true',
                     help='uses x-u/s, standardize data')
 parser.add_argument("-label_corrupt_prob", "--label_corrupt_prob", type=float, default=0.0,
                     help="The probability of a label getting corrupted")
@@ -99,6 +99,8 @@ if 'SLURM_ARRAY_TASK_ID' in os.environ and 'SLURM_JOBID' in os.environ:
     satid = int(os.environ['SLURM_ARRAY_TASK_ID'])
     sj = int(os.environ['SLURM_JOBID'])
 
+print(f'storing results? = {not args.dont_save_expt_results}')
+
 def main(plot=False):
     other_stats = dict({'sj':sj,'satid':satid})
     ''' reproducibility setup/params'''
@@ -109,7 +111,7 @@ def main(plot=False):
         seed = int.from_bytes(os.urandom(7), byteorder="big")
     print(f'seed: {seed}')
     ## SET SEED/determinism
-    num_workers = 0
+    num_workers = 10
     torch.manual_seed(seed)
     if args.enable_cuda:
         torch.backends.cudnn.deterministic=True
@@ -117,7 +119,7 @@ def main(plot=False):
     today_obj = date.today() # contains datetime.date(year, month, day); accessible via .day etc
     day = today_obj.day
     month = calendar.month_name[today_obj.month]
-    start_time = time.time()
+    setup_time = time.time()
     ''' filenames '''
     results_root = './test_runs_flatness'
     expt_folder = f'flatness_{day}_{month}_label_corrupt_prob_{args.label_corrupt_prob}_exptlabel_{args.exptlabel}'
@@ -158,9 +160,14 @@ def main(plot=False):
         net = nn_mdls.LiaoNet(C,H,W,Fs,Ks,FC,do_bn)
         nets.append(net)
     elif mdl == 'BoixNet':
+        batch_size_train = 256
+        batch_size_test = 256
+        ##
+        batch_size = batch_size_train
         suffle_test = False
         ## conv params
         nb_filters1,nb_filters2 = 32, 32
+        nb_filters1, nb_filters2 = 32, 32
         kernel_size1,kernel_size2 = 5,5
         ## fc params
         nb_units_fc1,nb_units_fc2,nb_units_fc3 = 512,256,len(classes)
@@ -172,11 +179,29 @@ def main(plot=False):
         nb_conv_layers=5
         ## conv params
         Fs = [32]*nb_conv_layers
-        Ks = [5]*nb_conv_layers
+        Ks = [10]*nb_conv_layers
         ## fc params
         FC = len(classes)
         C,H,W = 3,32,32
         net = nn_mdls.LiaoNet(C,H,W,Fs,Ks,FC,do_bn)
+        nets.append(net)
+    elif mdl == 'GBoixNet':
+        #batch_size_train = 16384 # 2**14
+        #batch_size_test = 16384
+        batch_size_train = 2**10
+        batch_size_test = 2**10
+        ##
+        batch_size = batch_size_train
+        suffle_test = False
+        ## conv params
+        nb_conv_layers=1
+        Fs = [22]*nb_conv_layers
+        Ks = [5]*nb_conv_layers
+        ## fc params
+        FCs = [30,len(classes)]
+        ##
+        CHW = (3,32,32)
+        net = nn_mdls.GBoixNet(CHW,Fs,Ks,FCs,do_bn)
         nets.append(net)
     elif mdl == 'interpolate':
         suffle_test = True
@@ -192,6 +217,12 @@ def main(plot=False):
         ''' debug nets '''
         #path_nl = os.path.join(results_root,'flatness_31_March_label_corrupt_prob_0.0_exptlabel_nolabel/net_31_March_sj_0_staid_0_seed_12582084601958904')
         #path_rl_nl = os.path.join(results_root,'flatness_31_March_label_corrupt_prob_0.0_exptlabel_nolabel2/net_31_March_sj_0_staid_0_seed_32556446453331013')
+        ## NL2NL
+        path_nl = os.path.join(results_root,'flatness_6_April_label_corrupt_prob_0.0_exptlabel_train_NL1_300/net_6_April_sj_0_staid_0_seed_65723867866542355')
+        path_rl_nl = os.path.join(results_root,'flatness_6_April_label_corrupt_prob_0.0_exptlabel_train_NL1_300/net_6_April_sj_0_staid_0_seed_70468599139738135')
+        ## RLNL2RLNL
+        #path_nl = os.path.join(results_root,'flatness_6_April_label_corrupt_prob_0.0_exptlabel_train_RLNL2/net_6_April_sj_0_staid_0_seed_39485133104469717')
+        #path_rl_nl = os.path.join(results_root,'flatness_6_April_label_corrupt_prob_0.0_exptlabel_train_RLNL2/net_6_April_sj_0_staid_0_seed_45465090904297403')
         ''' restore nets'''
         net_nl = utils.restore_entire_mdl(path_nl)
         net_rl_nl = utils.restore_entire_mdl(path_rl_nl)
@@ -223,6 +254,7 @@ def main(plot=False):
         path = os.path.join(results_root,path_to_mdl)
         net = utils.restore_entire_mdl(path)
         nets.append(net)
+    print(f'nets = {nets}')
     ''' cuda/gpu '''
     if args.enable_cuda:
         #set_default_tensor_type
@@ -233,35 +265,41 @@ def main(plot=False):
             net.cpu()
     nb_params = nn_mdls.count_nb_params(net)
     ''' get data set '''
-    standardize = args.standardize_data # x - mu / std , [-1,+1]
+    standardize = not args.dont_standardize_data # x - mu / std , [-1,+1]
     trainset,trainloader, testset,testloader, classes_data = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,args.label_corrupt_prob,suffle_test=suffle_test,standardize=standardize)
     if classes_data != classes:
         raise ValueError(f'Pre specificed classes {classes} does not match data classes {classes_data}.')
     ''' Cross Entropy + Optmizer'''
-    lr = 0.01
+    lr = 0.1
     momentum = 0.0
-    ## Errors
+    ## Error/Loss criterions
     error_criterion = metrics.error_criterion
     criterion = torch.nn.CrossEntropyLoss()
     #criterion = torch.nn.MultiMarginLoss()
     #criterion = torch.nn.MSELoss(size_average=True)
     optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
+    other_stats = dict({'nb_epochs':nb_epochs,'batch_size':batch_size,'mdl':mdl,'lr':lr,'momentum':momentum, 'seed':seed,'githash':githash},**other_stats)
     ''' stats collector '''
     stats_collector = StatsCollector(net)
-    other_stats = dict({'nb_epochs':nb_epochs,'batch_size':batch_size,'mdl':mdl,'lr':lr,'momentum':momentum, 'seed':seed,'githash':githash},**other_stats)
-    ''' Train the Network '''
-    print(f'----\nSTART training: label_corrupt_prob={args.label_corrupt_prob},nb_epochs={nb_epochs},batch_size={batch_size},lr={lr},mdl={mdl},batch-norm={do_bn},nb_params={nb_params}')
-    overparametrized = len(trainset)<nb_params # N < W ?
-    print(f'Model over parametrized? N, W = {len(trainset)} vs {nb_params}')
-    print(f'Model over parametrized? N < W = {overparametrized}')
-    ''' '''
+    ''' Verify model you got has the right error'''
     train_loss_epoch, train_error_epoch = evalaute_mdl_data_set(criterion, error_criterion, net, trainloader, True)
     test_loss_epoch, test_error_epoch = evalaute_mdl_data_set(criterion, error_criterion, net, testloader, True)
-    print(f'train_loss_epoch, train_error_epoch  = {train_loss_epoch}, {train_error_epoch}')
-    print(f'test_loss_epoch, test_error_epoch  = {test_loss_epoch}, {test_error_epoch}')
-    st()
+    print(f'train_loss_epoch, train_error_epoch  = {train_loss_epoch}, {train_error_epoch} \n test_loss_epoch, test_error_epoch  = {test_loss_epoch}, {test_error_epoch}')
+    ''' Is it over parametrized?'''
+    overparametrized = len(trainset)<nb_params # N < W ?
+    print(f'Model overparametrized? N, W = {len(trainset)} vs {nb_params}')
+    print(f'Model overparametrized? N < W = {overparametrized}')
+    other_stats = dict({'overparametrized':overparametrized,'nb_params':nb_params}, **other_stats)
+    ''' report time for setup'''
+    seconds_setup,minutes_setup,hours_setup = utils.report_times(setup_time,'setup')
+    other_stats = dict({'seconds_setup': seconds_setup, 'minutes_setup': minutes_setup, 'hours_setup': hours_setup}, **other_stats)
+    ''' Start Training '''
+    training_time = time.time()
+    print(f'----\nSTART training: label_corrupt_prob={args.label_corrupt_prob},nb_epochs={nb_epochs},batch_size={batch_size},lr={lr},mdl={mdl},batch-norm={do_bn},nb_params={nb_params}')
+    ## START TRAIN
     if args.train_alg == 'SGD':
-        iterations = 4 # the number of iterations to get a sense of test error, smaller faster larger more accurate. Grows as sqrt(n) though.
+        #iterations = 4 # the number of iterations to get a sense of test error, smaller faster larger more accurate. Grows as sqrt(n) though.
+        iterations = inf
         # We simply have to loop over our data iterator, and feed the inputs to the network and optimize.
         train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch = tr_alg.train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer,criterion,error_criterion, stats_collector,iterations)
         ''' Test the Network on the test data '''
@@ -318,13 +356,17 @@ def main(plot=False):
     elif args.train_alg == 'no_train':
         print('NO TRAIN BRANCH')
     ''' save times '''
-    seconds,minutes,hours = utils.report_times(start_time)
+    seconds_training, minutes_training, hours_training = utils.report_times(training_time,meta_str='training')
+    other_stats = dict({'seconds_training': seconds_training, 'minutes_training': minutes_training, 'hours_training': hours_training}, **other_stats)
+    seconds, minutes, hours = seconds_training+seconds_setup, minutes_training+minutes_setup, hours_training+hours_setup
     other_stats = dict({'seconds':seconds,'minutes':minutes,'hours':hours}, **other_stats)
     print(f'nb_epochs = {nb_epochs}')
     print(f'Finished Training, hours={hours}')
     print(f'seed = {seed}, githash = {githash}')
     ''' save results from experiment '''
-    if args.dont_save_expt_results:
+    store_results = not args.dont_save_expt_results
+    if store_results:
+        print(f'storing results!')
         matlab_path_to_filename = os.path.join(expt_path,matlab_file_name)
         save2matlab.save2matlab_flatness_expt(matlab_path_to_filename, stats_collector,other_stats=other_stats)
         ''' save net model '''

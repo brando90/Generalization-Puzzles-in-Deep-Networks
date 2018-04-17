@@ -27,12 +27,15 @@ def perturb_model(net,perturbation_magnitudes,std_dict_params,relative,enable_cu
     params = net.named_parameters()
     index = 0
     for name, W in params:
+        ''' perturb according to the current perturbation, skip the perturbation if the magnitude of pert  is zero '''
+        ## get perturbation
         if perturbation_magnitudes[index] != 0:
             reference_magnitude = std_dict_params[name] if relative else 1
             std = perturbation_magnitudes[index]*reference_magnitude
             perturbation = torch.normal(means=0.0*torch.ones(W.size()),std=std)
         else:
             perturbation = torch.zeros(W.size())
+        ''' perturb model '''
         perturbation = perturbation.cuda() if enable_cuda else perturbation
         W.data.copy_(W.data + perturbation)
         ##
@@ -68,6 +71,7 @@ def get_landscapes_stats_between_nets(net1,net2, interpolations, enable_cuda,sta
     interpolated_net = copy.deepcopy(net1)
     diff_W1_W2 = weight_diff_btw_nets(net1,net2)
     for i,alpha in enumerate(interpolations):
+        print(f'i={i}, alpha={alpha}')
         ''' interpolate nets with current alpha '''
         interpolated_net = convex_interpolate_nets(interpolated_net,net1,net2,alpha)
         ''' evalaute model '''

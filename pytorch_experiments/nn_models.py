@@ -3,6 +3,8 @@ from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
 
+import unittest
+
 from pdb import set_trace as st
 
 def count_nb_params(net):
@@ -58,8 +60,9 @@ class MMNISTNet(nn.Module):
 ##
 
 class GBoixNet(nn.Module):
-    def __init__(self,C,H,W, Fs, Ks, FCs,do_bn=False):
+    def __init__(self,CHW, Fs, Ks, FCs,do_bn=False):
         super(GBoixNet, self).__init__()
+        C,H,W = CHW
         self.do_bn = do_bn
         self.nb_conv_layers = len(Fs)
         ''' Initialize Conv layers '''
@@ -89,7 +92,7 @@ class GBoixNet(nn.Module):
         in_features = CHW
         for i in range(self.nb_fcs_layers-1):
             out_features = FCs[i]
-            fc = nn.linear(in_features, out_features)
+            fc = nn.Linear(in_features, out_features)
             if self.do_bn:
                 bn_fc = nn.BatchNorm1d(fc)
                 setattr(self, f'bn1D_fc{i}', bn_fc)
@@ -100,9 +103,9 @@ class GBoixNet(nn.Module):
             ##
             in_features = out_features
         ##
-        i = self.nb_fcs_layers
+        i = self.nb_fcs_layers-1
         out_features = FCs[i]
-        fc = nn.linear(in_features, out_features)
+        fc = nn.Linear(in_features, out_features)
         ##
         setattr(self,f'fc{i}', fc)
         self.fcs.append(fc)
@@ -126,7 +129,8 @@ class GBoixNet(nn.Module):
             if self.do_bn and i != self.nb_fcs_layers:
                 bn_fc = self.bns_fcs[i]
                 z = bn_fc(z)
-            x = F.relu(z)
+            if i != self.nb_fcs_layers-1: # last layer doesn't have a relu
+                x = F.relu(z)
         return x
 
 ##
@@ -263,3 +267,11 @@ class LiaoNet(nn.Module):
         #if self.do_bn:
         #    x = self.bn_fc(x)
         return x
+
+class TestStringMethods(unittest.TestCase):
+
+    def test_GBoixNet(self):
+        self.assertEqual(True, True)
+
+if __name__ == '__main__':
+    unittest.main()

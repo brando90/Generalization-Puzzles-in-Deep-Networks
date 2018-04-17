@@ -23,14 +23,20 @@ def make_and_check_dir(path):
     except OSError:
         pass
 
-def report_times(start_time):
+def report_times(start_time,meta_str=''):
+    '''
+        returns how long has passed since start_time was called.
+
+        start_time is assumed to be some time.time() at some earlier point in the code. Then this function calls its
+        own call to current time and just computes a difference
+    '''
     ## REPORT TIMES
     seconds = (time.time() - start_time)
     minutes = seconds/ 60
     hours = minutes/ 60
-    print("--- %s seconds ---" % seconds )
-    print("--- %s minutes ---" % minutes )
-    print("--- %s hours ---" % hours )
+    print(f"--- {seconds} {'seconds '+meta_str} ---")
+    print(f"--- {minutes} {'minutes '+meta_str} ---")
+    print(f"--- {hours} {'hours '+meta_str} ---")
     print('\a')
     return seconds, minutes, hours
 
