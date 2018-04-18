@@ -1,45 +1,57 @@
-# Import all modules
+#!/usr/bin/env python
+#SBATCH --mem=20000
+#SBATCH --time=1-00:30
+#SBATCH --mail-type=END
+#SBATCH --mail-user=brando90@mit.edu
+#SBATCH --array=1-5
+#SBATCH --gres=gpu:1
+
 import time
 import matplotlib.pyplot as plt
 import numpy as np
-from keras.models import Sequential
-from keras.layers import Dense
-from keras.layers import Dropout
-from keras.layers import Flatten
-from keras.constraints import maxnorm
-from keras.optimizers import SGD
-from keras.layers import Activation
-from keras.layers.convolutional import Conv2D
-from keras.layers.convolutional import MaxPooling2D
-from keras.layers.normalization import BatchNormalization
-from keras.utils import np_utils
-#from keras_sequential_ascii import sequential_model_to_ascii_printout
 from keras import backend as K
+
+import os
 
 if K.backend()=='tensorflow':
     K.set_image_dim_ordering("th")
 
 # Import Tensorflow with multiprocessing
-import tensorflow as tf
-import multiprocessing as mp
+#import tensorflow as tf
+#import multiprocessing as mp
 
 from data_sets import load_cifar10
 from nn_models import model_convs_FCs
 from nn_models import compile_mdl_with_sgd
 import utils
 
-## https://blog.plon.io/tutorials/cifar-10-classification-using-keras-tutorial/#comment-670
+import pickle
+
+from pdb import set_trace as st
+
+## inspired from: https://blog.plon.io/tutorials/cifar-10-classification-using-keras-tutorial/#comment-670
+
+sj, satid = 0, 0
+if 'SLURM_ARRAY_TASK_ID' in os.environ and 'SLURM_JOBID' in os.environ:
+    satid = int(os.environ['SLURM_ARRAY_TASK_ID'])
+    sj = int(os.environ['SLURM_JOBID'])
 
 def main(plot):
     start_time = time.time()
+    ''' Directory names '''
+    path = '../pytorch_experiments/test_runs_flatness/keras_expt'
+    filename = f'chance_plateau_{satid}'
+    utils.make_and_check_dir(path)
     ''' experiment type '''
     #expt = 'BoixNet'
-    expt = 'LiaoNet'
+    #expt = 'LiaoNet'
+    expt = 'GBoixNet'
+    #expt = 'debug'
     ''' declare variables '''
-    batch_size = 256
+    batch_size = 2**10
     num_classes = 10
-    nb_epochs = 500
-    lr = 0.01
+    nb_epochs = 5
+    lr = 0.1
     ''' load cifar '''
     standardize=True
     (x_train, y_train), (x_test, y_test) = load_cifar10(num_classes,standardize=standardize)
@@ -57,6 +69,16 @@ def main(plot):
         nb_conv_filters = [32]*nb_conv_layers
         kernels = [(5,5)]*nb_conv_layers
         nb_units_fcs = [num_classes]
+    elif expt == 'GBoixNet':
+        nb_conv_layers, nb_fc_layers = 1,2
+        nb_conv_filters = [22]*nb_conv_layers
+        kernels = [(5,5)]*nb_conv_layers
+        nb_units_fcs = [30,num_classes]
+    elif expt == 'debug':
+        nb_conv_layers, nb_fc_layers = 1,1
+        nb_conv_filters = [2]*nb_conv_layers
+        kernels = [(10,10)]*nb_conv_layers
+        nb_units_fcs = [2,num_classes]
     CHW = x_train.shape[1:] # (3, 32, 32)
     ''' get model '''
     cnn_n = model_convs_FCs(CHW, nb_conv_layers,nb_fc_layers, nb_conv_filters,kernels, nb_units_fcs)
@@ -66,6 +88,12 @@ def main(plot):
     cnn = cnn_n.fit(x_train, y_train, batch_size=batch_size, epochs=nb_epochs, validation_data=(x_test,y_test),shuffle=True)
     seconds,minutes,hours = utils.report_times(start_time)
     print(f'\nFinished Training, hours={hours}\a')
+    ''' save history '''
+    path_2_save = os.path.join(path,filename)
+    print(f'path_2_save = {path_2_save}')
+    print(f'does dir exist? {os.path.isdir(path)}')
+    with open(path_2_save, 'wb+') as file_pi:
+        pickle.dump(cnn.history, file_pi)
     ''' Plots '''
     if plot:
         # Plots for training and testing process: loss and accuracy
@@ -79,7 +107,6 @@ def main(plot):
         plt.title("Training Accuracy vs Validation Accuracy")
         plt.legend(['train','validation'])
 
-
         plt.figure(1)
         plt.plot(cnn.history['loss'],'r')
         plt.plot(cnn.history['val_loss'],'g')
@@ -90,9 +117,8 @@ def main(plot):
         plt.title("Training Loss vs Validation Loss")
         plt.legend(['train','validation'])
 
+        plt.show()
+
 if __name__ == '__main__':
     main(plot=True)
     print('\a')
-
-
-plt.show()
