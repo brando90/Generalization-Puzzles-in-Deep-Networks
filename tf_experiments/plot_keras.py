@@ -38,7 +38,7 @@ def plot_keras(history):
 
 def main():
     path = '../pytorch_experiments/test_runs_flatness/keras_expt'
-    filename = 'chance_plateau_0'
+    filename = 'chance_plateau_debug_0'
     ''' load history '''
     path_2_file = os.path.join(path,filename)
     with open(path_2_file, 'rb') as keras_hist_file:

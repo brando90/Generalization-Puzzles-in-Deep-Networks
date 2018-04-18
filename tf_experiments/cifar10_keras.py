@@ -10,6 +10,7 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 from keras import backend as K
+from keras.models import load_model
 
 import os
 
@@ -40,7 +41,7 @@ def main(plot):
     start_time = time.time()
     ''' Directory names '''
     path = '../pytorch_experiments/test_runs_flatness/keras_expt'
-    filename = f'chance_plateau_{satid}'
+    filename = f'chance_plateau_debug_{satid}'
     utils.make_and_check_dir(path)
     ''' experiment type '''
     #expt = 'BoixNet'
@@ -50,7 +51,7 @@ def main(plot):
     ''' declare variables '''
     batch_size = 2**10
     num_classes = 10
-    nb_epochs = 5
+    nb_epochs = 300
     lr = 0.1
     ''' load cifar '''
     standardize=True
@@ -70,6 +71,7 @@ def main(plot):
         kernels = [(5,5)]*nb_conv_layers
         nb_units_fcs = [num_classes]
     elif expt == 'GBoixNet':
+        cnn_filename = f'keras_net_{satid}'
         nb_conv_layers, nb_fc_layers = 1,2
         nb_conv_filters = [22]*nb_conv_layers
         kernels = [(5,5)]*nb_conv_layers
@@ -88,12 +90,16 @@ def main(plot):
     cnn = cnn_n.fit(x_train, y_train, batch_size=batch_size, epochs=nb_epochs, validation_data=(x_test,y_test),shuffle=True)
     seconds,minutes,hours = utils.report_times(start_time)
     print(f'\nFinished Training, hours={hours}\a')
-    ''' save history '''
+    ''' save history and mdl '''
     path_2_save = os.path.join(path,filename)
     print(f'path_2_save = {path_2_save}')
     print(f'does dir exist? {os.path.isdir(path)}')
+    # save history
     with open(path_2_save, 'wb+') as file_pi:
-        pickle.dump(cnn.history, file_pi)
+        history = dict({'batch_size':batch_size,'nb_epochs':nb_epochs,'lr':lr,'expt':expt},**cnn.history)
+        pickle.dump(history, file_pi)
+    # save model
+    cnn_n.save( os.path.join(path,cnn_filename) )
     ''' Plots '''
     if plot:
         # Plots for training and testing process: loss and accuracy
@@ -120,5 +126,5 @@ def main(plot):
         plt.show()
 
 if __name__ == '__main__':
-    main(plot=True)
+    main(plot=False)
     print('\a')
