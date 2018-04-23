@@ -67,19 +67,20 @@ class GBoixNet(nn.Module):
         self.nb_conv_layers = len(Fs)
         ''' Initialize Conv layers '''
         self.convs = []
-        self.bns = []
+        self.bns_convs = []
         out = Variable(torch.FloatTensor(1, C,H,W))
         in_channels = C
         for i in range(self.nb_conv_layers):
             F,K = Fs[i], Ks[i]
+            ##
             conv = nn.Conv2d(in_channels,F,K) #(in_channels, out_channels, kernel_size)
+            setattr(self,f'conv{i}',conv)
+            self.convs.append(conv)
+            ##
             if self.do_bn:
                 bn = nn.BatchNorm2d(F)
                 setattr(self,f'bn2D_conv{i}',bn)
                 self.bns_convs.append(bn)
-            ##
-            setattr(self,f'conv{i}',conv)
-            self.convs.append(conv)
             ##
             in_channels = F
             out = conv(out)
@@ -92,14 +93,16 @@ class GBoixNet(nn.Module):
         in_features = CHW
         for i in range(self.nb_fcs_layers-1):
             out_features = FCs[i]
-            fc = nn.Linear(in_features, out_features)
-            if self.do_bn:
-                bn_fc = nn.BatchNorm1d(fc)
-                setattr(self, f'bn1D_fc{i}', bn_fc)
-                self.bns_fcs.append(bn_fc)
             ##
+            fc = nn.Linear(in_features, out_features)
             setattr(self,f'fc{i}', fc)
             self.fcs.append(fc)
+            ##
+            if self.do_bn:
+                print('BN_FC')
+                bn_fc = nn.BatchNorm1d(out_features)
+                setattr(self, f'bn1D_fc{i}', bn_fc)
+                self.bns_fcs.append(bn_fc)
             ##
             in_features = out_features
         ##
@@ -117,20 +120,22 @@ class GBoixNet(nn.Module):
             ##
             z = conv(x)
             if self.do_bn:
-                bn = self.bns[i]
+                bn = self.bns_convs[i]
                 z = bn(z)
             x = F.relu(z)
         _, C, H, W = x.size()
         ''' FC layers '''
         x = x.view(-1, C * H * W)
-        for i in range(self.nb_fcs_layers):
+        for i in range(self.nb_fcs_layers-1):
             fc = self.fcs[i]
             z = fc(x)
-            if self.do_bn and i != self.nb_fcs_layers:
+            if self.do_bn:
                 bn_fc = self.bns_fcs[i]
                 z = bn_fc(z)
-            if i != self.nb_fcs_layers-1: # last layer doesn't have a relu
-                x = F.relu(z)
+            x = F.relu(z)
+        # last layer doesn't have a relu
+        fc = self.fcs[self.nb_fcs_layers-1]
+        x = fc(x)
         return x
 
 ##

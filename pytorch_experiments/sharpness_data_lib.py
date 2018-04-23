@@ -3,15 +3,16 @@ import torch
 import pickle
 
 import utils
+import data_classification as data_class
 
-def save_data_according_to_criterion(dataloader,criterion):
+def save_index_according_to_criterion(path,dataloader,criterion):
     '''
 
     :param dataloader:
     :param criteron:
     :return:
     '''
-    ''' produce scores list  [(i,score)] '''
+    ''' produce scores list [(i,score)] '''
     enable_cuda = False
     index_scores = []
     for i,data_train in enumerate(dataloader):
@@ -37,7 +38,9 @@ def other():
 def main():
     ''' get data loaders '''
     #TODO
+    standardize = True # x - mu / std , [-1,+1]
+    trainset, trainloader, testset, testloader, classes_data = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,args.label_corrupt_prob,suffle_test=suffle_test,standardize=standardize)
     ''' load net for the cirterion '''
-    # TODO
+    path_train = '.data/'
     ''' '''
     save_data_according_to_criterion(dataloader,citerion)

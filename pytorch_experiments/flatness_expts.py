@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-#SBATCH --mem=10000
-#SBATCH --time=1-00:30
+#SBATCH --mem=20000
+#SBATCH --time=1-10:30
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
-#SBATCH --array=1-1
+#SBATCH --array=1-10
 #SBATCH --gres=gpu:1
 
 """
@@ -195,10 +195,10 @@ def main(plot=False):
         suffle_test = False
         ## conv params
         nb_conv_layers=1
-        Fs = [22]*nb_conv_layers
+        Fs = [15]*nb_conv_layers
         Ks = [5]*nb_conv_layers
         ## fc params
-        FCs = [30,len(classes)]
+        FCs = [13,len(classes)]
         ##
         CHW = (3,32,32)
         net = nn_mdls.GBoixNet(CHW,Fs,Ks,FCs,do_bn)
@@ -267,10 +267,12 @@ def main(plot=False):
     ''' get data set '''
     standardize = not args.dont_standardize_data # x - mu / std , [-1,+1]
     trainset,trainloader, testset,testloader, classes_data = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,args.label_corrupt_prob,suffle_test=suffle_test,standardize=standardize)
+    #check_order_data(trainloader)
+    #st()
     if classes_data != classes:
         raise ValueError(f'Pre specificed classes {classes} does not match data classes {classes_data}.')
-    ''' Cross Entropy + Optmizer'''
-    lr = 0.1
+    ''' Cross Entropy + Optmizer '''
+    lr = 0.01
     momentum = 0.0
     ## Error/Loss criterions
     error_criterion = metrics.error_criterion
@@ -295,7 +297,7 @@ def main(plot=False):
     other_stats = dict({'seconds_setup': seconds_setup, 'minutes_setup': minutes_setup, 'hours_setup': hours_setup}, **other_stats)
     ''' Start Training '''
     training_time = time.time()
-    print(f'----\nSTART training: label_corrupt_prob={args.label_corrupt_prob},nb_epochs={nb_epochs},batch_size={batch_size},lr={lr},mdl={mdl},batch-norm={do_bn},nb_params={nb_params}')
+    print(f'----\nSTART training: label_corrupt_prob={args.label_corrupt_prob},nb_epochs={nb_epochs},batch_size={batch_size},lr={lr},momentum={momentum},mdl={mdl},batch-norm={do_bn},nb_params={nb_params}')
     ## START TRAIN
     if args.train_alg == 'SGD':
         #iterations = 4 # the number of iterations to get a sense of test error, smaller faster larger more accurate. Grows as sqrt(n) though.
@@ -380,6 +382,17 @@ def main(plot=False):
         #TODO
         plot_utils.plot_loss_and_accuracies(stats_collector)
         plt.show()
+
+def check_order_data(trainloader):
+    for i,data_train in enumerate(trainloader):
+        if i==0:
+            print(i)
+            st()
+            #print(data_train)
+    for i,data_train in enumerate(trainloader):
+        if i==3:
+            print(i)
+            #print(data_train)
 
 if __name__ == '__main__':
     main()

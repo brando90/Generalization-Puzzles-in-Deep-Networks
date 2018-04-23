@@ -61,7 +61,7 @@ def train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer
             running_train_error += error_criterion(outputs,labels)
             ''' print error first iteration'''
             #if i == 0 and epoch == 0: # print on the first iteration
-            #    print(inputs)
+            #    print(data_train[0].data)
         ''' End of Epoch: collect stats'''
         train_loss_epoch, train_error_epoch = running_train_loss/(i+1), running_train_error/(i+1)
         test_loss_epoch, test_error_epoch = evalaute_mdl_data_set(criterion,error_criterion,net,testloader,enable_cuda,iterations)
