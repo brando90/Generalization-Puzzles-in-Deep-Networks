@@ -1,46 +1,64 @@
 import torch
+from torchvision import datasets, transforms
+from torch.utils.data import Dataset, DataLoader
 
+import os
 import pickle
 
 import utils
 import data_classification as data_class
+from new_training_algorithms import extract_data
+from data_classification import get_standardized_transform
+from data_classification import IndxCifar10
 
-def save_index_according_to_criterion(path,dataloader,criterion):
-    '''
+from pdb import set_trace as st
 
-    :param dataloader:
-    :param criteron:
-    :return:
+def get_second_largest(scores,max_score):
+    ## delete max
+    ## now get max
+    return
+
+def save_index_according_to_criterion(path,dataloader_standardize,dataloader_pixels,net):
     '''
-    ''' produce scores list [(i,score)] '''
-    enable_cuda = False
-    index_scores = []
-    for i,data_train in enumerate(dataloader):
-        inputs, labels = utils.extract_data(enable_cuda,data_train,wrap_in_variable=False)
-        score = criterion(inputs)
-        index_scores.append( (i,score) )
-    ''' sort scores list based on scores '''
+        Creates data set to measure sharpness
+    '''
+    ''' produce list of scores score_list = [(i,score)] '''
+    enable_cuda = True
+    score_list = []
+    for i_old,(inputs,labels,indices) in enumerate(dataloader_standardize):
+        inputs,labels = extract_data(enable_cuda,(inputs,labels),wrap_in_variable=True)
+        scores = net(inputs)
+        st()
+        max_scores, max_indices = torch.max(scores) # float
+        second_largest_scores, new_label = get_second_largest(scores,max_scores)
+        score_list.append( (i_old,new_label,max_score) )
+    ''' sort(scores list), based on scores '''
     sorting_criterion = lambda tup: tup[1]
-    sorted_by_second = sorted(index_scores, key=sorting_criterion)
-    ''' pickle the index,score sorted array to '''
-    with open(path,'wb+') as array_file: #wb+ Opens a file for both writing and reading in binary format. Overwrites the existing file if the file exists. If the file does not exist, creates a new file for reading and writing.
-        pickle.dump(sorted_by_second, array_file)
-
-def other():
-    cifar_dataset = torchvision.datasets.CIFAR10(root='./data', transform=transform)
-    train_indices =  # select train indices according to your rule
-    test_indices =  # select test indices according to your rule
-    train_loader = torch.utils.data.DataLoader(cifar_dataset, batch_size=32, shuffle=True,
-                                               sampler=SubsetRandomSampler(train_indices))
-    test_loader = torch.utils.data.DataLoader(cifar_dataset, batch_size=32, shuffle=True,
-                                              sampler=SubsetRandomSampler(test_indices))
+    ## note sorted: i_new -> ( i_old, l^(i_old), s_^(i_old) )
+    sorted_scores = sorted(score_list, key=sorting_criterion) # smallest to largest
+    ''' old 2 new mapping'''
+    ''' '''
+    X_new = np.zero((50000,3,32,32))
+    Y_new = np.zero((50000))
 
 def main():
     ''' get data loaders '''
-    #TODO
-    standardize = True # x - mu / std , [-1,+1]
-    trainset, trainloader, testset, testloader, classes_data = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,args.label_corrupt_prob,suffle_test=suffle_test,standardize=standardize)
-    ''' load net for the cirterion '''
-    path_train = '.data/'
-    ''' '''
-    save_data_according_to_criterion(dataloader,citerion)
+    transform = get_standardized_transform()
+    dataset_standardize = IndxCifar10(transform=transform)
+    dataset_pixels = IndxCifar10(transform=lambda x: x)
+    dataloader_pixels = DataLoader(dataset_pixels,batch_size=4,shuffle=False,num_workers=1)
+    dataloader_standardize = DataLoader(dataset_standardize,batch_size=4,shuffle=False,num_workers=1)
+    ''' load net for the criterion (we are perturbing to give the sharpest) '''
+    results_root = './test_runs_flatness'
+    # path_2_net = 'TODO' # NL
+    # path_2_net = os.path.join(results_root,'flatness_22_April_label_corrupt_prob_1.0_exptlabel_GB_15_13_10_154229_BN_RL/net_22_April_sj_10583197_staid_7_seed_37801283806432755') #RLNL
+    path_2_net = os.path.join(results_root,'flatness_22_April_label_corrupt_prob_1.0_exptlabel_Net_13_12_10_123434_RL/net_22_April_sj_10577986_staid_2_seed_39037026647362915')
+    net = torch.load(path_2_net)
+    ''' create new data set '''
+    path_train = 'TODO'
+    save_index_according_to_criterion(path_train,dataloader_standardize,dataloader_pixels,net)
+    # path_test = 'TODO'
+    # save_index_according_to_criterion(path_test,testdataloader, criterion=net)
+
+if __name__ == '__main__':
+    main()

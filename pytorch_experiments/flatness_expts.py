@@ -3,7 +3,7 @@
 #SBATCH --time=1-10:30
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
-#SBATCH --array=1-10
+#SBATCH --array=1-3
 #SBATCH --gres=gpu:1
 
 """
@@ -195,10 +195,10 @@ def main(plot=False):
         suffle_test = False
         ## conv params
         nb_conv_layers=1
-        Fs = [15]*nb_conv_layers
+        Fs = [32]*nb_conv_layers
         Ks = [5]*nb_conv_layers
         ## fc params
-        FCs = [13,len(classes)]
+        FCs = [32,len(classes)]
         ##
         CHW = (3,32,32)
         net = nn_mdls.GBoixNet(CHW,Fs,Ks,FCs,do_bn)

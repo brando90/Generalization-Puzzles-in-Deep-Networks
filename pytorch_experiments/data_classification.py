@@ -2,11 +2,16 @@ import numpy as np
 
 import data_utils
 
+import os
+
 import torch
+from torchvision import datasets, transforms
+#from torch.utils.data import Dataset, DataLoader
 
 from torch.autograd import Variable
 import torchvision
 import torchvision.transforms as transforms
+import torchvision.transforms.functional as TF
 
 from pdb import set_trace as st
 
@@ -67,6 +72,29 @@ def get_2D_classification_data(N_train,N_val,N_test,lb,ub,f_target):
     return Xtr,Ytr, Xv,Yv, Xt,Yt
 
 #####
+
+class IndxCifar10(torch.utils.data.Dataset):
+    def __init__(self,transform):
+        self.cifar10 = datasets.CIFAR10(root='./data',download=False,train=True,transform=transform)
+
+    def __getitem__(self, index):
+        data, target = self.cifar10[index]
+        return data, target, index
+
+    def __len__(self):
+        return len(self.cifar10)
+
+def get_standardized_transform():
+    transform = []
+    ''' converts (HxWxC) in range [0,255] to [0.0,1.0] '''
+    to_tensor = transforms.ToTensor()
+    transform.append(to_tensor)
+    ''' Given meeans (M1,...,Mn) and std: (S1,..,Sn) for n channels, input[channel] = (input[channel] - mean[channel]) / std[channel] '''
+    gaussian_normalize = transforms.Normalize( (0.5, 0.5, 0.5), (0.5, 0.5, 0.5) )
+    transform.append(gaussian_normalize)
+    ''' transform them to Tensors of normalized range [-1, 1]. '''
+    transform = transforms.Compose(transform)
+    return transform
 
 class CIFAR10RandomLabels(torchvision.datasets.CIFAR10):
   """CIFAR10 dataset, with support for randomly corrupt labels.

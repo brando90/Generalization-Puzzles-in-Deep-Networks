@@ -27,8 +27,10 @@ def evalaute_mdl_data_set(loss,error,net,dataloader,enable_cuda,iterations=inf):
         running_error += error(outputs,labels)
     return running_loss/(i+1),running_error/(i+1)
 
-def extract_data(enable_cuda,data,wrap_in_variable=False):
+def extract_data(enable_cuda,data,wrap_in_variable=False,transform=None):
     inputs, labels = data
+    #if transform is not None:
+    #    inputs = transform(inputs.numpy())
     if enable_cuda:
         inputs, labels = inputs.cuda(), labels.cuda() #TODO potential speed up?
     if wrap_in_variable:
@@ -47,6 +49,7 @@ def train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer
     ''' Start training '''
     print('about to start training')
     for epoch in range(nb_epochs):  # loop over the dataset multiple times
+        net.train()
         running_train_loss,running_train_error = 0.0, 0.0
         for i,data_train in enumerate(trainloader):
             ''' zero the parameter gradients '''
@@ -64,6 +67,7 @@ def train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer
             #    print(data_train[0].data)
         ''' End of Epoch: collect stats'''
         train_loss_epoch, train_error_epoch = running_train_loss/(i+1), running_train_error/(i+1)
+        net.eval()
         test_loss_epoch, test_error_epoch = evalaute_mdl_data_set(criterion,error_criterion,net,testloader,enable_cuda,iterations)
         stats_collector.collect_mdl_params_stats(net)
         stats_collector.append_losses_errors_accs(train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch)
