@@ -5,6 +5,9 @@ from torch.utils.data import Dataset, DataLoader
 import os
 import pickle
 
+import math
+import numpy as np
+
 import utils
 import data_classification as data_class
 from new_training_algorithms import extract_data
@@ -13,52 +16,121 @@ from data_classification import IndxCifar10
 
 from pdb import set_trace as st
 
-def get_second_largest(scores,max_score):
-    ## delete max
-    ## now get max
-    return
+def check_images_are_same_index():
+    '''
+    Checks if the indices in .data_train and how batcher indexes match.
+    :return:
+    '''
+    enable_cuda=False
+    transform = get_standardized_transform()
+    dataset_standardize = IndxCifar10(transform=transform)
+    dataloader_standardize = DataLoader(dataset_standardize,batch_size=2**10,shuffle=False,num_workers=10)
+    cifar10 = dataloader_standardize.dataset.cifar10.train_data
+    img1 = transform(cifar10[0])
+    for i, (inputs, labels, indices) in enumerate(dataloader_standardize):
+        inputs, labels = extract_data(enable_cuda, (inputs, labels), wrap_in_variable=True)
+        img1_batch = inputs[0]
+        break
+    ''' compare them '''
+    print( np.sum(img1.numpy() == img1_batch.data.numpy()) == img1.numel() )
 
-def save_index_according_to_criterion(path,dataloader_standardize,dataloader_pixels,net):
+def get_second_largest(scores,max_indices):
+    '''
+
+    :param scores: M x 10 cuda vector
+    :param max_score:
+    :param max_index:
+    :return:
+    '''
+    ## delete max by replacing it by -infinity
+    scores[:,max_indices] = -math.inf
+    ## now get new max = 2nd largest
+    second_largest_scores, max_indices = torch.max(scores,1)
+    return second_largest_scores, max_indices
+
+def get_old_2_new_mapping(sorted_scores):
+    '''
+
+    :param sorted_scores: i_new -> ( i_old, l^(i_old), s_^(i_old) ),
+    the indices of sorted_scores are the i_new but they map to i_old
+    :return: old_2_new
+
+    loop through sorted_scores
+    '''
+    N = len(sorted_scores)
+    old_2_new = np.zeros(N,dtype=int)
+    for i_new in range(N):
+        i_old = sorted_scores[i_new][0]
+        old_2_new[i_old] = i_new
+    return old_2_new
+
+def save_index_according_to_criterion(path_2_save,dataloader_standardize,dataloader_pixels,net):
     '''
         Creates data set to measure sharpness
     '''
-    ''' produce list of scores score_list = [(i,score)] '''
+    ''' produce list of scores score_list = [(i,new_labels,score)] '''
+    print('produce score list')
+    net.eval()
     enable_cuda = True
     score_list = []
-    for i_old,(inputs,labels,indices) in enumerate(dataloader_standardize):
+    for i,(inputs,labels,indices) in enumerate(dataloader_standardize):
         inputs,labels = extract_data(enable_cuda,(inputs,labels),wrap_in_variable=True)
-        scores = net(inputs)
-        st()
-        max_scores, max_indices = torch.max(scores) # float
-        second_largest_scores, new_label = get_second_largest(scores,max_scores)
-        score_list.append( (i_old,new_label,max_score) )
-    ''' sort(scores list), based on scores '''
-    sorting_criterion = lambda tup: tup[1]
-    ## note sorted: i_new -> ( i_old, l^(i_old), s_^(i_old) )
-    sorted_scores = sorted(score_list, key=sorting_criterion) # smallest to largest
+        scores = net(inputs) # M x 10 Float cuda vector
+        # get max scores (to later sort original idicies) and get new labels for the data set
+        max_scores, max_indices = torch.max(scores,1) # M, M long,float (note max_indices are the labels predicted by net)
+        second_largest_scores, new_label = get_second_largest(scores,max_indices) # M, M float,long
+        # create [(i_old,new_label,max_score_old_label)]
+        new_elements = [ (indices[i],int(new_label[i]),float(max_scores[i])) for i in range(len(scores)) ]
+        score_list = score_list + new_elements
+    ''' sort(scores list) = sort([ (i_old,new_label,max_score) ]), based on scores '''
+    print('sort score list')
+    sorting_criterion = lambda tup: tup[2]
+    sorted_scores = sorted(score_list, key=sorting_criterion) # smallest to largest: get_old_2_new_mapping(sorted_scores):
     ''' old 2 new mapping'''
-    ''' '''
-    X_new = np.zero((50000,3,32,32))
-    Y_new = np.zero((50000))
+    print('produce old_2_new mapping')
+    old_2_new = get_old_2_new_mapping(sorted_scores)
+    ''' produce new dataset '''
+    print('about to produce dataset')
+    cifar10 = dataloader_standardize.dataset.cifar10.train_data
+    X_new = np.zeros((500000,32,32,3))
+    Y_new = np.zeros(500000)
+    for i_old in range(cifar10.shape[0]):
+        data = cifar10[i_old]
+        ## get location of data
+        i_new = old_2_new[i_old]
+        X_new[i_new,:,:,:] = data
+        ## assign 2nd best label
+        new_label = sorted_scores[i_new][1]
+        Y_new[i_new] = new_label
+    ''' store data '''
+    np.save(path_2_save,X_new,Y_new)
 
 def main():
+    print('\nmain')
     ''' get data loaders '''
     transform = get_standardized_transform()
     dataset_standardize = IndxCifar10(transform=transform)
-    dataset_pixels = IndxCifar10(transform=lambda x: x)
-    dataloader_pixels = DataLoader(dataset_pixels,batch_size=4,shuffle=False,num_workers=1)
-    dataloader_standardize = DataLoader(dataset_standardize,batch_size=4,shuffle=False,num_workers=1)
-    ''' load net for the criterion (we are perturbing to give the sharpest) '''
+    dataset_pixels = IndxCifar10(transform=transforms.ToTensor())
+    dataloader_pixels = DataLoader(dataset_pixels,batch_size=2**10,shuffle=False,num_workers=10)
+    dataloader_standardize = DataLoader(dataset_standardize,batch_size=2**10,shuffle=False,num_workers=10)
+    ''' load NL '''
     results_root = './test_runs_flatness'
-    # path_2_net = 'TODO' # NL
-    # path_2_net = os.path.join(results_root,'flatness_22_April_label_corrupt_prob_1.0_exptlabel_GB_15_13_10_154229_BN_RL/net_22_April_sj_10583197_staid_7_seed_37801283806432755') #RLNL
-    path_2_net = os.path.join(results_root,'flatness_22_April_label_corrupt_prob_1.0_exptlabel_Net_13_12_10_123434_RL/net_22_April_sj_10577986_staid_2_seed_39037026647362915')
-    net = torch.load(path_2_net)
+    expt_path = 'flatness_22_April_label_corrupt_prob_1.0_exptlabel_GB_15_13_10_154229_BN_RL'
+    net_name = 'net_22_April_sj_10583197_staid_7_seed_37801283806432755'
+    path_2_net = os.path.join(expt_path,net_name)
+    # ''' load RLNL'''
+    # results_root = './test_runs_flatness'
+    # expt_path = 'flatness_22_April_label_corrupt_prob_1.0_exptlabel_GB_15_13_10_154229_BN_RL'
+    # net_name = 'net_22_April_sj_10583197_staid_7_seed_37801283806432755'
+    # path_2_net = os.path.join(expt_path,net_name)
     ''' create new data set '''
-    path_train = 'TODO'
-    save_index_according_to_criterion(path_train,dataloader_standardize,dataloader_pixels,net)
-    # path_test = 'TODO'
-    # save_index_according_to_criterion(path_test,testdataloader, criterion=net)
+    folder_path = './data/sharpness_data_{net_name}'
+    filename = f'sdata_{net_name}'
+    path_2_save = os.path.join(folder_path, filename)
+    save_index_according_to_criterion(path_2_save,dataloader_standardize,dataloader_pixels,net)
 
 if __name__ == '__main__':
     main()
+    #check_images_are_same_index()
+    ''' print done '''
+    print('Done!\a')
