@@ -6,6 +6,12 @@
 #SBATCH --array=1-5
 #SBATCH --gres=gpu:1
 
+import sys
+import os
+
+current_directory = os.getcwd() #The method getcwd() returns current working directory of a process.
+sys.path.append(current_directory)
+
 import time
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,10 +23,6 @@ import os
 if K.backend()=='tensorflow':
     K.set_image_dim_ordering("th")
 
-# Import Tensorflow with multiprocessing
-#import tensorflow as tf
-#import multiprocessing as mp
-
 from data_sets import load_cifar10
 from nn_models import model_convs_FCs
 from nn_models import compile_mdl_with_sgd
@@ -28,11 +30,19 @@ import utils
 
 import pickle
 
+import argparse
+
 from pdb import set_trace as st
 
 ## inspired from: https://blog.plon.io/tutorials/cifar-10-classification-using-keras-tutorial/#comment-670
 
 sj, satid = 0, 0
+''' Params '''
+parser = argparse.ArgumentParser(description='Keras Example')
+''' setup params '''
+parser.add_argument("-satid", "--satid", type=int, default=0,
+                    help="Slurm Array Task ID, for naming the file")
+
 if 'SLURM_ARRAY_TASK_ID' in os.environ and 'SLURM_JOBID' in os.environ:
     satid = int(os.environ['SLURM_ARRAY_TASK_ID'])
     sj = int(os.environ['SLURM_JOBID'])
@@ -40,8 +50,8 @@ if 'SLURM_ARRAY_TASK_ID' in os.environ and 'SLURM_JOBID' in os.environ:
 def main(plot):
     start_time = time.time()
     ''' Directory names '''
-    path = '../pytorch_experiments/test_runs_flatness/keras_expt'
-    filename = f'chance_plateau_debug_{satid}'
+    path = '../pytorch_experiments/test_runs_flatness/keras_expt_April_19'
+    filename = f'chance_plateau_{satid}'
     utils.make_and_check_dir(path)
     ''' experiment type '''
     #expt = 'BoixNet'

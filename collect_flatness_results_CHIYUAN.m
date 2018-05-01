@@ -1,11 +1,11 @@
 clear;clc;clear;clc;
 %% get path to folder
 dot = '/Users/brandomiranda/home_simulation_research/overparametrized_experiments/';
-path = fullfile(dot,'pytorch_experiments/test_runs_flatness');
+path = fullfile(dot,'pytorch_experiments/test_runs_flatness2');
 %NL
-path_all_expts_NL = fullfile(path,'flatness_4_April_label_corrupt_prob_0.0_exptlabel_RadiusFlatnessNL_samples15_RLarge50')
+path_all_expts_NL = fullfile(path,'flatness_April_label_corrupt_prob_0.0_exptlabel_RadiusFlatnessNL_samples20_RLarge50_polestar')
 %RLNL
-path_all_expts_RLNL = fullfile(path,'flatness_4_April_label_corrupt_prob_0.0_exptlabel_RadiusFlatnessRLNL_samples15_RLarge50')
+path_all_expts_RLNL = fullfile(path,'flatness_April_label_corrupt_prob_0.0_exptlabel_RadiusFlatnessRLNL_samples20_RLarge50_polestar')
 eps = 0.05;
 nb_bins=15;
 %% go through NL files

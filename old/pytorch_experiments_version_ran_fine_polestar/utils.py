@@ -5,8 +5,6 @@ import numpy as np
 
 import torch
 
-import socket
-
 def is_NaN(value):
     '''
     Checks is value is problematic by checking if the value:
@@ -25,20 +23,14 @@ def make_and_check_dir(path):
     except OSError:
         pass
 
-def report_times(start_time,meta_str=''):
-    '''
-        returns how long has passed since start_time was called.
-
-        start_time is assumed to be some time.time() at some earlier point in the code. Then this function calls its
-        own call to current time and just computes a difference
-    '''
+def report_times(start_time):
     ## REPORT TIMES
     seconds = (time.time() - start_time)
     minutes = seconds/ 60
     hours = minutes/ 60
-    print(f"--- {seconds} {'seconds '+meta_str} ---")
-    print(f"--- {minutes} {'minutes '+meta_str} ---")
-    print(f"--- {hours} {'hours '+meta_str} ---")
+    print("--- %s seconds ---" % seconds )
+    print("--- %s minutes ---" % minutes )
+    print("--- %s hours ---" % hours )
     print('\a')
     return seconds, minutes, hours
 
@@ -65,12 +57,3 @@ def restore_entire_mdl(path_to_restore):
     '''
     the_model = torch.load(path_to_restore)
     return the_model
-
-def get_hostname():
-    hostname = socket.gethostname()
-    if 'polestar' in hostname or hostname=='gpu-16' or hostname=='gpu-17':
-        return 'polestar'
-    elif 'openmind' in hostname:
-        return 'OM'
-    else:
-        return 'Unknown_host'

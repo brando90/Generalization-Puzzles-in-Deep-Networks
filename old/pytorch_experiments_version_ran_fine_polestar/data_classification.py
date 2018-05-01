@@ -2,16 +2,11 @@ import numpy as np
 
 import data_utils
 
-import os
-
 import torch
-from torchvision import datasets, transforms
-#from torch.utils.data import Dataset, DataLoader
 
 from torch.autograd import Variable
 import torchvision
 import torchvision.transforms as transforms
-import torchvision.transforms.functional as TF
 
 from pdb import set_trace as st
 
@@ -73,29 +68,6 @@ def get_2D_classification_data(N_train,N_val,N_test,lb,ub,f_target):
 
 #####
 
-class IndxCifar10(torch.utils.data.Dataset):
-    def __init__(self,transform):
-        self.cifar10 = datasets.CIFAR10(root='./data',download=False,train=True,transform=transform)
-
-    def __getitem__(self, index):
-        data, target = self.cifar10[index]
-        return data, target, index
-
-    def __len__(self):
-        return len(self.cifar10)
-
-def get_standardized_transform():
-    transform = []
-    ''' converts (HxWxC) in range [0,255] to [0.0,1.0] '''
-    to_tensor = transforms.ToTensor()
-    transform.append(to_tensor)
-    ''' Given meeans (M1,...,Mn) and std: (S1,..,Sn) for n channels, input[channel] = (input[channel] - mean[channel]) / std[channel] '''
-    gaussian_normalize = transforms.Normalize( (0.5, 0.5, 0.5), (0.5, 0.5, 0.5) )
-    transform.append(gaussian_normalize)
-    ''' transform them to Tensors of normalized range [-1, 1]. '''
-    transform = transforms.Compose(transform)
-    return transform
-
 class CIFAR10RandomLabels(torchvision.datasets.CIFAR10):
   """CIFAR10 dataset, with support for randomly corrupt labels.
   Params
@@ -127,7 +99,7 @@ class CIFAR10RandomLabels(torchvision.datasets.CIFAR10):
     else:
       self.test_labels = labels
 
-def get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,label_corrupt_prob,shuffle_train=True,suffle_test=False,standardize=False):
+def get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,label_corrupt_prob,standardize=False):
     '''
         The output of torchvision datasets are PILImage images of range [0, 1].
         We transform them to Tensors of (gau)normalized range [-1, 1].
@@ -146,13 +118,13 @@ def get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_wor
     ''' transform them to Tensors of normalized range [-1, 1]. '''
     transform = transforms.Compose(transform)
     ''' train data processor '''
-    #trainset = torchvision.datasets.CIFAR10(root=data_path, train=True,download=True, transform=transform)
-    trainset = CIFAR10RandomLabels(root=data_path, train=True, download=True,transform=transform, num_classes=10,corrupt_prob=label_corrupt_prob)
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size_train,shuffle=shuffle_train, num_workers=num_workers)
+    trainset = torchvision.datasets.CIFAR10(root=data_path, train=True,download=True, transform=transform)
+    #trainset = CIFAR10RandomLabels(root=data_path, train=True, download=True,transform=transform, num_classes=10,corrupt_prob=label_corrupt_prob)
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size_train,shuffle=True, num_workers=num_workers)
     ''' test data processor '''
-    #testset = torchvision.datasets.CIFAR10(root=data_path, train=False,download=True, transform=transform)
-    testset = CIFAR10RandomLabels(root=data_path, train=False, download=True,transform=transform, num_classes=10,corrupt_prob=label_corrupt_prob)
-    testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size_test,shuffle=suffle_test, num_workers=num_workers)
+    testset = torchvision.datasets.CIFAR10(root=data_path, train=False,download=True, transform=transform)
+    #testset = CIFAR10RandomLabels(root=data_path, train=False, download=True,transform=transform, num_classes=10,corrupt_prob=label_corrupt_prob)
+    testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size_test,shuffle=False, num_workers=num_workers)
     ''' classes '''
     classes = ('plane', 'car', 'bird', 'cat','deer', 'dog', 'frog', 'horse', 'ship', 'truck')
     ''' return trainer processors'''
@@ -175,23 +147,3 @@ def get_MNIST_data_processor(data_path,batch_size_train,batch_size_test,num_work
     ''' test data processor '''
     testset = torchvision.datasets.CIFAR10(root=data_path, train=False,download=True, transform=transform)
     testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size_test,shuffle=False, num_workers=num_workers)
-
-#####
-
-class MyData(torch.utils.data.Dataset):
-    def __init__(self,path_train,path_test=None,transform=None):
-        self.transform = transform
-        self.train = np.load(path_train)['X_train']
-        self.test = None
-        if path_test is not None:
-            self.test = np.load(path_test)['X_test']
-
-    def __getitem__(self, index):
-        data, target = self.train[index]
-        if self.transform is not None:
-            data = self.transform(data)
-        #return data, target, index
-        return data, target
-
-    def __len__(self):
-        return len(self.cifar10)

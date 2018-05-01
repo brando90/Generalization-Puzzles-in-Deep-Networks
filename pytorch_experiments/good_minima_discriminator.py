@@ -221,3 +221,7 @@ def get_radius_errors_loss_list_via_interpolation(dir_index, net,r_large,interpo
     return Er_train_loss, Er_train_error, Er_test_loss, Er_test_error, net_r
 
 ##
+
+def get_perturbation():
+
+    return pert

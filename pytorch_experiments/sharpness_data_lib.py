@@ -1,3 +1,10 @@
+#!/usr/bin/env python
+#SBATCH --mem=20000
+#SBATCH --time=1-10:30
+#SBATCH --mail-type=END
+#SBATCH --mail-user=brando90@mit.edu
+#SBATCH --gres=gpu:1
+
 import torch
 from torchvision import datasets, transforms
 from torch.utils.data import Dataset, DataLoader
@@ -16,6 +23,19 @@ from data_classification import IndxCifar10
 
 from pdb import set_trace as st
 
+import argparse
+
+parser = argparse.ArgumentParser(description='Sharpness data Creator Submission script')
+''' Flags '''
+parser.add_argument("-net_name", "--net_name", type=str, default='NL',
+                    help="which net to use")
+#parser.add_argument("-data_label", "--data_label", type=str, default='NL_nolabel',
+#                    help="the label to use to identify experiment in the folder name")
+''' process args '''
+args = parser.parse_args()
+
+##### Debug
+
 def check_images_are_same_index():
     '''
     Checks if the indices in .data_train and how batcher indexes match.
@@ -33,6 +53,8 @@ def check_images_are_same_index():
         break
     ''' compare them '''
     print( np.sum(img1.numpy() == img1_batch.data.numpy()) == img1.numel() )
+
+###### Code
 
 def get_second_largest(scores,max_indices):
     '''
@@ -64,7 +86,7 @@ def get_old_2_new_mapping(sorted_scores):
         old_2_new[i_old] = i_new
     return old_2_new
 
-def save_index_according_to_criterion(path_2_save,dataloader_standardize,dataloader_pixels,net):
+def save_index_according_to_criterion(path_2_save,dataloader_standardize,net):
     '''
         Creates data set to measure sharpness
     '''
@@ -81,7 +103,7 @@ def save_index_according_to_criterion(path_2_save,dataloader_standardize,dataloa
         second_largest_scores, new_label = get_second_largest(scores,max_indices) # M, M float,long
         # create [(i_old,new_label,max_score_old_label)]
         new_elements = [ (indices[i],int(new_label[i]),float(max_scores[i])) for i in range(len(scores)) ]
-        score_list = score_list + new_elements
+        score_list += new_elements
     ''' sort(scores list) = sort([ (i_old,new_label,max_score) ]), based on scores '''
     print('sort score list')
     sorting_criterion = lambda tup: tup[2]
@@ -103,31 +125,36 @@ def save_index_according_to_criterion(path_2_save,dataloader_standardize,dataloa
         new_label = sorted_scores[i_new][1]
         Y_new[i_new] = new_label
     ''' store data '''
-    np.save(path_2_save,X_new,Y_new)
+    np.savez(path_2_save,X_train=X_new,Y_train=Y_new)
 
 def main():
     print('\nmain')
     ''' get data loaders '''
     transform = get_standardized_transform()
     dataset_standardize = IndxCifar10(transform=transform)
-    dataset_pixels = IndxCifar10(transform=transforms.ToTensor())
-    dataloader_pixels = DataLoader(dataset_pixels,batch_size=2**10,shuffle=False,num_workers=10)
+    #dataset_pixels = IndxCifar10(transform=transforms.ToTensor())
+    #dataloader_pixels = DataLoader(dataset_pixels,batch_size=2**10,shuffle=False,num_workers=10)
     dataloader_standardize = DataLoader(dataset_standardize,batch_size=2**10,shuffle=False,num_workers=10)
     ''' load NL '''
-    results_root = './test_runs_flatness'
-    expt_path = 'flatness_22_April_label_corrupt_prob_1.0_exptlabel_GB_15_13_10_154229_BN_RL'
-    net_name = 'net_22_April_sj_10583197_staid_7_seed_37801283806432755'
-    path_2_net = os.path.join(expt_path,net_name)
-    # ''' load RLNL'''
-    # results_root = './test_runs_flatness'
-    # expt_path = 'flatness_22_April_label_corrupt_prob_1.0_exptlabel_GB_15_13_10_154229_BN_RL'
-    # net_name = 'net_22_April_sj_10583197_staid_7_seed_37801283806432755'
-    # path_2_net = os.path.join(expt_path,net_name)
+    net_name = args.net_name
+    results_root = './test_runs_flatness2'
+    if net_name == 'NL':
+        expt_path = 'flatness_27_April_label_corrupt_prob_0.0_exptlabel_GB_24_24_10_2C1FC_momentum_NL_polestar/'
+        full_net_name = 'net_27_April_sj_343_staid_1_seed_56134200848018679'
+        path_to_restore = os.path.join(results_root,expt_path,full_net_name)
+        print(path_to_restore)
+        net = torch.load(path_to_restore)
+    else: #RLNL
+        expt_path = 'flatness_27_April_label_corrupt_prob_0.0_exptlabel_GB_24_24_10_2C1FC_momentum_RLNL_polestar/'
+        full_net_name = 'net_27_April_sj_345_staid_1_seed_57700439347820897'
+        path_to_restore = os.path.join(results_root,expt_path,full_net_name)
+        net = torch.load(path_to_restore)
     ''' create new data set '''
-    folder_path = './data/sharpness_data_{net_name}'
-    filename = f'sdata_{net_name}'
+    folder_path = f'./data/sharpness_data_{net_name}'
+    filename = f'sdata_{net_name}_{full_net_name}'
+    utils.make_and_check_dir(folder_path)
     path_2_save = os.path.join(folder_path, filename)
-    save_index_according_to_criterion(path_2_save,dataloader_standardize,dataloader_pixels,net)
+    save_index_according_to_criterion(path_2_save,dataloader_standardize,net)
 
 if __name__ == '__main__':
     main()
