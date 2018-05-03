@@ -62,7 +62,7 @@ def get_std_of_net(net):
     return std_dict_params
 ####
 
-def get_landscapes_stats_between_nets(net1,net2, interpolations,,device,stats_collector,criterion,error_criterion,trainloader,testloader,iterations):
+def get_landscapes_stats_between_nets(net1,net2, interpolations, device,stats_collector,criterion,error_criterion,trainloader,testloader,iterations):
     '''
         Records the errors for the path by convexly averaging two nets. The goal
         is to be able to estimate the size of the wall between the two different minimums.
