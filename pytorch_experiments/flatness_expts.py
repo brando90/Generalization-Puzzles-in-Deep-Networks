@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 #SBATCH --mem=20000
-#SBATCH --time=1-10:30
+#SBATCH --time=1-12:30
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
-#SBATCH --array=1-4
+#SBATCH --array=1-6
 #SBATCH --gres=gpu:1
 
 """
@@ -46,6 +46,7 @@ from good_minima_discriminator import get_radius_errors_loss_list
 from good_minima_discriminator import get_all_radius_errors_loss_list
 from good_minima_discriminator import get_all_radius_errors_loss_list_interpolate
 from new_training_algorithms import evalaute_mdl_data_set
+from new_training_algorithms import Trainer
 
 from pdb import set_trace as st
 
@@ -91,11 +92,13 @@ parser.add_argument("-net_name", "--net_name", type=str, default='NL',
                     help="Training algorithm to use")
 parser.add_argument("-nb_dirs", "--nb_dirs", type=int, default=100,
                     help="Noise level for perturbation")
+''' other '''
+parser.add_argument('-email','--email',action='store_true',
+                    help='Enable cuda/gpu')
+parser.add_argument("-gpu_id", "--gpu_id", type=int, default=0,
+                    help="Training algorithm to use")
 ''' process args '''
 args = parser.parse_args()
-if not torch.cuda.is_available() and args.enable_cuda:
-    print('Cuda is enabled but the current system does not have cuda')
-    sys.exit()
 sj, satid = 0, 0
 if 'SLURM_ARRAY_TASK_ID' in os.environ and 'SLURM_JOBID' in os.environ:
     satid = int(os.environ['SLURM_ARRAY_TASK_ID'])
@@ -105,9 +108,12 @@ print(f'storing results? = {not args.dont_save_expt_results}')
 
 def main(plot=False):
     hostname = utils.get_hostname()
+    ''' cuda '''
+    use_cuda = torch.cuda.is_available()
+    device = torch.device("cuda" if use_cuda else "cpu")
     ''' '''
     store_net = True
-    other_stats = dict({'sj':sj,'satid':satid})
+    other_stats = dict({'sj':sj,'satid':satid,'hostname':hostname})
     ''' reproducibility setup/params'''
     #num_workers = 2 # how many subprocesses to use for data loading. 0 means that the data will be loaded in the main process.
     githash = subprocess.check_output(["git", "describe", "--always"]).strip()
@@ -118,8 +124,8 @@ def main(plot=False):
     ## SET SEED/determinism
     num_workers = 3
     torch.manual_seed(seed)
-    if args.enable_cuda:
-        torch.backends.cudnn.deterministic=True
+    #if args.enable_cuda:
+    #    torch.backends.cudnn.deterministic=True
     ''' date parameters setup'''
     today_obj = date.today() # contains datetime.date(year, month, day); accessible via .day etc
     day = today_obj.day
@@ -127,10 +133,10 @@ def main(plot=False):
     setup_time = time.time()
     ''' filenames '''
     results_root = './test_runs_flatness2'
-    expt_folder = f'flatness_{month}_label_corrupt_prob_{args.label_corrupt_prob}_exptlabel_{args.exptlabel}_{hostname}'
+    expt_folder = f'flatness_{month}_label_corrupt_prob_{args.label_corrupt_prob}_exptlabel_{args.exptlabel}'
     ## filenames
-    matlab_file_name = f'flatness_{day}_{month}_sj_{sj}_staid_{satid}_seed_{seed}'
-    net_file_name = f'net_{day}_{month}_sj_{sj}_staid_{satid}_seed_{seed}'
+    matlab_file_name = f'flatness_{day}_{month}_sj_{sj}_staid_{satid}_seed_{seed}_{hostname}'
+    net_file_name = f'net_{day}_{month}_sj_{sj}_staid_{satid}_seed_{seed}_{hostname}'
     ## experiment path
     expt_path = os.path.join(results_root,expt_folder)
     utils.make_and_check_dir(expt_path)
@@ -263,6 +269,7 @@ def main(plot=False):
             path_adverserial_data = os.path.join('./data/sharpness_data_RLNL/','sdata_RLNL_net_27_April_sj_345_staid_1_seed_57700439347820897.npz')
         ''' restore nets'''
         net = utils.restore_entire_mdl(path)
+        tr_alg.dont_train(net)
         nets.append(net)
         store_net = False
     else:
@@ -277,15 +284,11 @@ def main(plot=False):
         nets.append(net)
     print(f'nets = {nets}')
     ''' cuda/gpu '''
-    if args.enable_cuda:
-        #set_default_tensor_type
-        for net in nets:
-            net.cuda()
-    else:
-        for net in nets:
-            net.cpu()
+    for net in nets:
+        net.to(device)
     nb_params = nn_mdls.count_nb_params(net)
     ''' get data set '''
+    #st()
     standardize = not args.dont_standardize_data # x - mu / std , [-1,+1]
     trainset,trainloader, testset,testloader, classes_data = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,args.label_corrupt_prob,suffle_test=suffle_test,standardize=standardize)
     #check_order_data(trainloader)
@@ -324,8 +327,10 @@ def main(plot=False):
         #iterations = 4 # the number of iterations to get a sense of test error, smaller faster larger more accurate. Grows as sqrt(n) though.
         iterations = inf
         # We simply have to loop over our data iterator, and feed the inputs to the network and optimize.
-        train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch = tr_alg.train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer,criterion,error_criterion, stats_collector,iterations)
+        trainer = Trainer(trainloader,testloader, optimizer,criterion,error_criterion, stats_collector, device)
+        last_errors = trainer.train_and_track_stats(net, nb_epochs,iterations)
         ''' Test the Network on the test data '''
+        train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch = last_errors
         print(f'train_loss_epoch={train_loss_epoch} \ntrain_error_epoch={train_error_epoch} \ntest_loss_epoch={test_loss_epoch} \ntest_error_epoch={test_error_epoch}')
     elif args.train_alg == 'pert':
         ''' batch sizes '''
@@ -344,9 +349,9 @@ def main(plot=False):
         matlab_file_name = f'noise_{perturbation_magnitudes}_{matlab_file_name}'
         ## TODO collect by perburbing current model X number of times with current perturbation_magnitudes
         use_w_norm2 = args.not_pert_w_norm2
-        train_loss,train_error,test_loss,test_error = get_errors_for_all_perturbations(net,perturbation_magnitudes,use_w_norm2,args.enable_cuda,nb_perturbation_trials,stats_collector,criterion,error_criterion,trainloader,testloader)
+        train_loss,train_error,test_loss,test_error = get_errors_for_all_perturbations(net,perturbation_magnitudes,use_w_norm2,device,nb_perturbation_trials,stats_collector,criterion,error_criterion,trainloader,testloader)
         print(f'noise_level={noise_level},train_loss,train_error,test_loss,test_error={train_loss},{train_error},{test_loss},{test_error}')
-        other_stats = dict({'noise_level':noise_level,'minutes':minutes,'hours':hours,'perturbation_magnitudes':perturbation_magnitudes}, **other_stats)
+        other_stats = dict({'perturbation_magnitudes':perturbation_magnitudes}, **other_stats)
     elif args.train_alg == 'interpolate':
         nb_interpolations = nb_epochs
         enable_cuda = args.enable_cuda
@@ -354,17 +359,6 @@ def main(plot=False):
         interpolations = np.linspace(0,1,nb_interpolations)
         get_landscapes_stats_between_nets(net_nl,net_rl_nl,interpolations, enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader,iterations)
         other_stats = dict({'interpolations':interpolations},**other_stats)
-    elif args.train_alg == 'brando_chiyuan_radius':
-        enable_cuda = args.enable_cuda
-        r_large = 45 ## check if this number is good
-        nb_radius_samples = nb_epochs
-        rs = np.linspace(0,r_large,nb_radius_samples)
-        ''' '''
-        nb_dirs = 3500
-        stats_collector = StatsCollector(net,nb_dirs,nb_epochs)
-        get_all_radius_errors_loss_list(nb_dirs,net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader,iterations)
-        #get_radius_errors_loss_list(net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
-        other_stats = dict({'nb_dirs':nb_dirs,'rs':rs,'nb_radius_samples':nb_radius_samples,'r_large':r_large},**other_stats)
     elif args.train_alg == 'brando_chiyuan_radius_inter':
         ## USE THIS ONE
         enable_cuda = args.enable_cuda
@@ -375,7 +369,6 @@ def main(plot=False):
         nb_dirs = args.nb_dirs
         stats_collector = StatsCollector(net,nb_dirs,nb_epochs)
         get_all_radius_errors_loss_list_interpolate(nb_dirs,net,r_large,interpolations,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader,iterations)
-        #get_radius_errors_loss_list(net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
         other_stats = dict({'nb_dirs':nb_dirs,'interpolations':interpolations,'nb_radius_samples':nb_radius_samples,'r_large':r_large},**other_stats)
     elif args.train_alg == 'sharpness':
         ## load the data set
@@ -384,8 +377,10 @@ def main(plot=False):
         batch_size_train, batch_size_test = batch_size, batch_size
         iterations = inf  # controls how many epochs to stop before returning the data set error
         other_stats = dict({'iterations':iterations},**other_stats)
-
-
+        trainloader = data_class.load_only_train(path_adverserial_data,batch_size_train,True,num_workers)
+        ##
+        pert = torch.FloatTensor()
+        pert = Variable(pert,requires_grad=True)
 
     elif args.train_alg == 'no_train':
         print('NO TRAIN BRANCH')
@@ -412,6 +407,11 @@ def main(plot=False):
     # restored_net = utils.restore_entire_mdl(path)
     # loss_restored,error_restored = tr_alg.evalaute_mdl_data_set(criterion,error_criterion,restored_net,testloader,args.enable_cuda)
     #print(f'\nloss_restored={loss_restored},error_restored={error_restored}\a')
+    ''' send e-mail '''
+    if hostname == 'polestar' or args.email:
+        message = f'SLURM Job_id=MANUAL Name=flatness_expts.py Ended, ' \
+                  f'Total Run time hours:{hours},minutes:{minutes},seconds:{seconds} COMPLETED, ExitCode [0-0]'
+        utils.send_email(message,destination='brando90@mit.edu')
     ''' plot '''
     if sj == 0:
         #TODO

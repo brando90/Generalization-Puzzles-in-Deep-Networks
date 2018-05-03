@@ -3,9 +3,9 @@ clear;clc;clear;clc;
 dot = '/Users/brandomiranda/home_simulation_research/overparametrized_experiments/';
 path = fullfile(dot,'pytorch_experiments/test_runs_flatness2');
 %NL
-path_all_expts_NL = fullfile(path,'flatness_April_label_corrupt_prob_0.0_exptlabel_RadiusFlatnessNL_samples20_RLarge50_polestar')
+path_all_expts_NL = fullfile(path,'flatness_May_label_corrupt_prob_0.0_exptlabel_RadiusFlatnessNL_samples20_RLarge50')
 %RLNL
-path_all_expts_RLNL = fullfile(path,'flatness_April_label_corrupt_prob_0.0_exptlabel_RadiusFlatnessRLNL_samples20_RLarge50_polestar')
+path_all_expts_RLNL = fullfile(path,'flatness_May_label_corrupt_prob_0.0_exptlabel_RadiusFlatnessRLNL_samples20_RLarge50')
 eps = 0.05;
 nb_bins=15;
 %% go through NL files
@@ -52,21 +52,21 @@ for expt_file_name = expt_data_filenames
     load(path_to_data_file)
     rs = double(r_large).*interpolations;
     % get train error radiuses
-    r_train_error_eps_s = gat_all_eps_radiuses(eps,all_train_errors,rs);
+    r_train_error_eps_s = get_all_eps_radiuses(eps,all_train_errors,rs);
     all_train_error_r_eps = [all_train_error_r_eps r_train_error_eps_s];
     % get train loss radiuses
-    r_train_losses_eps_s = gat_all_eps_radiuses(eps,all_train_losses,rs);
+    r_train_losses_eps_s = get_all_eps_radiuses(eps,all_train_losses,rs);
     all_train_losses_r_eps = [all_train_losses_r_eps r_train_losses_eps_s];    
     % get test error radiuses
-    r_test_errors_eps_s = gat_all_eps_radiuses(eps,all_test_errors,rs);
+    r_test_errors_eps_s = get_all_eps_radiuses(eps,all_test_errors,rs);
     all_test_error_r_eps = [all_test_error_r_eps r_test_errors_eps_s];    
     % get test loss radiuses
-    r_test_losses_eps_s = gat_all_eps_radiuses(eps,all_test_losses,rs);
+    r_test_losses_eps_s = get_all_eps_radiuses(eps,all_test_losses,rs);
     all_test_losses_r_eps = [all_test_losses_r_eps r_test_losses_eps_s];    
 end
 end
 %
-function rs_eps = gat_all_eps_radiuses(eps,all_data,rs)
+function rs_eps = get_all_eps_radiuses(eps,all_data,rs)
 % collects the radiuses when all the data jumps by eps closest to the
 % minimum
 [nb_dirs,nb_epochs] = size(all_data);

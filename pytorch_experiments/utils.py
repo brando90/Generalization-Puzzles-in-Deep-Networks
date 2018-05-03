@@ -7,6 +7,12 @@ import torch
 
 import socket
 
+from email.message import EmailMessage
+import smtplib
+import os
+
+from pdb import set_trace as st
+
 def is_NaN(value):
     '''
     Checks is value is problematic by checking if the value:
@@ -68,9 +74,28 @@ def restore_entire_mdl(path_to_restore):
 
 def get_hostname():
     hostname = socket.gethostname()
-    if 'polestar' in hostname or hostname=='gpu-16' or hostname=='gpu-17':
-        return 'polestar'
+    if 'polestar-old' in hostname or hostname=='gpu-16' or hostname=='gpu-17':
+        return 'polestar-old'
     elif 'openmind' in hostname:
         return 'OM'
     else:
-        return 'Unknown_host'
+        return hostname
+####
+
+def send_email(message,destination):
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.starttls()
+    # not a real email account nor password, its all ok!
+    server.login('slurm.miranda@gmail.com', 'dummy1234!@#$')
+
+    ## SLURM Job_id=374_* (374) Name=flatness_expts.py Ended, Run time 10:19:54, COMPLETED, ExitCode [0-0]
+    msg = EmailMessage()
+    msg.set_content(message)
+
+    msg['Subject'] = get_hostname()
+    msg['From'] = 'slurm.miranda@gmail.com'
+    msg['To'] = destination
+    server.send_message(msg)
+
+if __name__ == '__main__':
+    send_email('msg','brando90@mit.edu')

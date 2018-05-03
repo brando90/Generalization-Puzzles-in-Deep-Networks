@@ -5,6 +5,8 @@ import torch.nn.functional as F
 
 import unittest
 
+import copy
+
 from pdb import set_trace as st
 
 def count_nb_params(net):
@@ -272,6 +274,40 @@ class LiaoNet(nn.Module):
         #if self.do_bn:
         #    x = self.bn_fc(x)
         return x
+
+####
+
+class PertNet(nn.Module):
+
+    def __init__(self,net):
+        super(PertNet, self).__init__()
+        self.original_net = net
+        self.net_perturbed = copy.deepcopy(net)
+        self.pert = self.init_pert( copy.deepcopy(net) )
+
+    def init_pert(self):
+        # TODO
+        return pert
+
+    def add_pert(self):
+        '''
+        computes NN(W+pert):
+            net_perturbed.W = net_original.W + net_pert.W
+        :return:
+        '''
+        params_original = self.original_net.named_parameters()
+        params_pert = self.pert.named_parameters()
+        params_pert_net = self.net_perturbed.named_parameters()
+        ''' '''
+        dict_pert = dict(params_pert) # <- net with perturbations!
+        dict_pert_net = dict(params_pert_net) # <- net we are updating
+        for param_name, W in params_original:
+            if param_name in params_pert_net:
+                ## W_pert <- W + pert
+                pert = dict_pert[param_name]
+                dict_pert_net[param_name] = W + pert
+        interpolated_net.load_state_dict(dict_params_interpolated)
+        return interpolated_net
 
 class TestStringMethods(unittest.TestCase):
 

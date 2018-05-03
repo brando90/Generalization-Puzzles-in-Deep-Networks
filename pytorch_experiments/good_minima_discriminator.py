@@ -12,16 +12,16 @@ import nn_models as nn_mdls
 
 from pdb import set_trace as st
 
-def get_errors_for_all_perturbations(net,perturbation_magnitudes,relative,std_dict_params,enable_cuda,nb_perturbation_trials,stats_collector,criterion,error_criterion,trainloader,testloader):
+def get_errors_for_all_perturbations(net,perturbation_magnitudes,device,nb_perturbation_trials,stats_collector,criterion,error_criterion,trainloader,testloader):
     '''
         Evaluate the errors of perturbed models.
     '''
     std_dict_params = get_std_of_net(net)
     for index_perturbation_trial in range(nb_perturbation_trials):
-        train_loss, train_error, test_loss, test_error = perturb_model(net,perturbation_magnitudes,std_dict_params,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader)
+        train_loss, train_error, test_loss, test_error = perturb_model(net,perturbation_magnitudes,std_dict_params,device,stats_collector,criterion,error_criterion,trainloader,testloader)
     return train_loss, train_error, test_loss, test_error #note this is just some random trial
 
-def perturb_model(net,perturbation_magnitudes,std_dict_params,relative,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader):
+def perturb_model(net,perturbation_magnitudes,std_dict_params,relative,device,stats_collector,criterion,error_criterion,trainloader,testloader):
     perturbations = []
     ''' pertub model '''
     params = net.named_parameters()
@@ -36,14 +36,14 @@ def perturb_model(net,perturbation_magnitudes,std_dict_params,relative,enable_cu
         else:
             perturbation = torch.zeros(W.size())
         ''' perturb model '''
-        perturbation = perturbation.cuda() if enable_cuda else perturbation
+        perturbation = perturbation.to(device)
         W.data.copy_(W.data + perturbation)
         ##
         perturbations.append(perturbation.norm(2))
         i+=1
     ''' evalaute model '''
-    train_loss, train_error = evalaute_mdl_data_set(criterion,error_criterion,net,trainloader,enable_cuda)
-    test_loss, test_error = evalaute_mdl_data_set(criterion,error_criterion,net,testloader,enable_cuda)
+    train_loss, train_error = evalaute_mdl_data_set(criterion,error_criterion,net,trainloader,device)
+    test_loss, test_error = evalaute_mdl_data_set(criterion,error_criterion,net,testloader,device)
     ''' record result '''
     stats_collector.append_losses_errors_accs(train_loss, train_error, test_loss, test_error)
     stats_collector.collect_mdl_params_stats(net)
@@ -62,7 +62,7 @@ def get_std_of_net(net):
     return std_dict_params
 ####
 
-def get_landscapes_stats_between_nets(net1,net2, interpolations, enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader,iterations):
+def get_landscapes_stats_between_nets(net1,net2, interpolations,,device,stats_collector,criterion,error_criterion,trainloader,testloader,iterations):
     '''
         Records the errors for the path by convexly averaging two nets. The goal
         is to be able to estimate the size of the wall between the two different minimums.
@@ -75,8 +75,8 @@ def get_landscapes_stats_between_nets(net1,net2, interpolations, enable_cuda,sta
         ''' interpolate nets with current alpha '''
         interpolated_net = convex_interpolate_nets(interpolated_net,net1,net2,alpha)
         ''' evalaute model '''
-        train_loss, train_error = evalaute_mdl_data_set(criterion,error_criterion,interpolated_net,trainloader,enable_cuda,iterations)
-        test_loss, test_error = evalaute_mdl_data_set(criterion,error_criterion,interpolated_net,testloader,enable_cuda,iterations)
+        train_loss, train_error = evalaute_mdl_data_set(criterion,error_criterion,interpolated_net,trainloader,device,iterations)
+        test_loss, test_error = evalaute_mdl_data_set(criterion,error_criterion,interpolated_net,testloader,device,iterations)
         ''' record result '''
         stats_collector.append_losses_errors_accs(train_loss, train_error, test_loss, test_error)
         stats_collector.collect_mdl_params_stats(interpolated_net)
@@ -117,13 +117,13 @@ def weight_diff_btw_nets(net1,net2):
 
 ##
 
-def get_all_radius_errors_loss_list(nb_dirs, net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader,iterations):
+def get_all_radius_errors_loss_list(nb_dirs, net,r_large,rs,device,stats_collector,criterion,error_criterion,trainloader,testloader,iterations):
     '''
     '''
     for dir_index in range(nb_dirs):
-        get_radius_errors_loss_list(dir_index, net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader,iterations)
+        get_radius_errors_loss_list(dir_index, net,r_large,rs,device,stats_collector,criterion,error_criterion,trainloader,testloader,iterations)
 
-def get_radius_errors_loss_list(dir_index, net,r_large,rs,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader,iterations):
+def get_radius_errors_loss_list(dir_index, net,r_large,rs,device,stats_collector,criterion,error_criterion,trainloader,testloader,iterations):
     '''
         Computes I = [..., I(W+r*dx),...]. A sequence of errors/losses
         from a starting minimum W to the final minum net r*dx.
@@ -134,20 +134,19 @@ def get_radius_errors_loss_list(dir_index, net,r_large,rs,enable_cuda,stats_coll
         dx = isotropic unit vector from the net
     '''
     ''' record reference errors/losses '''
-    stats_collector.record_errors_loss_reference_net(criterion,error_criterion,net,trainloader,testloader,enable_cuda)
+    stats_collector.record_errors_loss_reference_net(criterion,error_criterion,net,trainloader,testloader,device)
     ''' get isotropic direction '''
     nb_params = nn_mdls.count_nb_params(net)
     #mvg_sampler = torch.distributions.multivariate_normal.MultivariateNormal(torch.zeros(nb_params), torch.eye(nb_params))
-    #v = mvg_sampler.sample().cuda()
-    v = torch.normal(torch.zeros(nb_params),torch.ones(nb_params)).cuda() if enable_cuda else torch.normal(torch.zeros(nb_params),torch.ones(nb_params))
+    v = torch.normal(torch.zeros(nb_params),torch.ones(nb_params)).to(device)
     dx = v/v.norm(2)
     ''' fill up I list '''
     net_r = copy.deepcopy(net)
     for epoch,r in enumerate(rs):
         ''' compute I(W+r*dx) = I(W+W_all)'''
         net_r = translate_net_by_rdx(net,net_r,r,dx)
-        Er_train_loss, Er_train_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,trainloader,enable_cuda)
-        Er_test_loss, Er_test_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,testloader,enable_cuda)
+        Er_train_loss, Er_train_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,trainloader,device)
+        Er_test_loss, Er_test_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,testloader,device)
         ''' record result '''
         stats_collector.append_losses_errors_accs(Er_train_loss, Er_train_error, Er_test_loss, Er_test_error)
         errors_losses = [Er_train_loss,Er_train_error,Er_test_loss,Er_test_error]
@@ -180,13 +179,13 @@ def produce_new_translated_net(net_start,r,dx):
 
 ##
 
-def get_all_radius_errors_loss_list_interpolate(nb_dirs, net,r_large,interpolations,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader,iterations):
+def get_all_radius_errors_loss_list_interpolate(nb_dirs, net,r_large,interpolations,device,stats_collector,criterion,error_criterion,trainloader,testloader,iterations):
     '''
     '''
     for dir_index in range(nb_dirs):
-        get_radius_errors_loss_list_via_interpolation(dir_index, net,r_large,interpolations,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader,iterations)
+        get_radius_errors_loss_list_via_interpolation(dir_index, net,r_large,interpolations,device,stats_collector,criterion,error_criterion,trainloader,testloader,iterations)
 
-def get_radius_errors_loss_list_via_interpolation(dir_index, net,r_large,interpolations,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader,iterations):
+def get_radius_errors_loss_list_via_interpolation(dir_index, net,r_large,interpolations,device,stats_collector,criterion,error_criterion,trainloader,testloader,iterations):
     '''
         Computes I = [..., I(W+r*dx),...]. A sequence of errors/losses
         from a starting minimum W to the final minum net r*dx.
@@ -197,10 +196,10 @@ def get_radius_errors_loss_list_via_interpolation(dir_index, net,r_large,interpo
         dx = isotropic unit vector from the net
     '''
     ''' record reference errors/losses '''
-    stats_collector.record_errors_loss_reference_net(criterion,error_criterion,net,trainloader,testloader,enable_cuda)
+    stats_collector.record_errors_loss_reference_net(criterion,error_criterion,net,trainloader,testloader,device)
     ''' get isotropic direction '''
     nb_params = nn_mdls.count_nb_params(net)
-    v = torch.normal(torch.zeros(nb_params),torch.ones(nb_params)).cuda() if enable_cuda else torch.normal(torch.zeros(nb_params),torch.ones(nb_params))
+    v = torch.normal(torch.zeros(nb_params),torch.ones(nb_params)).to(device)
     dx = v/v.norm(2)
     ''' fill up I list '''
     net_r = copy.deepcopy(net)
@@ -209,8 +208,8 @@ def get_radius_errors_loss_list_via_interpolation(dir_index, net,r_large,interpo
     for epoch,alpha in enumerate(interpolations):
         ''' compute I(W+r*dx) = I(W+W_all)'''
         net_r = convex_interpolate_nets(net_r,net1=net_end,net2=net,alpha=alpha) # alpha*net_end+(1-alpha)*net
-        Er_train_loss, Er_train_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,trainloader,enable_cuda,iterations)
-        Er_test_loss, Er_test_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,testloader,enable_cuda,iterations)
+        Er_train_loss, Er_train_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,trainloader,device,iterations)
+        Er_test_loss, Er_test_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,testloader,device,iterations)
         ''' record result '''
         stats_collector.append_losses_errors_accs(Er_train_loss, Er_train_error, Er_test_loss, Er_test_error)
         errors_losses = [Er_train_loss,Er_train_error,Er_test_loss,Er_test_error]
@@ -219,9 +218,3 @@ def get_radius_errors_loss_list_via_interpolation(dir_index, net,r_large,interpo
         r = alpha*r_large
         stats_collector.rs.append(r)
     return Er_train_loss, Er_train_error, Er_test_loss, Er_test_error, net_r
-
-##
-
-def get_perturbation():
-
-    return pert

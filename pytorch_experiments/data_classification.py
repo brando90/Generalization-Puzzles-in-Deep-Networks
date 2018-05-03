@@ -195,3 +195,8 @@ class MyData(torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self.cifar10)
+
+def load_only_train(path_train,batch_size_train,shuffle_train,num_workers):
+    trainset = MyData(path_train,transform=get_standardized_transform())
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size_train,shuffle=shuffle_train, num_workers=num_workers)
+    return trainset,trainloader
