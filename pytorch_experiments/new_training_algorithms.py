@@ -25,7 +25,7 @@ def dont_train(net):
 
 class Trainer:
 
-    def __ini__(self,trainloader,testloader, optimizer,criterion,error_criterion, stats_collector, device):
+    def __init__(self,trainloader,testloader, optimizer,criterion,error_criterion, stats_collector, device):
         self.trainloader = trainloader
         self.testloader = testloader
         self.optimizer = optimizer
@@ -50,17 +50,17 @@ class Trainer:
         for epoch in range(nb_epochs):  # loop over the dataset multiple times
             net.train()
             running_train_loss,running_train_error = 0.0, 0.0
-            for i,data_train in enumerate(self.trainloader):
+            for i,(inputs,targets) in enumerate(self.trainloader):
                 ''' zero the parameter gradients '''
                 self.optimizer.zero_grad()
                 ''' train step = forward + backward + optimize '''
-                inputs, labels = inputs.to(self.device), labels.to(self.device)
+                inputs,targets = inputs.to(self.device),targets.to(self.device)
                 outputs = net(inputs)
-                loss = self.criterion(outputs, labels)
+                loss = self.criterion(outputs,targets)
                 loss.backward()
                 self.optimizer.step()
                 running_train_loss += loss.item()
-                running_train_error += self.error_criterion(outputs,labels)
+                running_train_error += self.error_criterion(outputs,targets)
                 ''' print error first iteration'''
                 #if i == 0 and epoch == 0: # print on the first iteration
                 #    print(data_train[0].data)
@@ -79,13 +79,13 @@ def evalaute_mdl_data_set(loss,error,net,dataloader,device,iterations=inf):
     '''
     running_loss,running_error = 0,0
     with torch.no_grad():
-        for i,inputs,labels in enumerate(dataloader):
+        for i,(inputs,targets) in enumerate(dataloader):
             if i >= iterations:
                 break
-            inputs,target = inputs.to(device), target.to(device)
+            inputs,targets = inputs.to(device), targets.to(device)
             outputs = net(inputs)
-            running_loss += loss(outputs,labels).item()
-            running_error += error(outputs,labels).item()
+            running_loss += loss(outputs,targets).item()
+            running_error += error(outputs,targets).item()
     return running_loss/(i+1),running_error/(i+1)
 
 ##
@@ -117,15 +117,15 @@ class LandscapeInspector:
                 ''' zero the parameter gradients '''
                 self.optimizer.zero_grad()
                 ''' sum_i loss( f(x^(i),W+pert), l^(i) ) ''' # TODO
-                inputs, labels = inputs.to(self.device), labels.to(self.device)
+                inputs,targets = inputs.to(self.device),targets.to(self.device)
                 outputs = net(inputs)
-                loss = self.criterion(outputs, labels)
+                loss = self.criterion(outputs,targets)
                 ''' train/update pert '''
                 loss.backward()
                 self.optimizer.step()
                 ''' stats '''
                 running_train_loss += loss.item()
-                running_train_error += self.error_criterion(outputs,labels)
+                running_train_error += self.error_criterion(output,targets)
                 ''' print error first iteration'''
                 #if i == 0 and epoch == 0: # print on the first iteration
                 #    print(data_train[0].data)

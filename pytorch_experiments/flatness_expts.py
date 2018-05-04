@@ -61,8 +61,7 @@ import socket
 
 parser = argparse.ArgumentParser(description='Flatness Submission Script')
 ''' setup params '''
-parser.add_argument('-cuda','--enable-cuda',action='store_true',
-                    help='Enable cuda/gpu')
+#parser.add_argument('-cuda','--enable-cuda',action='store_true',help='Enable cuda/gpu')
 parser.add_argument("-seed", "--seed", type=int, default=None,
                     help="The number of games to simulate")
 parser.add_argument("-exptlabel", "--exptlabel", type=str, default='nolabel',
@@ -111,6 +110,7 @@ def main(plot=False):
     ''' cuda '''
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
+    print(f'device = {device}')
     ''' '''
     store_net = True
     other_stats = dict({'sj':sj,'satid':satid,'hostname':hostname})
@@ -124,8 +124,7 @@ def main(plot=False):
     ## SET SEED/determinism
     num_workers = 3
     torch.manual_seed(seed)
-    #if args.enable_cuda:
-    #    torch.backends.cudnn.deterministic=True
+    #torch.backends.cudnn.deterministic=True
     ''' date parameters setup'''
     today_obj = date.today() # contains datetime.date(year, month, day); accessible via .day etc
     day = today_obj.day
@@ -308,8 +307,8 @@ def main(plot=False):
     ''' stats collector '''
     stats_collector = StatsCollector(net)
     ''' Verify model you got has the right error'''
-    train_loss_epoch, train_error_epoch = evalaute_mdl_data_set(criterion, error_criterion, net, trainloader, True)
-    test_loss_epoch, test_error_epoch = evalaute_mdl_data_set(criterion, error_criterion, net, testloader, True)
+    train_loss_epoch, train_error_epoch = evalaute_mdl_data_set(criterion, error_criterion, net, trainloader, device)
+    test_loss_epoch, test_error_epoch = evalaute_mdl_data_set(criterion, error_criterion, net, testloader, device)
     print(f'train_loss_epoch, train_error_epoch  = {train_loss_epoch}, {train_error_epoch} \n test_loss_epoch, test_error_epoch  = {test_loss_epoch}, {test_error_epoch}')
     ''' Is it over parametrized?'''
     overparametrized = len(trainset)<nb_params # N < W ?
@@ -354,21 +353,20 @@ def main(plot=False):
         other_stats = dict({'perturbation_magnitudes':perturbation_magnitudes}, **other_stats)
     elif args.train_alg == 'interpolate':
         nb_interpolations = nb_epochs
-        enable_cuda = args.enable_cuda
         ##
         interpolations = np.linspace(0,1,nb_interpolations)
-        get_landscapes_stats_between_nets(net_nl,net_rl_nl,interpolations, enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader,iterations)
+        get_landscapes_stats_between_nets(net_nl,net_rl_nl,interpolations, device,stats_collector,criterion,error_criterion,trainloader,testloader,iterations)
         other_stats = dict({'interpolations':interpolations},**other_stats)
     elif args.train_alg == 'brando_chiyuan_radius_inter':
         ## USE THIS ONE
-        enable_cuda = args.enable_cuda
         r_large = 50 ## check if this number is good
         nb_radius_samples = nb_epochs
         interpolations = np.linspace(0,1,nb_radius_samples)
         ''' '''
         nb_dirs = args.nb_dirs
         stats_collector = StatsCollector(net,nb_dirs,nb_epochs)
-        get_all_radius_errors_loss_list_interpolate(nb_dirs,net,r_large,interpolations,enable_cuda,stats_collector,criterion,error_criterion,trainloader,testloader,iterations)
+        st()
+        get_all_radius_errors_loss_list_interpolate(nb_dirs,net,r_large,interpolations,device,stats_collector,criterion,error_criterion,trainloader,testloader,iterations)
         other_stats = dict({'nb_dirs':nb_dirs,'interpolations':interpolations,'nb_radius_samples':nb_radius_samples,'r_large':r_large},**other_stats)
     elif args.train_alg == 'sharpness':
         ## load the data set
@@ -400,12 +398,12 @@ def main(plot=False):
         matlab_path_to_filename = os.path.join(expt_path,matlab_file_name)
         save2matlab.save2matlab_flatness_expt(matlab_path_to_filename, stats_collector,other_stats=other_stats)
     if store_net:
-        print(f' saving final ent mdl! ')
+        print(f' saving final net mdl! ')
         ''' save net model '''
         net_path_to_filename = os.path.join(expt_path,net_file_name)
         utils.save_entire_mdl(net_path_to_filename,net)
     # restored_net = utils.restore_entire_mdl(path)
-    # loss_restored,error_restored = tr_alg.evalaute_mdl_data_set(criterion,error_criterion,restored_net,testloader,args.enable_cuda)
+    # loss_restored,error_restored = tr_alg.evalaute_mdl_data_set(criterion,error_criterion,restored_net,testloader,device)
     #print(f'\nloss_restored={loss_restored},error_restored={error_restored}\a')
     ''' send e-mail '''
     if hostname == 'polestar' or args.email:
