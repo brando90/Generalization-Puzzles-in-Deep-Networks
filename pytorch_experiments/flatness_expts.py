@@ -365,7 +365,6 @@ def main(plot=False):
         ''' '''
         nb_dirs = args.nb_dirs
         stats_collector = StatsCollector(net,nb_dirs,nb_epochs)
-        st()
         get_all_radius_errors_loss_list_interpolate(nb_dirs,net,r_large,interpolations,device,stats_collector,criterion,error_criterion,trainloader,testloader,iterations)
         other_stats = dict({'nb_dirs':nb_dirs,'interpolations':interpolations,'nb_radius_samples':nb_radius_samples,'r_large':r_large},**other_stats)
     elif args.train_alg == 'sharpness':
