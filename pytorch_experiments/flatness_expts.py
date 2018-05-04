@@ -23,6 +23,7 @@ sys.path.append(current_directory)
 
 import numpy as np
 from math import inf
+import copy
 
 import torch
 
@@ -47,6 +48,8 @@ from good_minima_discriminator import get_all_radius_errors_loss_list
 from good_minima_discriminator import get_all_radius_errors_loss_list_interpolate
 from new_training_algorithms import evalaute_mdl_data_set
 from new_training_algorithms import Trainer
+
+from landscape_inspector_flatness_sharpness import LandscapeInspector
 
 from pdb import set_trace as st
 
@@ -91,6 +94,8 @@ parser.add_argument("-net_name", "--net_name", type=str, default='NL',
                     help="Training algorithm to use")
 parser.add_argument("-nb_dirs", "--nb_dirs", type=int, default=100,
                     help="Noise level for perturbation")
+parser.add_argument("-r_large", "--r_large", type=float, default=30,
+                    help="How far to go on the radius to the end from center")
 ''' other '''
 parser.add_argument('-email','--email',action='store_true',
                     help='Enable cuda/gpu')
@@ -138,7 +143,6 @@ def main(plot=False):
     net_file_name = f'net_{day}_{month}_sj_{sj}_staid_{satid}_seed_{seed}_{hostname}'
     ## experiment path
     expt_path = os.path.join(results_root,expt_folder)
-    utils.make_and_check_dir(expt_path)
     ''' experiment params '''
     nb_epochs = 4 if args.epochs is None else args.epochs
     batch_size = 256
@@ -344,7 +348,6 @@ def main(plot=False):
         ''' locate where to save it '''
         folder_name_noise = f'noise_{perturbation_magnitudes[0]}'
         expt_path = os.path.join(expt_path,folder_name_noise)
-        utils.make_and_check_dir(expt_path)
         matlab_file_name = f'noise_{perturbation_magnitudes}_{matlab_file_name}'
         ## TODO collect by perburbing current model X number of times with current perturbation_magnitudes
         use_w_norm2 = args.not_pert_w_norm2
@@ -359,28 +362,35 @@ def main(plot=False):
         other_stats = dict({'interpolations':interpolations},**other_stats)
     elif args.train_alg == 'brando_chiyuan_radius_inter':
         ## USE THIS ONE
-        r_large = 50 ## check if this number is good
+        r_large = args.r_large ## check if this number is good
         nb_radius_samples = nb_epochs
         interpolations = np.linspace(0,1,nb_radius_samples)
+        expt_path = os.path.join(expt_path+f'_RLarge_{r_large}')
         ''' '''
         nb_dirs = args.nb_dirs
         stats_collector = StatsCollector(net,nb_dirs,nb_epochs)
         get_all_radius_errors_loss_list_interpolate(nb_dirs,net,r_large,interpolations,device,stats_collector,criterion,error_criterion,trainloader,testloader,iterations)
         other_stats = dict({'nb_dirs':nb_dirs,'interpolations':interpolations,'nb_radius_samples':nb_radius_samples,'r_large':r_large},**other_stats)
     elif args.train_alg == 'sharpness':
-        ## load the data set
-        suffle_test = True
+        ''' load the data set '''
+        shuffle_train = True
         batch_size = 2**10
         batch_size_train, batch_size_test = batch_size, batch_size
         iterations = inf  # controls how many epochs to stop before returning the data set error
         other_stats = dict({'iterations':iterations},**other_stats)
-        trainloader = data_class.load_only_train(path_adverserial_data,batch_size_train,True,num_workers)
-        ##
-        pert = torch.FloatTensor()
-        pert = Variable(pert,requires_grad=True)
-
+        trainloader = data_class.load_only_train(path_adverserial_data,batch_size_train,shuffle_train,num_workers)
+        ''' '''
+        optimizer = optim.SGD(net_pert.parameters(), lr=lr, momentum=momentum)
+        error_criterion = metrics.error_criterion
+        criterion = torch.nn.CrossEntropyLoss()
+        ''' '''
+        st()
+        sharpness_inspector = LandscapeInspector(trainloader,testloader, optimizer,criterion,error_criterion,
+                                                 stats_collector, device)
     elif args.train_alg == 'no_train':
         print('NO TRAIN BRANCH')
+    print(f'expt_path={expt_path}')
+    utils.make_and_check_dir(expt_path)
     ''' save times '''
     seconds_training, minutes_training, hours_training = utils.report_times(training_time,meta_str='training')
     other_stats = dict({'seconds_training': seconds_training, 'minutes_training': minutes_training, 'hours_training': hours_training}, **other_stats)
@@ -410,10 +420,10 @@ def main(plot=False):
                   f'Total Run time hours:{hours},minutes:{minutes},seconds:{seconds} COMPLETED, ExitCode [0-0]'
         utils.send_email(message,destination='brando90@mit.edu')
     ''' plot '''
-    if sj == 0:
-        #TODO
-        plot_utils.plot_loss_and_accuracies(stats_collector)
-        plt.show()
+    # if sj == 0:
+    #     #TODO
+    #     plot_utils.plot_loss_and_accuracies(stats_collector)
+    #     plt.show()
 
 def check_order_data(trainloader):
     for i,data_train in enumerate(trainloader):
