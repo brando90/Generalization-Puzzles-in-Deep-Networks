@@ -35,6 +35,8 @@ class StatsCollector:
         self.all_train_losses, self.all_val_losses, self.all_test_losses = np.zeros(D), [],  np.zeros(D)
         self.all_train_errors, self.all_val_errors, self.all_test_errors =  np.zeros(D), [],  np.zeros(D)
         self.all_train_accs, self.all_val_accs, self.all_test_accs = np.zeros(D), [],  np.zeros(D)
+        ''' '''
+        self.random_dirs = []
 
     def collect_mdl_params_stats(self,mdl):
         ''' log parameter stats'''
@@ -54,7 +56,7 @@ class StatsCollector:
         self.test_accs.append(1.0-test_error)
 
     def add_perturbation_norms_from_perturbations(self,net,perturbations):
-        for index, W in enumerate(mdl.parameters()):
+        for index, W in enumerate(net.parameters()):
             self.perturbations_norms[index].append( perturbations[index].norm(2) )
 
     def record_errors_loss_reference_net(self,criterion,error_criterion,net,trainloader,testloader,enable_cuda):
@@ -73,6 +75,7 @@ class StatsCollector:
         self.all_test_accs[dir_index,epoch] = 1.0 - Er_test_error
 
     def get_stats_dict(self):
+        ## TODO: loop through fields?
         stats = NamedDict(
             train_losses=self.train_losses,val_losses=self.val_losses,test_losses=self.test_losses,
             train_errors=self.train_errors,val_errors=self.val_errors,test_errors=self.test_errors,
@@ -86,6 +89,6 @@ class StatsCollector:
             all_train_losses=self.all_train_losses,all_val_losses=self.all_val_losses,all_test_losses=self.all_test_losses,
             all_train_errors=self.all_train_errors,all_val_errors=self.all_val_errors,all_test_errors=self.all_test_errors,
             all_train_accs=self.all_train_accs,all_val_accs=self.all_val_accs,all_test_accs=self.all_test_accs,
-            rs=self.rs
+            rs=self.rs,random_dirs=self.random_dirs
         )
         return stats

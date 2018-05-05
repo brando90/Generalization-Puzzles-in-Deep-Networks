@@ -48,6 +48,7 @@ from good_minima_discriminator import get_all_radius_errors_loss_list
 from good_minima_discriminator import get_all_radius_errors_loss_list_interpolate
 from new_training_algorithms import evalaute_mdl_data_set
 from new_training_algorithms import Trainer
+from new_training_algorithms import dont_train
 
 from landscape_inspector_flatness_sharpness import LandscapeInspector
 
@@ -379,6 +380,9 @@ def main(plot=False):
         iterations = inf  # controls how many epochs to stop before returning the data set error
         other_stats = dict({'iterations':iterations},**other_stats)
         trainloader = data_class.load_only_train(path_adverserial_data,batch_size_train,shuffle_train,num_workers)
+        ''' three musketeers '''
+        net_original = dont_train(net)
+        net_pert = copy.deepcopy(net)
         ''' '''
         optimizer = optim.SGD(net_pert.parameters(), lr=lr, momentum=momentum)
         error_criterion = metrics.error_criterion

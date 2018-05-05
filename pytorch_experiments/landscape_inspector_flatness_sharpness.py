@@ -1,0 +1,128 @@
+import torch
+
+from math import inf
+
+import copy
+
+import numpy as np
+
+from stats_collector import StatsCollector
+
+from new_training_algorithms import dont_train
+from new_training_algorithms import evalaute_mdl_data_set
+
+class LandscapeInspector:
+
+    def __init__(self,net,net_pert, nb_epochs,iterations, trainloader,testloader, optimizer,criterion,error_criterion, device, lambdas,save_all_learning_curves=False,save_all_perts=False):
+        '''
+        :return:
+        '''
+        self.device = device
+        ''' data sets '''
+        self.trainloader = trainloader
+        self.testloader = testloader
+        ''' optimzier & criterions '''
+        self.nb_epochs = nb_epochs
+        self.iterations = iterations
+        self.optimizer = optimizer
+        self.criterion = criterion
+        self.error_criterion = error_criterion
+        ''' three musketeers '''
+        self.net_original = dont_train(net)
+        self.net_place_holder = copy.deepcopy(net)
+        self.net_pert = net_pert
+        ''' lanscape stats '''
+        self.lambdas = lambdas
+        self.eps = []
+        self.pert_norms = []
+        self.save_all_perts = save_all_perts
+        if self.save_all_perts:
+            #self.perts = [] # TODO: saving lots of models
+            print('Not implemented')
+        ''' save all learning stats for each perturbation '''
+        self.save_all_learning_curves = save_all_learning_curves
+        if self.save_all_learning_curves:
+            # map [lambda/pert] -> stats collector
+            self.stats_collector = StatsCollector(net,trials=len(lambdas),epochs=self.nb_epochs+1)
+
+    def _record_sharpness(self,lambda_eps,lambda_index):
+        ''' Add stats before training '''
+        train_loss_epoch, train_error_epoch = evalaute_mdl_data_set(self.criterion,self.error_criterion,self.net_original,self.trainloader,self.device,self.iterations)
+        self.save_current_stats(0,lambda_eps,lambda_index, train_loss_epoch,train_error_epoch)
+        print( f'[-1, -1], (train_loss: {train_loss_epoch}, train error: {train_error_epoch}) , (test loss: {test_loss_epoch}, test error: {test_error_epoch})')
+        ''' Start training '''
+        for epoch in range(self.nb_epochs):  # loop over the dataset multiple times
+            running_train_loss,running_train_error = 0.0, 0.0
+            for i,(inputs,targets) in enumerate(self.trainloader):
+                inputs,targets = inputs.to(self.device),targets.to(self.device)
+                ''' zero the parameter gradients '''
+                self.optimizer.zero_grad()
+                ''' net_place_holder = net_original + net_pert , net(W+p) '''
+                self.net_place_holder = self.add_PertNet_OriginalNet()
+                ''' sum_i Loss(net(W+p),l_i)'''
+                outputs = self.net_place_holder(inputs)
+                loss = self.criterion(outputs,targets)
+                loss = loss + self.lamdas[lambda_index]*self.get_pert_norm(l=2)
+                ''' train/update pert '''
+                loss.backward()
+                self.optimizer.step()
+                ''' stats '''
+                running_train_loss += loss.item()
+                running_train_error += self.error_criterion(outputs,targets)
+                ''' print error first iteration'''
+                #if i == 0 and epoch == 0: # print on the first iteration
+                #    print(data_train[0].data)
+            ''' End of Epoch: collect stats'''
+            train_loss_epoch, train_error_epoch = running_train_loss/(i+1), running_train_error/(i+1)
+            self.save_current_stats(epoch,lambda_index, train_loss_epoch,train_error_epoch)
+            print(f'[{epoch}, {i+1}], (train_loss: {train_loss_epoch}, train error: {train_error_epoch}) , (test loss: {test_loss_epoch}, test error: {test_error_epoch})')
+        return train_loss_epoch, train_error_epoch
+
+    def do_sharpness_experiment(self):
+        '''
+        Go through the lambda's
+
+        :return:
+        '''
+        for lambda_eps in self.lambdas:
+            ''' get sharpness for current lambda '''
+            loss_lambda, eps_lambda = self._record_sharpness(lambda_eps)
+            self.eps.append(eps_lambda)
+            ''' record perturbation size '''
+            pert_norm = self.get_pert_norm()
+            self.pert_norms.append(pert_norm)
+
+    def get_pert_norm(self,l=2):
+        '''
+        get l norm of the perturabation
+        '''
+        nb_param_groups = len( list(self.net_pert.parameters()) )
+        w_norms = [[] for i in range(nb_param_groups)]
+        for index, W in enumerate(self.net_pert.parameters()):
+            w_norms[index].append( W.norm(l).item() )
+        return sum( [w_norm.item() for w_norm in w_norms] )
+
+    def save_current_stats(self,epoch,lambda_index, train_loss_epoch,train_error_epoch):
+        '''
+        saves the current stats of the error of the adverserial perturbation on the weights.
+        '''
+        if self.save_all_learning_curves:
+            errors_losses=(train_loss_epoch,train_error_epoch,-1,-1)
+            self.stats_collector.append_all_losses_errors_accs(lambda_index,epoch,errors_losses)
+
+    def add_PertNet_OriginalNet(self,w1=1,w2=1):
+        '''
+            Convex interpolation of two nets w1*W_l + w2*W_l.
+        '''
+        ''' '''
+        params_pert = self.net_pert.named_parameters()
+        dict_params_place_holder = dict( self.net_place_holder.named_parameters() )
+        for name,param_pert in params_pert:
+            if name in dict_params_place_holder:
+                param_original = getattr(self.net_pert, name)
+                delattr(self.net_place_holder,name)
+                setattr(self.net_place_holder, name, w1*param_pert + w2*param_original)
+        return self.net_place_holder
+
+if __name__ == '__main__':
+    print('main')
