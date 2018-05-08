@@ -17,7 +17,6 @@ import numpy as np
 
 import utils
 import data_classification as data_class
-from new_training_algorithms import extract_data
 from data_classification import get_standardized_transform
 from data_classification import IndxCifar10
 
@@ -31,6 +30,9 @@ parser.add_argument("-net_name", "--net_name", type=str, default='NL',
                     help="which net to use")
 #parser.add_argument("-data_label", "--data_label", type=str, default='NL_nolabel',
 #                    help="the label to use to identify experiment in the folder name")
+
+# python sharpness_data_lib.py -net NL
+# python sharpness_data_lib.py -net RLNL
 ''' process args '''
 args = parser.parse_args()
 
@@ -41,14 +43,14 @@ def check_images_are_same_index():
     Checks if the indices in .data_train and how batcher indexes match.
     :return:
     '''
-    enable_cuda=False
+    device = torch.device("cuda" if use_cuda else "cpu")
     transform = get_standardized_transform()
     dataset_standardize = IndxCifar10(transform=transform)
     dataloader_standardize = DataLoader(dataset_standardize,batch_size=2**10,shuffle=False,num_workers=10)
     cifar10 = dataloader_standardize.dataset.cifar10.train_data
     img1 = transform(cifar10[0])
     for i, (inputs, labels, indices) in enumerate(dataloader_standardize):
-        inputs, labels = extract_data(enable_cuda, (inputs, labels), wrap_in_variable=True)
+        inputs, labels = inputs.to(device), labels.to(device)
         img1_batch = inputs[0]
         break
     ''' compare them '''
@@ -65,7 +67,9 @@ def get_second_largest(scores,max_indices):
     :return:
     '''
     ## delete max by replacing it by -infinity
-    scores[:,max_indices] = -math.inf
+    #scores[:,max_indices] = -math.inf
+    for k,i in enumerate(max_indices):
+        scores[k,i] = 0
     ## now get new max = 2nd largest
     second_largest_scores, max_indices = torch.max(scores,1)
     return second_largest_scores, max_indices
@@ -86,23 +90,22 @@ def get_old_2_new_mapping(sorted_scores):
         old_2_new[i_old] = i_new
     return old_2_new
 
-def save_index_according_to_criterion(path_2_save,dataloader_standardize,net):
+def save_index_according_to_criterion(path_2_save,dataloader_standardize,net, device):
     '''
         Creates data set to measure sharpness
     '''
     ''' produce list of scores score_list = [(i,new_labels,score)] '''
     print('produce score list')
     net.eval()
-    enable_cuda = True
     score_list = []
     for i,(inputs,labels,indices) in enumerate(dataloader_standardize):
-        inputs,labels = extract_data(enable_cuda,(inputs,labels),wrap_in_variable=True)
+        inputs,labels = inputs.to(device),labels.to(device)
         scores = net(inputs) # M x 10 Float cuda vector
         # get max scores (to later sort original idicies) and get new labels for the data set
         max_scores, max_indices = torch.max(scores,1) # M, M long,float (note max_indices are the labels predicted by net)
         second_largest_scores, new_label = get_second_largest(scores,max_indices) # M, M float,long
         # create [(i_old,new_label,max_score_old_label)]
-        new_elements = [ (indices[i],int(new_label[i]),float(max_scores[i])) for i in range(len(scores)) ]
+        new_elements = [ (int(indices[i]),int(new_label[i]),float(max_scores[i])) for i in range(len(scores)) ]
         score_list += new_elements
     ''' sort(scores list) = sort([ (i_old,new_label,max_score) ]), based on scores '''
     print('sort score list')
@@ -114,9 +117,10 @@ def save_index_according_to_criterion(path_2_save,dataloader_standardize,net):
     ''' produce new dataset '''
     print('about to produce dataset')
     cifar10 = dataloader_standardize.dataset.cifar10.train_data
-    X_new = np.zeros((500000,32,32,3))
-    Y_new = np.zeros(500000)
-    for i_old in range(cifar10.shape[0]):
+    N = cifar10.shape[0]
+    X_new = np.zeros((N,32,32,3))
+    Y_new = np.zeros(N).astype('int')
+    for i_old in range(N):
         data = cifar10[i_old]
         ## get location of data
         i_new = old_2_new[i_old]
@@ -129,6 +133,9 @@ def save_index_according_to_criterion(path_2_save,dataloader_standardize,net):
 
 def main():
     print('\nmain')
+    use_cuda = torch.cuda.is_available()
+    device = torch.device("cuda" if use_cuda else "cpu")
+    print(f'device={device}')
     ''' get data loaders '''
     transform = get_standardized_transform()
     dataset_standardize = IndxCifar10(transform=transform)
@@ -154,7 +161,7 @@ def main():
     filename = f'sdata_{net_name}_{full_net_name}'
     utils.make_and_check_dir(folder_path)
     path_2_save = os.path.join(folder_path, filename)
-    save_index_according_to_criterion(path_2_save,dataloader_standardize,net)
+    save_index_according_to_criterion(path_2_save,dataloader_standardize,net, device)
 
 if __name__ == '__main__':
     main()

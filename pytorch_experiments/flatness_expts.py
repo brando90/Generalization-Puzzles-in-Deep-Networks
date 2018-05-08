@@ -262,6 +262,7 @@ def main(plot=False):
         nets.append(net)
         store_net = False
     elif mdl == 'sharpness':
+        suffle_test=False #doesn't matter
         ''' load net '''
         if args.net_name == 'NL':
             #path = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_BoixNet_polestar_300_stand_natural_labels/net_28_March_206')
@@ -273,7 +274,7 @@ def main(plot=False):
             path_adverserial_data = os.path.join('./data/sharpness_data_RLNL/','sdata_RLNL_net_27_April_sj_345_staid_1_seed_57700439347820897.npz')
         ''' restore nets'''
         net = utils.restore_entire_mdl(path)
-        tr_alg.dont_train(net)
+        net = torch.load(path)
         nets.append(net)
         store_net = False
     else:
@@ -284,7 +285,8 @@ def main(plot=False):
         # args.net_path = 'flatness_27_March_label_corrupt_prob_0_exptlabel_BoixNet_stand_600_OM/net_27_Match_64'
         path_to_mdl = args.mdl
         path = os.path.join(results_root,path_to_mdl)
-        net = utils.restore_entire_mdl(path)
+        # net = utils.restore_entire_mdl(path)
+        net = torch.load(path)
         nets.append(net)
     print(f'nets = {nets}')
     ''' cuda/gpu '''
@@ -362,7 +364,6 @@ def main(plot=False):
         get_landscapes_stats_between_nets(net_nl,net_rl_nl,interpolations, device,stats_collector,criterion,error_criterion,trainloader,testloader,iterations)
         other_stats = dict({'interpolations':interpolations},**other_stats)
     elif args.train_alg == 'brando_chiyuan_radius_inter':
-        ## USE THIS ONE
         r_large = args.r_large ## check if this number is good
         nb_radius_samples = nb_epochs
         interpolations = np.linspace(0,1,nb_radius_samples)
@@ -374,23 +375,31 @@ def main(plot=False):
         other_stats = dict({'nb_dirs':nb_dirs,'interpolations':interpolations,'nb_radius_samples':nb_radius_samples,'r_large':r_large},**other_stats)
     elif args.train_alg == 'sharpness':
         ''' load the data set '''
+        print('About to load the data set')
         shuffle_train = True
         batch_size = 2**10
         batch_size_train, batch_size_test = batch_size, batch_size
         iterations = inf  # controls how many epochs to stop before returning the data set error
         other_stats = dict({'iterations':iterations},**other_stats)
-        trainloader = data_class.load_only_train(path_adverserial_data,batch_size_train,shuffle_train,num_workers)
+        trainset,trainloader = data_class.load_only_train(path_adverserial_data,batch_size_train,shuffle_train,num_workers)
         ''' three musketeers '''
-        net_original = dont_train(net)
+        print('Preparing the three musketeers')
         net_pert = copy.deepcopy(net)
-        ''' '''
+        net_original = dont_train(net)
+        print('Musketeers are prepared')
+        ''' optimizer + criterion stuff '''
         optimizer = optim.SGD(net_pert.parameters(), lr=lr, momentum=momentum)
         error_criterion = metrics.error_criterion
         criterion = torch.nn.CrossEntropyLoss()
-        ''' '''
-        st()
-        sharpness_inspector = LandscapeInspector(trainloader,testloader, optimizer,criterion,error_criterion,
-                                                 stats_collector, device)
+        ''' Landscape Inspector '''
+        save_all_learning_curves = True
+        save_all_perts = False
+        nb_lambdas = 2
+        lambdas = np.linspace(0.1,10,nb_lambdas)
+        print('Do Sharpness expt!')
+        sharpness_inspector = LandscapeInspector(net_original,net_pert, nb_epochs,iterations, trainloader,testloader, optimizer,
+            criterion,error_criterion, device, lambdas,save_all_learning_curves=save_all_learning_curves,save_all_perts=save_all_perts)
+        sharpness_inspector.do_sharpness_experiment()
     elif args.train_alg == 'no_train':
         print('NO TRAIN BRANCH')
     print(f'expt_path={expt_path}')

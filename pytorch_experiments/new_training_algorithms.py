@@ -22,6 +22,7 @@ def dont_train(net):
     '''
     for param in net.parameters():
         param.requires_grad = False
+    return net
 
 def evalaute_mdl_data_set(loss,error,net,dataloader,device,iterations=inf):
     '''
@@ -29,6 +30,8 @@ def evalaute_mdl_data_set(loss,error,net,dataloader,device,iterations=inf):
     '''
     running_loss,running_error = 0,0
     with torch.no_grad():
+        #st()
+        #for i,(samples) in enumerate(dataloader):
         for i,(inputs,targets) in enumerate(dataloader):
             if i >= iterations:
                 break

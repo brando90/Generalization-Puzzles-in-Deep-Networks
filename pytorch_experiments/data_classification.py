@@ -85,15 +85,16 @@ class IndxCifar10(torch.utils.data.Dataset):
         return len(self.cifar10)
 
 def get_standardized_transform():
-    transform = []
+    '''
+    transform is to tensor follwed by x-mu/sigma
+    '''
     ''' converts (HxWxC) in range [0,255] to [0.0,1.0] '''
     to_tensor = transforms.ToTensor()
-    transform.append(to_tensor)
     ''' Given meeans (M1,...,Mn) and std: (S1,..,Sn) for n channels, input[channel] = (input[channel] - mean[channel]) / std[channel] '''
     gaussian_normalize = transforms.Normalize( (0.5, 0.5, 0.5), (0.5, 0.5, 0.5) )
-    transform.append(gaussian_normalize)
     ''' transform them to Tensors of normalized range [-1, 1]. '''
-    transform = transforms.Compose(transform)
+    #transform = transforms.Compose([to_tensor,gaussian_normalize])
+    transform = transforms.Compose([to_tensor])
     return transform
 
 class CIFAR10RandomLabels(torchvision.datasets.CIFAR10):
@@ -179,22 +180,29 @@ def get_MNIST_data_processor(data_path,batch_size_train,batch_size_test,num_work
 #####
 
 class MyData(torch.utils.data.Dataset):
-    def __init__(self,path_train,path_test=None,transform=None):
+    def __init__(self,path_train,path_test=None,transform=None,dtype='float32'):
         self.transform = transform
-        self.train = np.load(path_train)['X_train']
+        ## train
+        np_train_data = np.load(path_train)
+        self.X_train = np_train_data['X_train'].astype(dtype)
+        self.Y_train = np_train_data['Y_train'].astype('int')
+        ## test
         self.test = None
         if path_test is not None:
-            self.test = np.load(path_test)['X_test']
+            np_train_data = np.load(path_train)
+            self.X_train = np_train_data['X_test'].astype(dtype)
+            self.Y_train = np_train_data['Y_test']
 
     def __getitem__(self, index):
-        data, target = self.train[index]
+        data = self.X_train[index]
+        target = self.Y_train[index]
         if self.transform is not None:
             data = self.transform(data)
+        return data,target
         #return data, target, index
-        return data, target
 
     def __len__(self):
-        return len(self.cifar10)
+        return len(self.X_train)
 
 def load_only_train(path_train,batch_size_train,shuffle_train,num_workers):
     trainset = MyData(path_train,transform=get_standardized_transform())
