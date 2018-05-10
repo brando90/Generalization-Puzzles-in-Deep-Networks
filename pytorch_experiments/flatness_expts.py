@@ -273,7 +273,6 @@ def main(plot=False):
             path = os.path.join(results_root,'flatness_27_April_label_corrupt_prob_0.0_exptlabel_GB_24_24_10_2C1FC_momentum_RLNL_polestar/net_27_April_sj_345_staid_1_seed_57700439347820897')
             path_adverserial_data = os.path.join('./data/sharpness_data_RLNL/','sdata_RLNL_net_27_April_sj_345_staid_1_seed_57700439347820897.npz')
         ''' restore nets'''
-        net = utils.restore_entire_mdl(path)
         net = torch.load(path)
         nets.append(net)
         store_net = False
@@ -377,24 +376,30 @@ def main(plot=False):
         ''' load the data set '''
         print('About to load the data set')
         shuffle_train = True
-        batch_size = 2**10
+        #batch_size = 2**10
+        batch_size = 2**5
         batch_size_train, batch_size_test = batch_size, batch_size
         iterations = inf  # controls how many epochs to stop before returning the data set error
-        other_stats = dict({'iterations':iterations},**other_stats)
-        trainset,trainloader = data_class.load_only_train(path_adverserial_data,batch_size_train,shuffle_train,num_workers)
+        eps = 0.05
+        other_stats = dict({'iterations':iterations,'eps':eps},**other_stats)
+        trainset,trainloader = data_class.load_only_train(path_adverserial_data,eps,batch_size_train,shuffle_train,num_workers)
         ''' three musketeers '''
         print('Preparing the three musketeers')
         net_pert = copy.deepcopy(net)
+        net_pert.reset_parameters()
         net_original = dont_train(net)
         print('Musketeers are prepared')
         ''' optimizer + criterion stuff '''
         optimizer = optim.SGD(net_pert.parameters(), lr=lr, momentum=momentum)
+        #optimizer = optim.Adam(net_pert.parameters(), lr=lr)
         error_criterion = metrics.error_criterion
         criterion = torch.nn.CrossEntropyLoss()
+        #criterion = torch.nn.MultiMarginLoss()
+        #criterion = torch.nn.MultiLabelMarginLoss()
         ''' Landscape Inspector '''
         save_all_learning_curves = True
         save_all_perts = False
-        nb_lambdas = 2
+        nb_lambdas = 1
         lambdas = np.linspace(0.1,10,nb_lambdas)
         print('Do Sharpness expt!')
         sharpness_inspector = LandscapeInspector(net_original,net_pert, nb_epochs,iterations, trainloader,testloader, optimizer,

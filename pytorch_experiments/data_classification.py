@@ -180,18 +180,21 @@ def get_MNIST_data_processor(data_path,batch_size_train,batch_size_test,num_work
 #####
 
 class MyData(torch.utils.data.Dataset):
-    def __init__(self,path_train,path_test=None,transform=None,dtype='float32'):
+    def __init__(self,path_train,eps=1,path_test=None,transform=None,dtype='float32'):
         self.transform = transform
         ## train
-        np_train_data = np.load(path_train)
+        np_train_data = np.load(path_train) # sorted according to smallest to largest
         self.X_train = np_train_data['X_train'].astype(dtype)
+        Neps = int(self.X_train.shape[0]*eps)
         self.Y_train = np_train_data['Y_train'].astype('int')
+        self.X_train = self.X_train[0:Neps,:,:,:]
+        self.Y_train = self.Y_train[0:Neps]
         ## test
-        self.test = None
-        if path_test is not None:
-            np_train_data = np.load(path_train)
-            self.X_train = np_train_data['X_test'].astype(dtype)
-            self.Y_train = np_train_data['Y_test']
+        # self.test = None
+        # if path_test is not None:
+        #     np_train_data = np.load(path_train)
+        #     self.X_train = np_train_data['X_test'].astype(dtype)
+        #     self.Y_train = np_train_data['Y_test']
 
     def __getitem__(self, index):
         data = self.X_train[index]
@@ -204,7 +207,10 @@ class MyData(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.X_train)
 
-def load_only_train(path_train,batch_size_train,shuffle_train,num_workers):
-    trainset = MyData(path_train,transform=get_standardized_transform())
+def load_only_train(path_train,eps,batch_size_train,shuffle_train,num_workers):
+    '''
+        Loads the train data that was made from the bottom lowest scores N*eps.
+    '''
+    trainset = MyData(path_train,eps=eps,transform=get_standardized_transform())
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size_train,shuffle=shuffle_train, num_workers=num_workers)
     return trainset,trainloader
