@@ -221,3 +221,70 @@ def get_radius_errors_loss_list_via_interpolation(dir_index, net,r_large,interpo
     return Er_train_loss, Er_train_error, Er_test_loss, Er_test_error, net_r
 
 ##
+
+def approx_equals(diff,eps,precision=10**-7):
+    '''
+    Returns True if its within precision
+    '''
+    return abs(abs(diff)-eps) < precision
+
+class RandLandscapeInspector:
+
+    def __init__(self,epsilon,net,r_initial,device,criterion,error_criterion,trainloader,testloader,iterations):
+        '''
+        '''
+        self.epsilon = epsilon
+        self.net = net
+        self.r_initial = r_initial
+        ''' '''
+        self.device = device
+        #self.stats_collector = stats_collector
+        ''' '''
+        self.criterion = criterion
+        self.error_criterion = error_criterion
+        self.trainloader = trainloader
+        self.testloader = testloader
+        self.iterations = iterations
+        ''' '''
+        self.flatness_radii = []
+
+    def get_faltness_radii_for_isotropic_directions(self,nb_dirs):
+        '''
+
+        note: we could map dict(direction->radius) if we wanted, perhaps for debugging
+        '''
+        for dir_index in range(nb_dirs):
+            r = self.get_random_faltness_radius()
+            print(f'r = {r}')
+            self.flatness_radii.append(r)
+        st()
+
+    def get_random_faltness_radius(self):
+        '''
+            The goal of this is for the easy of computation of the epsilon radius of
+            a network which is defined as follows:
+                r(dx,eps,W) = sup{r \in R : |I(W) - I(W+r*dx)|<=eps}
+            W_all = r*dx
+            dx = isotropic unit vector from the net
+        '''
+        ''' record reference errors/losses '''
+        #stats_collector.record_errors_loss_reference_net(criterion,error_criterion,net,trainloader,testloader,device)
+        ''' get isotropic direction '''
+        nb_params = nn_mdls.count_nb_params(self.net)
+        v = torch.normal(torch.zeros(nb_params),torch.ones(nb_params)).to(self.device)
+        dx = v/v.norm(2)
+        ''' fill up I list '''
+        r = self.r_initial
+        Loss_minima,Error_minima = evalaute_mdl_data_set(self.criterion,self.error_criterion,self.net,self.trainloader,self.device,self.iterations)
+        while True:
+            net_rdx = produce_new_translated_net(self.net,r,dx)
+            Loss_rdx,Error_rdx = evalaute_mdl_data_set(self.criterion,self.error_criterion,net_rdx,self.trainloader,self.device,self.iterations)
+            diff = Error_rdx - Error_minima
+            ''' check if we reached epsilon jump '''
+            if approx_equals(diff,self.epsilon,precision=10**-7): ## 10^-4.5 for half machine precision
+                ''' compute I(W+r*dx) = I(W+W_all)'''
+                return r
+            elif diff > self.epsilon: # I(w+rdx) - I(W) > eps, r is too large
+                r+=r/2
+            else: # I(w+rdx) - I(W) < eps, r is too small
+                r*=1.5

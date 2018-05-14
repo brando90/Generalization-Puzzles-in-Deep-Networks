@@ -24,6 +24,14 @@ def dont_train(net):
         param.requires_grad = False
     return net
 
+def initialize_to_zero(net):
+    '''
+    sets weights of net to zero.
+    '''
+    for param in net.parameters():
+        #st()
+        param.zero_()
+
 def evalaute_mdl_data_set(loss,error,net,dataloader,device,iterations=inf):
     '''
     Evaluate the error of the model under some loss and error with a specific data set.

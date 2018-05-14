@@ -32,7 +32,7 @@ class LandscapeInspector:
         ''' three musketeers '''
         #self.net_original = dont_train(net_original)
         self.net_original = net_original
-        self.net_place_holder = copy.deepcopy(net_original)
+        self.net_place_holder = copy.deepcopy(net_pert)
         self.net_pert = net_pert
         ''' lanscape stats '''
         self.lambdas = lambdas
@@ -46,7 +46,7 @@ class LandscapeInspector:
         self.save_all_learning_curves = save_all_learning_curves
         if self.save_all_learning_curves:
             # map [lambda/pert] -> stats collector
-            self.stats_collector = StatsCollector(self.net_original,trials=len(lambdas),epochs=self.nb_epochs+1)
+            self.stats_collector = StatsCollector(self.net_pert,trials=len(lambdas),epochs=self.nb_epochs+1)
 
     def do_sharpness_experiment(self):
         '''
@@ -63,15 +63,17 @@ class LandscapeInspector:
             self.pert_norms.append(pert_norm)
 
     def _record_sharpness(self,lambda_index):
+        lambda_e = float(self.lambdas[lambda_index])
         ''' Add stats before training '''
-        train_loss_epoch, train_error_epoch = evalaute_mdl_data_set(self.criterion,self.error_criterion,self.net_original,self.trainloader,self.device,self.iterations)
+        train_loss_epoch, train_error_epoch = evalaute_mdl_data_set(self.criterion,self.error_criterion,self.net_pert,self.trainloader,self.device,self.iterations)
         self.save_current_stats(0,lambda_index, train_loss_epoch,train_error_epoch)
-        print( f'[-1, -1], (train_loss: {train_loss_epoch}, train error: {train_error_epoch})')
+        print(f'[{-1}, {-1}], (lambda={self.lambdas[lambda_index]}),(train_loss: {train_loss_epoch}, train error: {train_error_epoch}, adverserial objective: {None}, pert_W_norm(l=2): {self.get_pert_norm(l=2)})')
+        st()
         ''' Start training '''
         for epoch in range(self.nb_epochs):  # loop over the dataset multiple times
-            self.net_original.eval()
-            self.net_place_holder.eval()
             self.net_pert.train()
+            self.net_place_holder.train()
+            ''' do Epoch '''
             running_train_loss,running_train_error = 0.0, 0.0
             for i,(inputs,targets) in enumerate(self.trainloader):
                 inputs,targets = inputs.to(self.device),targets.to(self.device)
@@ -79,15 +81,21 @@ class LandscapeInspector:
                 self.optimizer.zero_grad()
                 ''' net_place_holder = net_original + net_pert , net(W+p) '''
                 self.net_place_holder = self.combine_nets(net_train=self.net_pert,net_no_train=self.net_original,net_place_holder=self.net_place_holder)
+                #self.net_place_holder = self.net_pert
+                #self.net_place_holder = self.net_original
                 ''' sum_i Loss(net(W+p),l_i)'''
+                #outputs = self.net_pert(inputs)
                 outputs = self.net_place_holder(inputs)
-                lambda_e = float(self.lambdas[lambda_index])
                 loss = self.criterion(outputs,targets)
+                #print(f'self.net_place_holder(inputs): {outputs}')
+                #print( f'self.net_pert(inputs): {self.net_pert(inputs)}' )
+                #st()
                 loss_val = loss.item()
-                #loss = self.get_pert_norm(l=2) - lambda_e*loss
+                #loss = self.get_pert_norm(l=2) + lambda_e*loss
+                #loss = self.get_pert_norm(l=2) - lambda_e * loss
                 #loss = self.get_pert_norm(l=2)
                 #loss = - lambda_e*loss
-                loss = lambda_e*loss
+                #loss = lambda_e*loss
                 ''' train/update pert '''
                 loss.backward()
                 self.optimizer.step()
@@ -126,18 +134,24 @@ class LandscapeInspector:
         '''
             Combine nets in a way train net is trainable
         '''
-        params_train = net_no_train.named_parameters()
+        params_train = net_train.named_parameters()
         dict_params_place_holder = dict(net_place_holder.named_parameters())
-        dict_params_no_train = dict(net_train.named_parameters())
+        dict_params_no_train = dict(net_no_train.named_parameters())
         for name, param_train in params_train:
             if name in dict_params_place_holder:
                 layer_name, param_name = name.split('.')
+                param_no_train = dict_params_no_train[name]
                 ## get place holder layer
                 layer_place_holder = getattr(net_place_holder, layer_name)
+                #print(f'layer_place_holder = {getattr(layer_place_holder,param_name)}')
+                #print(f'param_no_train = {param_no_train}')
+                #print(f'getattr(layer_place_holder,param_name) = {id(getattr(layer_place_holder,param_name))}')
                 delattr(layer_place_holder, param_name)
+                #print(f'param_no_train = {param_no_train}')
+                #print(f'param_no_train = {id(param_no_train)}')
+                #st()
                 ## get new param
-                param_no_train = dict_params_no_train[name]
-                W_new = 0*param_train + param_no_train  # notice addition is just chosen for the sake of an example
+                W_new = param_train + param_no_train  # notice addition is just chosen for the sake of an example
                 ## store param in placehoder net
                 setattr(layer_place_holder, param_name, W_new)
         return net_place_holder

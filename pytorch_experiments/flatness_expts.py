@@ -46,9 +46,12 @@ from good_minima_discriminator import get_landscapes_stats_between_nets
 from good_minima_discriminator import get_radius_errors_loss_list
 from good_minima_discriminator import get_all_radius_errors_loss_list
 from good_minima_discriminator import get_all_radius_errors_loss_list_interpolate
+from good_minima_discriminator import RandLandscapeInspector
+
 from new_training_algorithms import evalaute_mdl_data_set
 from new_training_algorithms import Trainer
 from new_training_algorithms import dont_train
+from new_training_algorithms import initialize_to_zero
 
 from landscape_inspector_flatness_sharpness import LandscapeInspector
 
@@ -90,6 +93,8 @@ parser.add_argument("-noise_level", "--noise_level", type=float, default=0.0001,
                     help="Noise level for perturbation")
 parser.add_argument("-not_pert_w_norm2", "--not_pert_w_norm2",action='store_false',
                     help="Noise level for perturbation")
+parser.add_argument("-epsilon", "--epsilon", type=float, default=0.05,
+                    help="Epsilon error.")
 ''' radius expt params '''
 parser.add_argument("-net_name", "--net_name", type=str, default='NL',
                     help="Training algorithm to use")
@@ -222,22 +227,11 @@ def main(plot=False):
         suffle_test = True
         batch_size = 2**10
         batch_size_train, batch_size_test = batch_size, batch_size
-        iterations = inf # controls how many epochs to stop before returning the data set error
-        #iterations = 1 # controls how many epochs to stop before returning the data set error
+        #iterations = inf # controls how many epochs to stop before returning the data set error
+        iterations = 1 # controls how many epochs to stop before returning the data set error
         ''' '''
-        if args.net_name == 'NL':
-            path = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_BoixNet_polestar_300_stand_natural_labels/net_28_March_206')
-        else:
-            path = os.path.join(results_root,'flatness_28_March_label_corrupt_prob_0.0_exptlabel_re_train_RLBoixNet_noBN_polestar_150/net_28_March_18')
-        ''' debug nets '''
-        #path_nl = os.path.join(results_root,'flatness_31_March_label_corrupt_prob_0.0_exptlabel_nolabel/net_31_March_sj_0_staid_0_seed_12582084601958904')
-        #path_rl_nl = os.path.join(results_root,'flatness_31_March_label_corrupt_prob_0.0_exptlabel_nolabel2/net_31_March_sj_0_staid_0_seed_32556446453331013')
-        ## NL2NL
-        path_nl = os.path.join(results_root,'flatness_6_April_label_corrupt_prob_0.0_exptlabel_train_NL1_300/net_6_April_sj_0_staid_0_seed_65723867866542355')
-        path_rl_nl = os.path.join(results_root,'flatness_6_April_label_corrupt_prob_0.0_exptlabel_train_NL1_300/net_6_April_sj_0_staid_0_seed_70468599139738135')
-        ## RLNL2RLNL
-        #path_nl = os.path.join(results_root,'flatness_6_April_label_corrupt_prob_0.0_exptlabel_train_RLNL2/net_6_April_sj_0_staid_0_seed_39485133104469717')
-        #path_rl_nl = os.path.join(results_root,'flatness_6_April_label_corrupt_prob_0.0_exptlabel_train_RLNL2/net_6_April_sj_0_staid_0_seed_45465090904297403')
+        path_nl = os.path.join(results_root,'flatness_27_April_label_corrupt_prob_0.0_exptlabel_GB_24_24_10_2C1FC_momentum_NL_polestar/net_27_April_sj_343_staid_1_seed_56134200848018679')
+        path_rl_nl = os.path.join(results_root,'flatness_27_April_label_corrupt_prob_0.0_exptlabel_GB_24_24_10_2C1FC_momentum_RLNL_polestar/net_27_April_sj_345_staid_1_seed_57700439347820897')
         ''' restore nets'''
         net_nl = utils.restore_entire_mdl(path_nl)
         net_rl_nl = utils.restore_entire_mdl(path_rl_nl)
@@ -301,8 +295,8 @@ def main(plot=False):
     if classes_data != classes:
         raise ValueError(f'Pre specificed classes {classes} does not match data classes {classes_data}.')
     ''' Cross Entropy + Optmizer '''
-    lr = 0.01
-    momentum = 0.9
+    lr = 0.0001
+    momentum = 0.0
     ## Error/Loss criterions
     error_criterion = metrics.error_criterion
     criterion = torch.nn.CrossEntropyLoss()
@@ -380,14 +374,27 @@ def main(plot=False):
         batch_size = 2**5
         batch_size_train, batch_size_test = batch_size, batch_size
         iterations = inf  # controls how many epochs to stop before returning the data set error
-        eps = 0.05
+        #eps = 2500/50000
+        eps = 1 / 50000
         other_stats = dict({'iterations':iterations,'eps':eps},**other_stats)
         trainset,trainloader = data_class.load_only_train(path_adverserial_data,eps,batch_size_train,shuffle_train,num_workers)
         ''' three musketeers '''
         print('Preparing the three musketeers')
         net_pert = copy.deepcopy(net)
-        net_pert.reset_parameters()
+        #nn_mdls.reset_parameters(net_pert)
         net_original = dont_train(net)
+        #net_original = net
+        initialize_to_zero(net_original)
+        debug=False
+        if debug:
+            ## conv params
+            nb_conv_layers=3
+            Fs = [24]*nb_conv_layers
+            Ks = [5]*nb_conv_layers
+            ## fc params
+            FCs = [len(classes)]
+            CHW = (3,32,32)
+            net_pert = nn_mdls.GBoixNet(CHW,Fs,Ks,FCs,do_bn).to(device)
         print('Musketeers are prepared')
         ''' optimizer + criterion stuff '''
         optimizer = optim.SGD(net_pert.parameters(), lr=lr, momentum=momentum)
@@ -400,11 +407,23 @@ def main(plot=False):
         save_all_learning_curves = True
         save_all_perts = False
         nb_lambdas = 1
-        lambdas = np.linspace(0.1,10,nb_lambdas)
+        lambdas = np.linspace(1,10,nb_lambdas)
         print('Do Sharpness expt!')
         sharpness_inspector = LandscapeInspector(net_original,net_pert, nb_epochs,iterations, trainloader,testloader, optimizer,
             criterion,error_criterion, device, lambdas,save_all_learning_curves=save_all_learning_curves,save_all_perts=save_all_perts)
         sharpness_inspector.do_sharpness_experiment()
+    elif args.train_alg == 'flatness_bs':
+        ''' BS params '''
+        r_initial = 50
+        epsilon = args.epsilon ## check if this number is good
+        # nb_radius_samples = nb_epochs could use this number as a cap of # iterations of BS
+        expt_path = os.path.join(expt_path+f'_BS')
+        ''' Do BS '''
+        nb_dirs = args.nb_dirs
+        # stats_collector = StatsCollector(net,nb_dirs,nb_epochs) TODO
+        rand_inspector = RandLandscapeInspector(epsilon,net,r_initial,device,criterion,error_criterion,trainloader,testloader,iterations)
+        rand_inspector.get_faltness_radii_for_isotropic_directions(nb_dirs=nb_dirs)
+        other_stats = dict({'nb_dirs':nb_dirs,'r_large':r_large},**other_stats)
     elif args.train_alg == 'no_train':
         print('NO TRAIN BRANCH')
     print(f'expt_path={expt_path}')

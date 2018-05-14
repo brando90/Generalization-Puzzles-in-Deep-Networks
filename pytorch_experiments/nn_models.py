@@ -9,6 +9,16 @@ import copy
 
 from pdb import set_trace as st
 
+def reset_parameters(net):
+    params = net.named_parameters()
+    # for name,param in params:
+    #     param.reset_parameters()
+    for name, param_train in params:
+        layer_name, param_name = name.split('.')
+        layer = getattr(net, layer_name)
+        layer.reset_parameters()
+
+
 def count_nb_params(net):
     count = 0
     for p in net.parameters():
