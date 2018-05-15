@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #SBATCH --mem=20000
-#SBATCH --time=1-12:30
+#SBATCH --time=1-22:30
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
 #SBATCH --array=1-6
@@ -419,11 +419,12 @@ def main(plot=False):
         # nb_radius_samples = nb_epochs could use this number as a cap of # iterations of BS
         expt_path = os.path.join(expt_path+f'_BS')
         ''' Do BS '''
+        precision = 0.001
         nb_dirs = args.nb_dirs
         # stats_collector = StatsCollector(net,nb_dirs,nb_epochs) TODO
         rand_inspector = RandLandscapeInspector(epsilon,net,r_initial,device,criterion,error_criterion,trainloader,testloader,iterations)
-        rand_inspector.get_faltness_radii_for_isotropic_directions(nb_dirs=nb_dirs)
-        other_stats = dict({'nb_dirs':nb_dirs,'r_large':r_large},**other_stats)
+        rand_inspector.get_faltness_radii_for_isotropic_directions(nb_dirs=nb_dirs,precision=precision)
+        other_stats = dict({'nb_dirs':nb_dirs,'flatness_radii':rand_inspector.flatness_radii},**other_stats)
     elif args.train_alg == 'no_train':
         print('NO TRAIN BRANCH')
     print(f'expt_path={expt_path}')

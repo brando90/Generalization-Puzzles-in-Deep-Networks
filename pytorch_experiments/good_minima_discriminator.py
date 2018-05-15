@@ -230,7 +230,7 @@ def approx_equals(diff,eps,precision=10**-7):
 
 class RandLandscapeInspector:
 
-    def __init__(self,epsilon,net,r_initial,device,criterion,error_criterion,trainloader,testloader,iterations):
+    def __init__(self,epsilon,net,r_initial, device,criterion,error_criterion,trainloader,testloader,iterations):
         '''
         '''
         self.epsilon = epsilon
@@ -248,18 +248,18 @@ class RandLandscapeInspector:
         ''' '''
         self.flatness_radii = []
 
-    def get_faltness_radii_for_isotropic_directions(self,nb_dirs):
+    def get_faltness_radii_for_isotropic_directions(self,nb_dirs,precision=0.0001):
         '''
 
         note: we could map dict(direction->radius) if we wanted, perhaps for debugging
         '''
         for dir_index in range(nb_dirs):
-            r = self.get_random_faltness_radius()
+            #r = self.get_random_faltness_radius_repeated_doubling(precision=precision)
+            r = self.get_random_faltness_radius_upper_lower_bs(precision=precision)
             print(f'r = {r}')
             self.flatness_radii.append(r)
-        st()
 
-    def get_random_faltness_radius(self):
+    def get_random_faltness_radius_repeated_doubling(self,precision=0.0001):
         '''
             The goal of this is for the easy of computation of the epsilon radius of
             a network which is defined as follows:
@@ -280,11 +280,67 @@ class RandLandscapeInspector:
             net_rdx = produce_new_translated_net(self.net,r,dx)
             Loss_rdx,Error_rdx = evalaute_mdl_data_set(self.criterion,self.error_criterion,net_rdx,self.trainloader,self.device,self.iterations)
             diff = Error_rdx - Error_minima
+            print(f'\n--\nr = {r}')
+            print(f'Error_minima={Error_minima}')
+            print(f'Error_rdx={Error_rdx}')
+            print(f'diff = {diff}')
+            print(f'epsilon={self.epsilon}')
+            print(f'abs(abs(diff)-eps)={abs(abs(diff)-self.epsilon)}')
+            print(f'precision={precision}')
+            print(f'abs(abs(diff)-eps) < precision={abs(abs(diff)-self.epsilon) < precision}')
+            print(f'approx_equals(diff,self.epsilon,precision=precision)={approx_equals(diff,self.epsilon,precision=precision)}')
             ''' check if we reached epsilon jump '''
-            if approx_equals(diff,self.epsilon,precision=10**-7): ## 10^-4.5 for half machine precision
+            if approx_equals(diff,self.epsilon,precision=precision): ## 10^-4.5 for half machine precision
+                ''' compute I(W+r*dx) = I(W+W_all)'''
+                st()
+                return r
+            elif diff > self.epsilon: # I(w+rdx) - I(W) > eps, r is too large
+                r/=2
+            else: # I(w+rdx) - I(W) < eps, r is too small
+                r*=1.5
+
+    def get_random_faltness_radius_upper_lower_bs(self,precision=0.0001):
+        '''
+            The goal of this is for the easy of computation of the epsilon radius of
+            a network which is defined as follows:
+                r(dx,eps,W) = sup{r \in R : |I(W) - I(W+r*dx)|<=eps}
+            W_all = r*dx
+            dx = isotropic unit vector from the net
+        '''
+        ''' record reference errors/losses '''
+        #stats_collector.record_errors_loss_reference_net(criterion,error_criterion,net,trainloader,testloader,device)
+        ''' get isotropic direction '''
+        nb_params = nn_mdls.count_nb_params(self.net)
+        v = torch.normal(torch.zeros(nb_params),torch.ones(nb_params)).to(self.device)
+        dx = v/v.norm(2)
+        ''' fill up I list '''
+        lb,ub = 0,2*self.r_initial
+        r = (ub - lb)/2
+        Loss_minima,Error_minima = evalaute_mdl_data_set(self.criterion,self.error_criterion,self.net,self.trainloader,self.device,self.iterations)
+        i = 0
+        while True:
+            net_rdx = produce_new_translated_net(self.net,r,dx)
+            Loss_rdx,Error_rdx = evalaute_mdl_data_set(self.criterion,self.error_criterion,net_rdx,self.trainloader,self.device,self.iterations)
+            diff = Error_rdx - Error_minima
+            # print('--')
+            # print(f'i = {i}')
+            # print(f'r = {r}')
+            # print(f'Error_minima={Error_minima}')
+            # print(f'Error_rdx={Error_rdx}')
+            # print(f'diff = {diff}')
+            # print(f'epsilon={self.epsilon}')
+            # print(f'abs(abs(diff)-eps)={abs(abs(diff)-self.epsilon)}')
+            # print(f'precision={precision}')
+            # print(f'abs(abs(diff)-eps) < precision={abs(abs(diff)-self.epsilon) < precision}')
+            # print(f'approx_equals(diff,self.epsilon,precision=precision)={approx_equals(diff,self.epsilon,precision=precision)}')
+            ''' check if we reached epsilon jump '''
+            if approx_equals(diff,self.epsilon,precision=precision): ## 10^-4.5 for half machine precision
                 ''' compute I(W+r*dx) = I(W+W_all)'''
                 return r
             elif diff > self.epsilon: # I(w+rdx) - I(W) > eps, r is too large
-                r+=r/2
+                ub = r
+                r = lb + (ub - lb)/2
             else: # I(w+rdx) - I(W) < eps, r is too small
-                r*=1.5
+                lb = r
+                r = lb + (ub - lb)/2
+            i+=1
