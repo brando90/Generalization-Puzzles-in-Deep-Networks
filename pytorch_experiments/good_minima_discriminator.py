@@ -222,12 +222,6 @@ def get_radius_errors_loss_list_via_interpolation(dir_index, net,r_large,interpo
 
 ##
 
-def approx_equals(diff,eps,precision=10**-7):
-    '''
-    Returns True if its within precision
-    '''
-    return abs(abs(diff)-eps) < precision
-
 class RandLandscapeInspector:
 
     def __init__(self,epsilon,net,r_initial, device,criterion,error_criterion,trainloader,testloader,iterations):
@@ -315,32 +309,26 @@ class RandLandscapeInspector:
         dx = v/v.norm(2)
         ''' fill up I list '''
         lb,ub = 0,2*self.r_initial
-        r = (ub - lb)/2
-        Loss_minima,Error_minima = evalaute_mdl_data_set(self.criterion,self.error_criterion,self.net,self.trainloader,self.device,self.iterations)
-        i = 0
+        _,f_lb = evalaute_mdl_data_set(self.criterion,self.error_criterion,self.net,self.trainloader,self.device,self.iterations)
+        y_target = f_lb + self.epsilon # I(W) + eps = I(W+0*dx) + eps
+        def f(r):
+            net_rdx = produce_new_translated_net(self.net, r, dx)
+            Loss_rdx, Error_rdx = evalaute_mdl_data_set(self.criterion, self.error_criterion, net_rdx, self.trainloader,self.device, self.iterations)
+            return Error_rdx - y_target
+        #f_ub = f(ub)
+        ''' start bisect method ''' # https://en.wikipedia.org/wiki/Bisection_method
         while True:
-            net_rdx = produce_new_translated_net(self.net,r,dx)
-            Loss_rdx,Error_rdx = evalaute_mdl_data_set(self.criterion,self.error_criterion,net_rdx,self.trainloader,self.device,self.iterations)
-            diff = Error_rdx - Error_minima
-            # print('--')
-            # print(f'i = {i}')
-            # print(f'r = {r}')
-            # print(f'Error_minima={Error_minima}')
-            # print(f'Error_rdx={Error_rdx}')
-            # print(f'diff = {diff}')
-            # print(f'epsilon={self.epsilon}')
-            # print(f'abs(abs(diff)-eps)={abs(abs(diff)-self.epsilon)}')
-            # print(f'precision={precision}')
-            # print(f'abs(abs(diff)-eps) < precision={abs(abs(diff)-self.epsilon) < precision}')
-            # print(f'approx_equals(diff,self.epsilon,precision=precision)={approx_equals(diff,self.epsilon,precision=precision)}')
+            r = lb + (ub - lb) / 2
+            f_r = f(r)
+            print('')
+            print(f'r = {r}')
+            print(f'f({r}) = {f_r}')
             ''' check if we reached epsilon jump '''
-            if approx_equals(diff,self.epsilon,precision=precision): ## 10^-4.5 for half machine precision
+            if abs(f_r - 0) < precision or abs(ub - lb) < precision: ## 10^-4.5 for half machine precision
                 ''' compute I(W+r*dx) = I(W+W_all)'''
                 return r
-            elif diff > self.epsilon: # I(w+rdx) - I(W) > eps, r is too large
-                ub = r
-                r = lb + (ub - lb)/2
-            else: # I(w+rdx) - I(W) < eps, r is too small
+            elif np.sign(f_r) == np.sign(f_lb):
                 lb = r
-                r = lb + (ub - lb)/2
-            i+=1
+            else:
+                ub = r
+
