@@ -307,28 +307,98 @@ class RandLandscapeInspector:
         nb_params = nn_mdls.count_nb_params(self.net)
         v = torch.normal(torch.zeros(nb_params),torch.ones(nb_params)).to(self.device)
         dx = v/v.norm(2)
-        ''' fill up I list '''
+        ''' set up '''
         lb,ub = 0,2*self.r_initial
-        _,f_lb = evalaute_mdl_data_set(self.criterion,self.error_criterion,self.net,self.trainloader,self.device,self.iterations)
-        y_target = f_lb + self.epsilon # I(W) + eps = I(W+0*dx) + eps
+        _,error_minima = evalaute_mdl_data_set(self.criterion,self.error_criterion,self.net,self.trainloader,self.device,self.iterations)
+        y_target = error_minima + self.epsilon # I(W) + eps = I(W+0*dx) + eps
         def f(r):
             net_rdx = produce_new_translated_net(self.net, r, dx)
             Loss_rdx, Error_rdx = evalaute_mdl_data_set(self.criterion, self.error_criterion, net_rdx, self.trainloader,self.device, self.iterations)
             return Error_rdx - y_target
-        #f_ub = f(ub)
         ''' start bisect method ''' # https://en.wikipedia.org/wiki/Bisection_method
+        f_lb = error_minima - y_target
+        #f_ub = f(ub)
         while True:
-            r = lb + (ub - lb) / 2
-            f_r = f(r)
-            print('')
-            print(f'r = {r}')
-            print(f'f({r}) = {f_r}')
+            r = (lb + ub)/2
+            f_r = f(r) # note this value could be negative
+            # print('--')
+            # print(f'lb={lb}')
+            # print(f'ub={ub}')
+            # print(f'r = {r}')
+            # print(f'f(r) = f({r}) = {f_r}')
+            # print(f'f(lb) = f({lb}) = {f_lb}')
+            # print(f'abs(f_r - 0) < precision = {abs(f_r - 0) < precision}')
+            # print(f'abs(ub - lb) < precision = {abs(ub - lb) < precision}')
             ''' check if we reached epsilon jump '''
             if abs(f_r - 0) < precision or abs(ub - lb) < precision: ## 10^-4.5 for half machine precision
                 ''' compute I(W+r*dx) = I(W+W_all)'''
                 return r
             elif np.sign(f_r) == np.sign(f_lb):
                 lb = r
+                f_lb = f_r
             else:
                 ub = r
+                #f_ub = f_r
+
+####
+
+def print_evaluation_of_nets(net_nl,net_rlnl,criterion,error_criterion,trainloader,testloader,device,iterations=inf,l=2):
+    W_nl = get_norm(net_nl, l=l)
+    W_rlnl = get_norm(net_rlnl, l=l)
+    print('')
+    print(f'W_nl = {W_nl}')
+    print(f'W_rlnl = {W_rlnl}')
+    ''' train errors '''
+    loss_nl_train, error_nl_train = evalaute_mdl_data_set(criterion, error_criterion, net_nl, trainloader, device,iterations)
+    loss_rlnl_train, error_rlnl_train = evalaute_mdl_data_set(criterion, error_criterion, net_rlnl, trainloader, device,iterations)
+    print(f'loss_nl_train, error_nl_train = {loss_nl_train, error_nl_train}')
+    print(f'loss_rlnl_train, error_rlnl_train = {loss_rlnl_train, error_rlnl_train}')
+    ''' test errors '''
+    loss_nl_test, error_nl_test = evalaute_mdl_data_set(criterion, error_criterion, net_nl, testloader, device,iterations)
+    loss_rlnl_test, error_rlnl_test = evalaute_mdl_data_set(criterion, error_criterion, net_rlnl, testloader, device,iterations)
+    print(f'loss_nl_test, error_nl_test = {loss_nl_test, error_nl_test}')
+    print(f'loss_rlnl_test, error_rlnl_test = {loss_rlnl_test, error_rlnl_test}')
+
+def get_norm(net,l=2):
+    w_norms = 0
+    for index, W in enumerate(net.parameters()):
+        w_norms += W.norm(l)
+    return w_norms
+
+def divide_params_by(W,net):
+    '''
+        W: make sure W is non-trainable if you wish to divide by a constant.
+    '''
+    params = net.named_parameters()
+    dict_params = dict(params)
+    for name, param in dict_params.items():
+        if name in dict_params:
+            new_param = param/W
+            dict_params[name] = new_param
+    net.load_state_dict(dict_params)
+    return net
+
+# class WeightNormInspector:
+#
+#     def __init__(self,net_nl,net_rlnl,device,criterion,error_criterion,trainloader,testloader,iterations):
+#         self.net_nl = net_nl
+#         self.net_rlnl = net_rlnl
+#         ''' '''
+#         self.device = device
+#         #self.stats_collector = stats_collector
+#         ''' '''
+#         self.criterion = criterion
+#         self.error_criterion = error_criterion
+#         self.trainloader = trainloader
+#         self.testloader = testloader
+#         self.iterations = iterations
+#
+#     def get_pert_norm(self,l=2):
+#         w_norms = 0
+#         for index, W in enumerate(self.net_pert.parameters()):
+#             w_norms += W.norm(l)
+#         return w_norms
+#
+#     def compare(self):
+
 

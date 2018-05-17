@@ -47,6 +47,9 @@ from good_minima_discriminator import get_radius_errors_loss_list
 from good_minima_discriminator import get_all_radius_errors_loss_list
 from good_minima_discriminator import get_all_radius_errors_loss_list_interpolate
 from good_minima_discriminator import RandLandscapeInspector
+from good_minima_discriminator import get_norm
+from good_minima_discriminator import divide_params_by
+from good_minima_discriminator import print_evaluation_of_nets
 
 from new_training_algorithms import evalaute_mdl_data_set
 from new_training_algorithms import Trainer
@@ -79,7 +82,7 @@ parser.add_argument('-dont_save_expt_results','--dont_save_expt_results',action=
 parser.add_argument("-epochs", "--epochs", type=int, default=None,
                     help="The number of games to simulate")
 parser.add_argument("-mdl", "--mdl", type=str, default='debug',
-                    help="experiment label") # options: debug, cifar_10_tutorial_net, BoixNet, LiaoNet
+                    help="mdl") # options: debug, cifar_10_tutorial_net, BoixNet, LiaoNet
 parser.add_argument('-use_bn','--use_bn',action='store_true',
                     help='turns on BN')
 parser.add_argument('-dont_standardize_data','--dont_standardize_data',action='store_true',
@@ -116,7 +119,7 @@ if 'SLURM_ARRAY_TASK_ID' in os.environ and 'SLURM_JOBID' in os.environ:
 
 print(f'storing results? = {not args.dont_save_expt_results}')
 
-def main(plot=False):
+def main(plot=True):
     hostname = utils.get_hostname()
     ''' cuda '''
     use_cuda = torch.cuda.is_available()
@@ -150,6 +153,8 @@ def main(plot=False):
     ## experiment path
     expt_path = os.path.join(results_root,expt_folder)
     ''' experiment params '''
+    suffle_test = False
+    shuffle_train = True
     nb_epochs = 4 if args.epochs is None else args.epochs
     batch_size = 256
     #batch_size_train,batch_size_test = batch_size,batch_size
@@ -227,16 +232,16 @@ def main(plot=False):
         suffle_test = True
         batch_size = 2**10
         batch_size_train, batch_size_test = batch_size, batch_size
-        #iterations = inf # controls how many epochs to stop before returning the data set error
-        iterations = 1 # controls how many epochs to stop before returning the data set error
+        iterations = inf # controls how many epochs to stop before returning the data set error
+        #iterations = 1 # controls how many epochs to stop before returning the data set error
         ''' '''
         path_nl = os.path.join(results_root,'flatness_27_April_label_corrupt_prob_0.0_exptlabel_GB_24_24_10_2C1FC_momentum_NL_polestar/net_27_April_sj_343_staid_1_seed_56134200848018679')
         path_rl_nl = os.path.join(results_root,'flatness_27_April_label_corrupt_prob_0.0_exptlabel_GB_24_24_10_2C1FC_momentum_RLNL_polestar/net_27_April_sj_345_staid_1_seed_57700439347820897')
         ''' restore nets'''
         net_nl = utils.restore_entire_mdl(path_nl)
-        net_rl_nl = utils.restore_entire_mdl(path_rl_nl)
+        net_rlnl = utils.restore_entire_mdl(path_rl_nl)
         nets.append(net_nl)
-        nets.append(net_rl_nl)
+        nets.append(net_rlnl)
     elif mdl == 'radius_flatness':
         suffle_test = True
         batch_size = 2**10
@@ -270,6 +275,32 @@ def main(plot=False):
         net = torch.load(path)
         nets.append(net)
         store_net = False
+    elif mdl == 'divide_constant':
+        ''' ''' # both false because we want low variation on the output of the error
+        iterations = inf # controls how many epochs to stop before returning the data set error
+        #iterations = 11 # controls how many epochs to stop before returning the data set error
+        batch_size = 2**10
+        batch_size_train, batch_size_test = batch_size, batch_size
+        shuffle_train = True
+        suffle_test = False
+        ''' load net '''
+        path_nl = os.path.join(results_root,'flatness_27_April_label_corrupt_prob_0.0_exptlabel_GB_24_24_10_2C1FC_momentum_NL_polestar/net_27_April_sj_343_staid_1_seed_56134200848018679')
+        path_rlnl = os.path.join(results_root,'flatness_27_April_label_corrupt_prob_0.0_exptlabel_GB_24_24_10_2C1FC_momentum_RLNL_polestar/net_27_April_sj_345_staid_1_seed_57700439347820897')
+        net_nl = torch.load(path_nl)
+        net_rlnl = torch.load(path_rlnl)
+        ''' modify nets '''
+        W_nl = 0.011*get_norm(net_nl,l=2)
+        W_rlnl = 0.011*get_norm(net_rlnl,l=2)
+        #W_nl = 1
+        #W_rlnl = 1
+        print(f'normalizer being used: W_nl={W_nl},W_rlnl={W_rlnl}')
+        print(f'norm of weight BEFORE division: get_norm(net_nl,l=2)={get_norm(net_nl,l=2)}, get_norm(net_rlnl,l=2)={get_norm(net_rlnl,l=2)}')
+        #st()
+        net_nl = divide_params_by(W_nl, net_nl)
+        net_rlnl = divide_params_by(W_rlnl, net_rlnl)
+        print(f'norm of weight AFTER division: get_norm(net_nl,l=2)={get_norm(net_nl,l=2)}, get_norm(net_rlnl,l=2)={get_norm(net_rlnl,l=2)}')
+        nets.append(net_nl)
+        nets.append(net_rlnl)
     else:
         print('RESTORED FROM PRE-TRAINED NET')
         suffle_test = False
@@ -289,14 +320,14 @@ def main(plot=False):
     ''' get data set '''
     #st()
     standardize = not args.dont_standardize_data # x - mu / std , [-1,+1]
-    trainset,trainloader, testset,testloader, classes_data = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,args.label_corrupt_prob,suffle_test=suffle_test,standardize=standardize)
+    trainset,trainloader, testset,testloader, classes_data = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,args.label_corrupt_prob,shuffle_train=shuffle_train,suffle_test=suffle_test,standardize=standardize)
     #check_order_data(trainloader)
     #st()
     if classes_data != classes:
         raise ValueError(f'Pre specificed classes {classes} does not match data classes {classes_data}.')
     ''' Cross Entropy + Optmizer '''
-    lr = 0.0001
-    momentum = 0.0
+    lr = 0.01
+    momentum = 0.9
     ## Error/Loss criterions
     error_criterion = metrics.error_criterion
     criterion = torch.nn.CrossEntropyLoss()
@@ -351,11 +382,15 @@ def main(plot=False):
         print(f'noise_level={noise_level},train_loss,train_error,test_loss,test_error={train_loss},{train_error},{test_loss},{test_error}')
         other_stats = dict({'perturbation_magnitudes':perturbation_magnitudes}, **other_stats)
     elif args.train_alg == 'interpolate':
+        ''' prints stats before interpolation'''
+        print_evaluation_of_nets(net_nl, net_rlnl, criterion, error_criterion, trainloader, testloader, device, iterations)
+        ''' do interpolation of nets'''
         nb_interpolations = nb_epochs
-        ##
         interpolations = np.linspace(0,1,nb_interpolations)
-        get_landscapes_stats_between_nets(net_nl,net_rl_nl,interpolations, device,stats_collector,criterion,error_criterion,trainloader,testloader,iterations)
+        get_landscapes_stats_between_nets(net_nl,net_rlnl,interpolations, device,stats_collector,criterion,error_criterion,trainloader,testloader,iterations)
+        ''' print stats of the net '''
         other_stats = dict({'interpolations':interpolations},**other_stats)
+        #print_evaluation_of_nets(net_nl, net_rlnl, criterion, error_criterion, trainloader, testloader, device, iterations)
     elif args.train_alg == 'brando_chiyuan_radius_inter':
         r_large = args.r_large ## check if this number is good
         nb_radius_samples = nb_epochs
@@ -425,6 +460,25 @@ def main(plot=False):
         rand_inspector = RandLandscapeInspector(epsilon,net,r_initial,device,criterion,error_criterion,trainloader,testloader,iterations)
         rand_inspector.get_faltness_radii_for_isotropic_directions(nb_dirs=nb_dirs,precision=precision)
         other_stats = dict({'nb_dirs':nb_dirs,'flatness_radii':rand_inspector.flatness_radii},**other_stats)
+    elif args.train_alg == 'evaluate_nets':
+        plot = False
+        print('')
+        iterations = inf
+        print(f'W_nl = {W_nl}')
+        print(f'W_rlnl = {W_rlnl}')
+        ''' train errors '''
+        loss_nl_train, error_nl_train = evalaute_mdl_data_set(criterion, error_criterion, net_nl, trainloader, device, iterations)
+        loss_rlnl_train, error_rlnl_train = evalaute_mdl_data_set(criterion,error_criterion,net_rlnl,trainloader,device,iterations)
+        print(f'loss_nl_train, error_nl_train = {loss_nl_train, error_nl_train}')
+        print(f'loss_rlnl_train, error_rlnl_train = {loss_rlnl_train, error_rlnl_train}')
+        ''' test errors '''
+        loss_nl_test, error_nl_test = evalaute_mdl_data_set(criterion, error_criterion, net_nl, testloader, device, iterations)
+        loss_rlnl_test, error_rlnl_test = evalaute_mdl_data_set(criterion,error_criterion,net_rlnl,testloader,device,iterations)
+        print(f'loss_nl_test, error_nl_test = {loss_nl_test, error_nl_test}')
+        print(f'loss_rlnl_test, error_rlnl_test = {loss_rlnl_test, error_rlnl_test}')
+        ''' '''
+        store_results = False
+        store_net = False
     elif args.train_alg == 'no_train':
         print('NO TRAIN BRANCH')
     print(f'expt_path={expt_path}')
@@ -458,10 +512,10 @@ def main(plot=False):
                   f'Total Run time hours:{hours},minutes:{minutes},seconds:{seconds} COMPLETED, ExitCode [0-0]'
         utils.send_email(message,destination='brando90@mit.edu')
     ''' plot '''
-    # if sj == 0:
-    #     #TODO
-    #     plot_utils.plot_loss_and_accuracies(stats_collector)
-    #     plt.show()
+    if sj == 0 and plot:
+        #TODO
+        plot_utils.plot_loss_and_accuracies(stats_collector)
+        plt.show()
 
 def check_order_data(trainloader):
     for i,data_train in enumerate(trainloader):
