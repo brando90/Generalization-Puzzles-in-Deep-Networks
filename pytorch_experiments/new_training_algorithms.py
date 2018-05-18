@@ -60,7 +60,7 @@ class Trainer:
         self.stats_collector = stats_collector
         self.device = device
 
-    def train_and_track_stats(self,net, nb_epochs,iterations=inf):
+    def train_and_track_stats(self,net, nb_epochs,iterations=inf,target_train_loss=inf,precision=0.10**-7):
         '''
         train net with nb_epochs and 1 epoch only # iterations = iterations
         '''
@@ -97,4 +97,6 @@ class Trainer:
             self.stats_collector.collect_mdl_params_stats(net)
             self.stats_collector.append_losses_errors_accs(train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch)
             print(f'[{epoch}, {i+1}], (train_loss: {train_loss_epoch}, train error: {train_error_epoch}) , (test loss: {test_loss_epoch}, test error: {test_error_epoch})')
+            if abs(train_loss_epoch - target_train_loss) < precision:
+                return train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch
         return train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch

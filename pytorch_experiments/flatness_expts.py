@@ -102,7 +102,7 @@ parser.add_argument("-epsilon", "--epsilon", type=float, default=0.05,
 parser.add_argument("-net_name", "--net_name", type=str, default='NL',
                     help="Training algorithm to use")
 parser.add_argument("-nb_dirs", "--nb_dirs", type=int, default=100,
-                    help="Noise level for perturbation")
+                    help="# Random Directions")
 parser.add_argument("-r_large", "--r_large", type=float, default=30,
                     help="How far to go on the radius to the end from center")
 ''' other '''
@@ -284,15 +284,16 @@ def main(plot=True):
         shuffle_train = True
         suffle_test = False
         ''' load net '''
-        path_nl = os.path.join(results_root,'flatness_27_April_label_corrupt_prob_0.0_exptlabel_GB_24_24_10_2C1FC_momentum_NL_polestar/net_27_April_sj_343_staid_1_seed_56134200848018679')
+        #path_nl = os.path.join(results_root,'flatness_27_April_label_corrupt_prob_0.0_exptlabel_GB_24_24_10_2C1FC_momentum_NL_polestar/net_27_April_sj_343_staid_1_seed_56134200848018679')
+        path_nl = os.path.join(results_root,'flatness_May_label_corrupt_prob_0.0_exptlabel_SGD_ManyRuns_Momentum0.9/net_17_May_sj_641_staid_5_seed_31866864409272026_polestar-old')
         path_rlnl = os.path.join(results_root,'flatness_27_April_label_corrupt_prob_0.0_exptlabel_GB_24_24_10_2C1FC_momentum_RLNL_polestar/net_27_April_sj_345_staid_1_seed_57700439347820897')
         net_nl = torch.load(path_nl)
         net_rlnl = torch.load(path_rlnl)
         ''' modify nets '''
-        W_nl = 0.011*get_norm(net_nl,l=2)
-        W_rlnl = 0.011*get_norm(net_rlnl,l=2)
-        #W_nl = 1
-        #W_rlnl = 1
+        #W_nl = 0.0102*get_norm(net_nl,l=2)
+        #W_rlnl = 0.0102*get_norm(net_rlnl,l=2)
+        W_nl = 1
+        W_rlnl = 1
         print(f'normalizer being used: W_nl={W_nl},W_rlnl={W_rlnl}')
         print(f'norm of weight BEFORE division: get_norm(net_nl,l=2)={get_norm(net_nl,l=2)}, get_norm(net_rlnl,l=2)={get_norm(net_rlnl,l=2)}')
         #st()
@@ -301,6 +302,31 @@ def main(plot=True):
         print(f'norm of weight AFTER division: get_norm(net_nl,l=2)={get_norm(net_nl,l=2)}, get_norm(net_rlnl,l=2)={get_norm(net_rlnl,l=2)}')
         nets.append(net_nl)
         nets.append(net_rlnl)
+    elif mdl == 'specific_mdls':
+        ''' load net '''
+        # NL
+        path = os.path.join(results_root,'flatness_27_April_label_corrupt_prob_0.0_exptlabel_GB_24_24_10_2C1FC_momentum_NL_polestar/net_27_April_sj_343_staid_1_seed_56134200848018679')
+        net = torch.load(path)
+        nets.append(net)
+        # RLNL
+        path_rlnl = os.path.join(results_root,'flatness_27_April_label_corrupt_prob_0.0_exptlabel_GB_24_24_10_2C1FC_momentum_RLNL_polestar/net_27_April_sj_345_staid_1_seed_57700439347820897')
+        net_rlnl = torch.load(path_rlnl)
+        nets.append(net_rlnl)
+        other_stats = dict({'path': path, 'path_rlnl': path_rlnl}, **other_stats)
+    elif mdl == 'load_one_net':
+        ''' load net '''
+        ## 1.0
+        #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_1.0_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_677_staid_5_seed_59829215980468561_polestar-old')
+        #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_1.0_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_674_staid_2_seed_41701220392276729_polestar-old')
+        #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_1.0_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_676_staid_4_seed_54684501513999395_polestar-old')
+        #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_1.0_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_673_staid_1_seed_57779243890869381_polestar-old')
+        ## 0.5
+
+        ## 0.2
+        path = os.path.join(results_root,'flatness_May_label_corrupt_prob_1.0_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_683_staid_2_seed_62757268370691842_polestar-old')
+        net = torch.load(path)
+        nets.append(net)
+        other_stats = dict({'path': path}, **other_stats)
     else:
         print('RESTORED FROM PRE-TRAINED NET')
         suffle_test = False
@@ -328,6 +354,7 @@ def main(plot=True):
     ''' Cross Entropy + Optmizer '''
     lr = 0.01
     momentum = 0.9
+    expt_path = f'{expt_path}_lr_{lr}_momentum_{momentum}'
     ## Error/Loss criterions
     error_criterion = metrics.error_criterion
     criterion = torch.nn.CrossEntropyLoss()
@@ -479,6 +506,20 @@ def main(plot=True):
         ''' '''
         store_results = False
         store_net = False
+    elif args.train_alg == 'reach_target_loss':
+        iterations = inf
+        precision = 0.00001
+        ''' set target loss '''
+        loss_rlnl_train, error_rlnl_train = evalaute_mdl_data_set(criterion, error_criterion, net_rlnl, trainloader,device, iterations)
+        target_train_loss = loss_rlnl_train
+        ''' do SGD '''
+        trainer = Trainer(trainloader,testloader, optimizer,criterion,error_criterion, stats_collector, device)
+        last_errors = trainer.train_and_track_stats(net,nb_epochs,iterations=iterations,target_train_loss=target_train_loss,precision=precision)
+        ''' Test the Network on the test data '''
+        train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch = last_errors
+        print(f'train_loss_epoch={train_loss_epoch} train_error_epoch={train_error_epoch}')
+        print(f'test_loss_epoch={test_loss_epoch} test_error_epoch={test_error_epoch}')
+        st()
     elif args.train_alg == 'no_train':
         print('NO TRAIN BRANCH')
     print(f'expt_path={expt_path}')
