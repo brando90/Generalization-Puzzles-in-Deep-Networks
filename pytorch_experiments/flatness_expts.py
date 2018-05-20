@@ -302,7 +302,7 @@ def main(plot=True):
         print(f'norm of weight AFTER division: get_norm(net_nl,l=2)={get_norm(net_nl,l=2)}, get_norm(net_rlnl,l=2)={get_norm(net_rlnl,l=2)}')
         nets.append(net_nl)
         nets.append(net_rlnl)
-    elif mdl == 'specific_mdls':
+    elif mdl == 'load_nl_and_rlnl':
         ''' load net '''
         # NL
         path = os.path.join(results_root,'flatness_27_April_label_corrupt_prob_0.0_exptlabel_GB_24_24_10_2C1FC_momentum_NL_polestar/net_27_April_sj_343_staid_1_seed_56134200848018679')
@@ -316,14 +316,21 @@ def main(plot=True):
     elif mdl == 'load_one_net':
         ''' load net '''
         ## 1.0
-        #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_1.0_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_677_staid_5_seed_59829215980468561_polestar-old')
+        path = os.path.join(results_root,'flatness_May_label_corrupt_prob_1.0_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_677_staid_5_seed_59829215980468561_polestar-old')
         #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_1.0_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_674_staid_2_seed_41701220392276729_polestar-old')
         #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_1.0_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_676_staid_4_seed_54684501513999395_polestar-old')
         #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_1.0_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_673_staid_1_seed_57779243890869381_polestar-old')
+        ##
+        ## 0.7
+        #path = os.path.join(results_root, 'flatness_May_label_corrupt_prob_0.7_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_10950496_staid_4_seed_55005976886300675_node004.cm.cluster')
         ## 0.5
-
+        #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_0.5_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_0_staid_0_seed_45042856912691161_polestar')
         ## 0.2
-        path = os.path.join(results_root,'flatness_May_label_corrupt_prob_1.0_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_683_staid_2_seed_62757268370691842_polestar-old')
+        #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_0.2_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_683_staid_2_seed_62757268370691842_polestar-old')
+        ## 0.1
+        #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_0.1_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_784_staid_1_seed_30006724853600989_polestar-old')
+        ## 0.05
+        #path = os.path.join(results_root, 'flatness_May_label_corrupt_prob_0.05_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_802_staid_3_seed_11347587066395527_polestar-old')
         net = torch.load(path)
         nets.append(net)
         other_stats = dict({'path': path}, **other_stats)
