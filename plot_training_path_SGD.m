@@ -13,6 +13,6 @@ title('losses vs epochs')
 %saveas(fig_errors,['./fig_errors_seed' num2str(seed)],'pdf')
 %saveas(fig_losses,['./fig_losses_seed' num2str(seed)],'pdf')
 nb_epochs
-train_errors(end)
 hours
 nb_params
+train_errors(end)

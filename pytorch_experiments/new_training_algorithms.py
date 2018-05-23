@@ -4,12 +4,12 @@ import torch
 
 from torch.autograd import Variable
 
-from maps import NamedDict
-
 import data_utils
 import utils
 
 from math import inf
+import os
+from maps import NamedDict
 
 from pdb import set_trace as st
 
@@ -51,7 +51,7 @@ def evalaute_mdl_data_set(loss,error,net,dataloader,device,iterations=inf):
 
 class Trainer:
 
-    def __init__(self,trainloader,testloader, optimizer,criterion,error_criterion, stats_collector, device):
+    def __init__(self,trainloader,testloader, optimizer,criterion,error_criterion, stats_collector, device, expt_path='',net_file_name='',save_every_epoch=False):
         self.trainloader = trainloader
         self.testloader = testloader
         self.optimizer = optimizer
@@ -59,6 +59,12 @@ class Trainer:
         self.error_criterion = error_criterion
         self.stats_collector = stats_collector
         self.device = device
+        ''' save all models during training '''
+        self.save_every_epoch = save_every_epoch
+        self.expt_path = expt_path
+        self.net_file_name = net_file_name
+        if self.expt_path != '' and self.net_file_name != '' and self.save_every_epoch:
+            utils.make_and_check_dir(expt_path)
 
     def train_and_track_stats(self,net, nb_epochs,iterations=inf,target_train_loss=inf,precision=0.10**-7):
         '''
@@ -69,8 +75,9 @@ class Trainer:
         test_loss_epoch, test_error_epoch = evalaute_mdl_data_set(self.criterion, self.error_criterion, net, self.testloader, self.device, iterations)
         self.stats_collector.collect_mdl_params_stats(net)
         self.stats_collector.append_losses_errors_accs(train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch)
-        print( f'[-1, -1], (train_loss: {train_loss_epoch}, train error: {train_error_epoch}) , (test loss: {test_loss_epoch}, test error: {test_error_epoch})')
-        ##
+        print(f'[-1, -1], (train_loss: {train_loss_epoch}, train error: {train_error_epoch}) , (test loss: {test_loss_epoch}, test error: {test_error_epoch})')
+        ''' perhaps save net @ epoch '''
+        self.perhaps_save(net,epoch=0)
         ''' Start training '''
         print('about to start training')
         for epoch in range(nb_epochs):  # loop over the dataset multiple times
@@ -97,6 +104,16 @@ class Trainer:
             self.stats_collector.collect_mdl_params_stats(net)
             self.stats_collector.append_losses_errors_accs(train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch)
             print(f'[{epoch}, {i+1}], (train_loss: {train_loss_epoch}, train error: {train_error_epoch}) , (test loss: {test_loss_epoch}, test error: {test_error_epoch})')
+            ''' perhaps save net @ epoch '''
+            self.perhaps_save(net,epoch=epoch)
+            ''' check target loss '''
             if abs(train_loss_epoch - target_train_loss) < precision:
                 return train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch
         return train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch
+
+    def perhaps_save(self,net,epoch):
+        ''' save net model '''
+        if self.save_every_epoch:
+            epoch_net_file_name = f'{self.net_file_name}_epoch_{epoch}'
+            net_path_to_filename = os.path.join(self.expt_path,epoch_net_file_name)
+            torch.save(net, net_path_to_filename)
