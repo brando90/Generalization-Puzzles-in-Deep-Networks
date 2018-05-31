@@ -22,6 +22,11 @@ plot(iterations,w_norms_means);
 title('norm of W');
 xlabel('number of iterations')
 ylabel('l2 norm of W');
+%
+saveas(fig_w_norms,'fig_w_norms');
+saveas(fig_errors,'fig_errors');
+saveas(fig_w_norms,'fig_w_norms','pdf');
+saveas(fig_errors,'fig_errors','pdf');
 %%
 function [train_means,test_means,w_norms_means] = get_means_of_experiments(path_all_expts)
 train_means = [];

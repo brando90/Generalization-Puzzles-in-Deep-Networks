@@ -378,6 +378,44 @@ def divide_params_by(W,net):
     net.load_state_dict(dict_params)
     return net
 
+def divide_params_by_taking_bias_into_account(W,net):
+    '''
+        Divides by making sure the later layers are divided by the right constant
+
+        W: make sure W is non-trainable if you wish to divide by a constant.
+    '''
+    params = net.named_parameters()
+    dict_params = dict(params)
+    ''' '''
+    l=0
+    current_layer_name = ''
+    for name, param in dict_params.items():
+        prefix,suffix = name.split('.')
+        if prefix != current_layer_name: # detect if we changed layer
+            current_layer_name = prefix
+            l+=1
+        #print(f'l={l}, name={name}')
+        if name in dict_params:
+            if suffix == 'weight':
+                new_param = param / W
+            else: # else bias
+                new_param = param / (W**l)
+            dict_params[name] = new_param
+    net.load_state_dict(dict_params)
+    return net
+
+def l2_norm_all_params(net):
+    '''
+        print l2 norm of all params
+    '''
+    params = net.named_parameters()
+    dict_params = dict(params)
+    for name, param in dict_params.items():
+        if name in dict_params:
+            prefix, suffix = name.split('.')
+            print(f'name = {name}')
+            print(f'|params.norm(2) = ||params|| = {param.norm(2)}')
+
 # class WeightNormInspector:
 #
 #     def __init__(self,net_nl,net_rlnl,device,criterion,error_criterion,trainloader,testloader,iterations):

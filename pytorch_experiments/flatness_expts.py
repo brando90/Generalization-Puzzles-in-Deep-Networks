@@ -3,11 +3,11 @@
 #SBATCH --time=1-22:30
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
-#SBATCH --array=1-1
+#SBATCH --array=1-6
 #SBATCH --gres=gpu:1
 
 """
-training an image classifier so that it overfits
+training an image classifier so that it overfits`
 ----------------------------
 """
 import time
@@ -35,6 +35,8 @@ import math
 import data_classification as data_class
 
 import nn_models as nn_mdls
+from nn_models import Flatten
+
 import new_training_algorithms as tr_alg
 import save_to_matlab_format as save2matlab
 from stats_collector import StatsCollector
@@ -50,6 +52,8 @@ from good_minima_discriminator import RandLandscapeInspector
 from good_minima_discriminator import get_norm
 from good_minima_discriminator import divide_params_by
 from good_minima_discriminator import print_evaluation_of_nets
+from good_minima_discriminator import divide_params_by_taking_bias_into_account
+from good_minima_discriminator import l2_norm_all_params
 
 from new_training_algorithms import evalaute_mdl_data_set
 from new_training_algorithms import Trainer
@@ -62,6 +66,7 @@ from pdb import set_trace as st
 
 import argparse
 
+from collections import OrderedDict
 from maps import NamedDict
 
 import matplotlib as mpl
@@ -186,6 +191,38 @@ def main(plot=True):
         C,H,W = 3,32,32
         net = nn_mdls.LiaoNet(C,H,W,Fs,Ks,FC,do_bn)
         nets.append(net)
+    elif mdl == 'sequential':
+        batch_size_train = 256
+        batch_size_test = 256
+        ##
+        batch_size = batch_size_train
+        suffle_test = False
+        ##
+        FC = [10,10]
+        C,H,W = 3, 32, 32
+        # net = torch.nn.Sequential(OrderedDict([
+        #     ('Flatten',Flatten()),
+        #     ('FC1', torch.nn.Linear(C*H*W,FC[0])),
+        #     ('FC2', torch.nn.Linear(FC[0],FC[1]))
+        # ]))
+        # net = torch.nn.Sequential(OrderedDict([
+        #     ('Flatten',Flatten()),
+        #     ('FC1', torch.nn.Linear(C*H*W,FC[0])),
+        #     ('relu1', torch.nn.ReLU()),
+        #     ('FC2', torch.nn.Linear(FC[0],FC[1]))
+        # ]))
+        net = torch.nn.Sequential(OrderedDict([
+            ('conv0', torch.nn.Conv2d(3,420,5,bias=True)),
+            ('relu0', torch.nn.ReLU()),
+            ('conv1', torch.nn.Conv2d(420,10,5, bias=True)),
+            ('relu1', torch.nn.ReLU()),
+            ('Flatten',Flatten()),
+            ('FC1', torch.nn.Linear(5760,200,bias=True)),
+            ('relu2', torch.nn.ReLU()),
+            ('FC2', torch.nn.Linear(200, 10, bias=True))
+        ]))
+        ##
+        nets.append(net)
     elif mdl == 'BoixNet':
         batch_size_train = 256
         batch_size_test = 256
@@ -296,20 +333,30 @@ def main(plot=True):
         ##
         net_nl = torch.load(path_nl)
         net_rlnl = torch.load(path_rlnl)
+        ''' '''
+        print('NL')
+        l2_norm_all_params(net_nl)
+        print('RLNL')
+        l2_norm_all_params(net_rlnl)
+        st()
         ''' modify nets '''
-        #W_nl = 0.0102*get_norm(net_nl,l=2)
-        #W_rlnl = 0.0102*get_norm(net_rlnl,l=2)
         W_nl = 1
+        W_rlnl = (get_norm(net_rlnl, l=2)/get_norm(net_nl, l=2)) # 2.284937620162964
+        W_rlnl = (10)**(1.0/3.0)
+        #W_rlnl = 1/0.57775
+        #W_rlnl = 1/0.7185
+        #W_rlnl = 1/0.85925
         #W_rlnl = 1
-        W_rlnl = get_norm(net_rlnl, l=2) / get_norm(net_nl, l=2)
-        print(f'normalizer being used: W_nl={W_nl},W_rlnl={W_rlnl}')
+        print(f'W_rlnl = {W_rlnl}')
         print(f'norm of weight BEFORE division: get_norm(net_nl,l=2)={get_norm(net_nl,l=2)}, get_norm(net_rlnl,l=2)={get_norm(net_rlnl,l=2)}')
-        #st()
         #net_nl = divide_params_by(W_nl, net_nl)
-        net_rlnl = divide_params_by(W_rlnl, net_rlnl)
+        #net_rlnl = divide_params_by(W_rlnl, net_rlnl)
+        net_rlnl = divide_params_by_taking_bias_into_account(W=W_rlnl,net=net_rlnl)
         print(f'norm of weight AFTER division: get_norm(net_nl,l=2)={get_norm(net_nl,l=2)}, get_norm(net_rlnl,l=2)={get_norm(net_rlnl,l=2)}')
+        st()
         nets.append(net_nl)
         nets.append(net_rlnl)
+        other_stats = dict({'W_rlnl':W_rlnl,'W_nl':W_nl})
     elif mdl == 'load_nl_and_rlnl':
         ''' load net '''
         # NL

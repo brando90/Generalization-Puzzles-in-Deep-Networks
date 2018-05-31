@@ -1,15 +1,20 @@
 %path = '../pytorch_experiments/test_runs/pert_expt_reg__expt_type_SP_fig4_N_train_9_M_9_frac_norm_0.013_logging_freq_2_perturbation_freq_1000/fig4_expt_lambda_0_it_250000/deg_30/';
 %path = '../pytorch_experiments/test_runs/const_noise_pert_expt_reg__expt_type_SP_fig4_N_train_9_M_9_frac_norm_0.55_logging_freq_1_perturbation_freq_8000/fig4_expt_lambda_0_it_250000/deg_30/'
 %% degenerate
-%path = 'pytorch_experiments/const_noise_pert_expt_reg__expt_type_SP_fig4_N_train_9_M_9_frac_norm_0.6_logging_freq_1_perturbation_freq_4000/fig4_expt_lambda_0_it_250000/deg_30/'
-%fname = 'satid_1_sid_9807849_December_13'
-%path = 'pytorch_experiments/const_noise_pert_expt_reg__expt_type_SP_fig4_N_train_9_M_9_frac_norm_0.0_logging_freq_1_perturbation_freq_4000/fig4_expt_lambda_0_it_250000/deg_30/'
-%fname = 'satid_1_sid_9842476_December_18'
+path = 'pytorch_experiments/const_noise_pert_expt_reg__expt_type_SP_fig4_N_train_9_M_9_frac_norm_0.6_logging_freq_1_perturbation_freq_4000/fig4_expt_lambda_0_it_250000/deg_30/'
+fname = 'satid_1_sid_9807849_December_13'
+path = 'pytorch_experiments/const_noise_pert_expt_reg__expt_type_SP_fig4_N_train_9_M_9_frac_norm_0.0_logging_freq_1_perturbation_freq_4000/fig4_expt_lambda_0_it_250000/deg_30/'
+fname = 'satid_1_sid_9842476_December_18'
+%% degenerate 
+path = 'pytorch_experiments/const_noise_pert_expt_reg__expt_type_SP_fig4_N_train_9_M_9_frac_norm_0.6_logging_freq_1_perturbation_freq_4000/fig4_expt_lambda_0_it_250000/deg_30/'
+fname = 'satid_1_sid_9807849_December_13'
+path = 'pytorch_experiments/const_noise_pert_expt_reg__expt_type_SP_fig4_N_train_9_M_9_frac_norm_0.0_logging_freq_1_perturbation_freq_4000/fig4_expt_lambda_0_it_250000/deg_30/'
+fname = 'satid_1_sid_9842476_December_18'
 %% nondegenerate
-path = '../pytorch_experiments/test_runs/const_noise_pert_expt_reg__expt_type_SP_fig4_N_train_9_M_9_frac_norm_0.6_logging_freq_1_perturbation_freq_4000/fig4_expt_lambda_0_it_250000/deg_4/'
-fname = 'satid_1_sid_9817627_December_14.mat'
-path = '../pytorch_experiments/test_runs/const_noise_pert_expt_reg__expt_type_SP_fig4_N_train_9_M_9_frac_norm_0.0_logging_freq_1_perturbation_freq_4000/fig4_expt_lambda_0_it_250000/deg_4/'
-fname = 'satid_1_sid_9817587_December_14.mat'
+% path = '../pytorch_experiments/test_runs/const_noise_pert_expt_reg__expt_type_SP_fig4_N_train_9_M_9_frac_norm_0.6_logging_freq_1_perturbation_freq_4000/fig4_expt_lambda_0_it_250000/deg_4/'
+% fname = 'satid_1_sid_9817627_December_14.mat'
+% path = '../pytorch_experiments/test_runs/const_noise_pert_expt_reg__expt_type_SP_fig4_N_train_9_M_9_frac_norm_0.0_logging_freq_1_perturbation_freq_4000/fig4_expt_lambda_0_it_250000/deg_4/'
+% fname = 'satid_1_sid_9817587_December_14.mat'
 %% COUNT nb of files
 data_filenames = dir(path);
 nb_files = 0;

@@ -91,6 +91,49 @@ def SGD_perturb(mdl, Xtr,Ytr,Xv,Yv,Xt,Yt, optimizer,loss, M,eta,nb_iter,A ,loggi
                 noise = torch.normal(means=0.0*torch.ones(Din,Dout),std=std)
                 W.data.copy_(W.data + noise)
 
+def SGD_pert_then_train(mdl, Xtr,Ytr,Xv,Yv,Xt,Yt, optimizer,loss, M,nb_iter ,logging_freq ,dtype_x,dtype_y, perturbfreq,perturb_magnitude, iterations_switch_mode, reg,reg_lambda, stats_collector):
+    '''
+    '''
+    classification_task = type(Ytr[0]) == np.int64
+    ''' wrap data in torch '''
+    Xtr,Xv,Xt = data_utils.data2FloatTensor(Xtr,Xv,Xt)
+    Ytr,Yv,Yt = data_utils.data2LongTensor(Ytr,Yv,Yt) if classification_task else data_utils.data2FloatTensor(Ytr,Yv,Yt)
+    ## wrap in pytorch Variables
+    Xtr,Ytr,Xv,Yv,Xt,Yt = data_utils.data2torch_variable(Xtr,Ytr,Xv,Yv,Xt,Yt)
+    ''' Start training '''
+    pert_mode = True
+    N_train, _ = tuple( Xtr.size() )
+    for i in range(0,nb_iter):
+        optimizer.zero_grad()
+        batch_xs, batch_ys = get_batch2(Xtr,Ytr,M,(dtype_x,dtype_y)) # [M, D], [M, 1]
+        ''' FORWARD PASS '''
+        y_pred = mdl(batch_xs)
+        if vectors_dims_dont_match(batch_ys,y_pred) and not classification_task: ## Check vectors have same dimension
+            raise ValueError(f'You vectors don\'t have matching dimensions. It will lead to errors: \n batch_ys={batch_ys.size()},y_pred={y_pred.size()}')
+        batch_loss = loss(input=y_pred,target=batch_ys) + reg_lambda*reg
+        batch_loss.backward() # Use autograd to compute the backward pass. Now w will have gradients
+        """ Update parameters """
+        optimizer.step()
+        ''' Collect training stats '''
+        if i % (nb_iter/10) == 0 or i == 0 and False:
+            current_train_loss,train_acc = stats_collector.loss(mdl,Xtr,Ytr),stats_collector.acc(mdl,Xtr,Ytr)
+            current_test_loss,test_acc = stats_collector.loss(mdl,Xt,Yt),stats_collector.acc(mdl,Xt,Yt)
+            print('\n-------------')
+            print(f'i={i}, current_train_loss={current_train_loss}, i={i}, train_error = {train_acc}')
+            print(f'i={i}, current_test_loss={current_test_loss}, i={i}, test_error = {test_acc}')
+        ## stats logger
+        if i % logging_freq == 0 or i == 0:
+            stats_collector.collect_stats(i, mdl, Xtr,Ytr,Xv,Yv,Xt,Yt)
+        ## DO OP
+        if pert_mode:
+            if i%perturbfreq == 0 and perturb_magnitude != 0 and i != 0:
+                for W in mdl.parameters():
+                    Din,Dout = W.data.size()
+                    std = perturb_magnitude
+                    noise = torch.normal(mean=0.0*torch.ones(Din,Dout),std=std*torch.ones(Din,Dout))
+                    W.data.copy_(W.data + noise)
+        ''' switch mode? '''
+        pert_mode = (i < iterations_switch_mode)
 
 ######
 
@@ -138,13 +181,13 @@ class StatsCollector:
 
     def collect_stats(self, i, mdl, Xtr,Ytr,Xv,Yv,Xt,Yt):
         ''' log train losses '''
-        self.train_losses.append( self.loss(mdl,Xtr,Ytr).data[0] )
-        self.val_losses.append( self.loss(mdl,Xv,Yv).data[0] )
-        self.test_losses.append( self.loss(mdl,Xt,Yt).data[0] )
+        self.train_losses.append( self.loss(mdl,Xtr,Ytr).item() )
+        self.val_losses.append( self.loss(mdl,Xv,Yv).item() )
+        self.test_losses.append( self.loss(mdl,Xt,Yt).item() )
         ''' log train errors '''
-        self.train_errors.append( self.acc(mdl,Xtr,Ytr).data[0] )
-        self.val_errors.append( self.acc(mdl,Xv,Yv).data[0] )
-        self.test_errors.append( self.acc(mdl,Xt,Yt).data[0] )
+        self.train_errors.append( self.acc(mdl,Xtr,Ytr).item() )
+        self.val_errors.append( self.acc(mdl,Xv,Yv).item() )
+        self.test_errors.append( self.acc(mdl,Xt,Yt).item() )
         ''' log parameter stats'''
         for index, W in enumerate(mdl.parameters()):
             self.w_norms[index].append( W.data.norm(2) )
@@ -200,7 +243,7 @@ def train_cifar(args, nb_epochs, trainloader,testloader, net,optimizer,criterion
             loss.backward()
             optimizer.step()
             # print statistics
-            running_train_loss += loss.data[0]
+            running_train_loss += loss.item()
             seconds,minutes,hours = utils.report_times(start_time)
             st()
             if i % logging_freq == logging_freq-1:    # print every logging_freq mini-batches
@@ -216,7 +259,7 @@ def evalaute_mdl_data_set(loss,error,net,dataloader,enable_cuda):
     for i,data in enumerate(dataloader):
         inputs, labels = extract_data(enable_cuda,data,wrap_in_variable=True)
         outputs = net(inputs)
-        running_loss += loss(outputs,labels).data[0]
+        running_loss += loss(outputs,labels).item()
         running_error += error(outputs,labels)
     return running_loss/(i+1),running_error/(i+1)
 
@@ -243,13 +286,13 @@ def train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
-            running_train_loss += loss.data[0]
+            running_train_loss += loss.item()
             running_train_error += error_criterion(outputs,labels)
             ''' test evaluation '''
             inputs, labels = extract_data(enable_cuda,data=data_test,wrap_in_variable=True)
             outputs = net(inputs)
             loss = criterion(outputs, labels)
-            running_test_loss += loss.data[0]
+            running_test_loss += loss.item()
             running_test_error += error_criterion(outputs,labels)
             ''' print error first iteration'''
             if i == 0: # print on the first iteration
@@ -260,40 +303,4 @@ def train_and_track_stats(args, nb_epochs, trainloader,testloader, net,optimizer
         stats_collector.collect_mdl_params_stats(net)
         stats_collector.append_losses_errors(train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch)
         print(f'epoch={epoch}, train_loss_epoch={train_loss_epoch}, train_error_epoch={train_error_epoch}, test_loss_epoch={test_loss_epoch},test_error_epoch={test_error_epoch}')
-    return train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch
-
-def train_and_track_stats2(args, nb_epochs, trainloader,testloader, net,optimizer,criterion,error_criterion ,stats_collector):
-    enable_cuda = args.enable_cuda
-    ##
-    print('about to start training')
-    for epoch in range(nb_epochs):  # loop over the dataset multiple times
-        running_train_loss,running_train_error = 0.0,0.0
-        running_train_loss2 = 0
-        for i,data_train in enumerate(trainloader):
-            ''' zero the parameter gradients '''
-            optimizer.zero_grad()
-            ''' train step = forward + backward + optimize '''
-            inputs, labels = extract_data(enable_cuda,data_train,wrap_in_variable=True)
-            outputs = net(inputs)
-            #if epoch >= 300:
-            #    print(outputs)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
-            running_train_loss += loss.data[0]
-            running_train_loss2 += loss.data[0]
-            #print(f'running_train_loss = {running_train_loss}')
-            running_train_error += error_criterion(outputs,labels)
-            ''' print error first iteration'''
-            if i == 0 and epoch == 0: # print on the first iteration
-                print(inputs)
-            if i % 2000 == 1999:    # print every 2000 mini-batches
-                print('[%d, %5d] loss: %.3f' %(epoch + 1, i + 1, running_train_loss2 / 2000))
-                running_train_loss2 = 0
-        ''' End of Epoch: collect stats'''
-        train_loss_epoch, train_error_epoch = running_train_loss/(i+1), running_train_error/(i+1)
-        test_loss_epoch, test_error_epoch = evalaute_mdl_data_set(criterion,error_criterion,net,testloader,enable_cuda)
-        stats_collector.collect_mdl_params_stats(net)
-        stats_collector.append_losses_errors(train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch)
-        print(f'[{epoch}, {i+1}], (train_loss: {train_loss_epoch}, train error: {train_error_epoch}) , (test loss: {test_loss_epoch}, test error: {test_error_epoch})')
     return train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch

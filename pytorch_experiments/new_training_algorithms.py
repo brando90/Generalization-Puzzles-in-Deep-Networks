@@ -11,7 +11,22 @@ from math import inf
 import os
 from maps import NamedDict
 
+#from good_minima_discriminator import divide_params_by
+
 from pdb import set_trace as st
+
+def divide_params_by(W,net):
+    '''
+        W: make sure W is non-trainable if you wish to divide by a constant.
+    '''
+    params = net.named_parameters()
+    dict_params = dict(params)
+    for name, param in dict_params.items():
+        if name in dict_params:
+            new_param = param/W
+            dict_params[name] = new_param
+    net.load_state_dict(dict_params)
+    return net
 
 def dont_train(net):
     '''
@@ -89,6 +104,7 @@ class Trainer:
                 ''' train step = forward + backward + optimize '''
                 inputs,targets = inputs.to(self.device),targets.to(self.device)
                 outputs = net(inputs)
+                #st()
                 loss = self.criterion(outputs,targets)
                 loss.backward()
                 self.optimizer.step()

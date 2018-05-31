@@ -9,6 +9,10 @@ import copy
 
 from pdb import set_trace as st
 
+class Flatten(nn.Module):
+    def forward(self, input):
+        return input.view(input.size(0), -1)
+
 def reset_parameters(net):
     params = net.named_parameters()
     # for name,param in params:
