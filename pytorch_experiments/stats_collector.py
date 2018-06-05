@@ -2,9 +2,11 @@
 
 import numpy as np
 
-from maps import NamedDict
+from maps import NamedDict # don't remove this
 
 from new_training_algorithms import evalaute_mdl_data_set
+
+import nn_models as nn_mdls
 
 import utils
 
@@ -14,7 +16,8 @@ class StatsCollector:
     '''
     Class that has all the stats collected during training.
     '''
-    def __init__(self,net,trials=1,epochs=0):
+    def __init__(self,net,trials=1,epochs=0,save_every_epoch=False):
+        self.save_every_epoch = save_every_epoch
         ''' loss & errors lists'''
         self.train_losses, self.val_losses, self.test_losses = [], [], []
         self.train_errors, self.val_errors, self.test_errors = [], [], []
@@ -37,6 +40,9 @@ class StatsCollector:
         self.all_train_accs, self.all_val_accs, self.all_test_accs = np.zeros(D), [],  np.zeros(D)
         ''' '''
         self.random_dirs = []
+        ''' '''
+        if self.save_every_epoch:
+            self.weights = np.zeros(epochs,)
 
     def collect_mdl_params_stats(self,mdl):
         ''' log parameter stats'''

@@ -76,20 +76,22 @@ class MMNISTNet(nn.Module):
 ##
 
 class GBoixNet(nn.Module):
-    def __init__(self,CHW, Fs, Ks, FCs,do_bn=False):
+    def __init__(self,CHW, Fs, Ks, FCs,do_bn=False,only_1st_layer_bias=False):
         super(GBoixNet, self).__init__()
         C,H,W = CHW
         self.do_bn = do_bn
         self.nb_conv_layers = len(Fs)
         ''' Initialize Conv layers '''
+        layer = 0
         self.convs = []
         self.bns_convs = []
         out = Variable(torch.FloatTensor(1, C,H,W))
         in_channels = C
         for i in range(self.nb_conv_layers):
             F,K = Fs[i], Ks[i]
+            bias = self._bias_flag(only_1st_layer_bias,layer)
             ##
-            conv = nn.Conv2d(in_channels,F,K) #(in_channels, out_channels, kernel_size)
+            conv = nn.Conv2d(in_channels,F,K,bias=bias) #(in_channels, out_channels, kernel_size)
             setattr(self,f'conv{i}',conv)
             self.convs.append(conv)
             ##
@@ -100,6 +102,7 @@ class GBoixNet(nn.Module):
             ##
             in_channels = F
             out = conv(out)
+            layer+=1
         ''' Initialize FC layers'''
         self.nb_fcs_layers = len(FCs)
         ##
@@ -109,8 +112,9 @@ class GBoixNet(nn.Module):
         in_features = CHW
         for i in range(self.nb_fcs_layers-1):
             out_features = FCs[i]
+            bias = self._bias_flag(only_1st_layer_bias, i)
             ##
-            fc = nn.Linear(in_features, out_features)
+            fc = nn.Linear(in_features, out_features, bias=bias)
             setattr(self,f'fc{i}', fc)
             self.fcs.append(fc)
             ##
@@ -121,13 +125,17 @@ class GBoixNet(nn.Module):
                 self.bns_fcs.append(bn_fc)
             ##
             in_features = out_features
+            layer+=1
         ##
         i = self.nb_fcs_layers-1
         out_features = FCs[i]
-        fc = nn.Linear(in_features, out_features)
+        bias = self._bias_flag(only_1st_layer_bias, layer)
+        fc = nn.Linear(in_features, out_features, bias=bias)
+        layer+=1
         ##
         setattr(self,f'fc{i}', fc)
         self.fcs.append(fc)
+        self.nb_layers = layer
 
     def forward(self, x):
         ''' conv layers '''
@@ -153,6 +161,16 @@ class GBoixNet(nn.Module):
         fc = self.fcs[self.nb_fcs_layers-1]
         x = fc(x)
         return x
+
+    def _bias_flag(self,only_1st_layer_bias,i):
+        '''
+        We want to return always True if only_1st_layer_bias==False (since it means every layer should have a bias)
+        and if only_1st_layer_bias=True then we want to return True only if i==0 (first layer)
+        '''
+        if not only_1st_layer_bias: # only_1st_layer_bias == False
+            return True
+        else: # only_1st_layer_bias == True
+            return i == 0 ## True only if its the first layer
 
 ##
 

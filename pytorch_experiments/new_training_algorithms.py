@@ -12,8 +12,15 @@ import os
 from maps import NamedDict
 
 #from good_minima_discriminator import divide_params_by
+import nn_models as nn_mdls
 
 from pdb import set_trace as st
+
+def get_norm(net,l=2):
+    w_norms = 0
+    for index, W in enumerate(net.parameters()):
+        w_norms += W.norm(l)
+    return w_norms
 
 def divide_params_by(W,net):
     '''
@@ -66,7 +73,7 @@ def evalaute_mdl_data_set(loss,error,net,dataloader,device,iterations=inf):
 
 class Trainer:
 
-    def __init__(self,trainloader,testloader, optimizer,criterion,error_criterion, stats_collector, device, expt_path='',net_file_name='',save_every_epoch=False):
+    def __init__(self,trainloader,testloader, optimizer,criterion,error_criterion, stats_collector, device, expt_path='',net_file_name='',all_nets_folder='',save_every_epoch=False):
         self.trainloader = trainloader
         self.testloader = testloader
         self.optimizer = optimizer
@@ -74,12 +81,18 @@ class Trainer:
         self.error_criterion = error_criterion
         self.stats_collector = stats_collector
         self.device = device
+        ''' '''
+        self.stats_collector.save_every_epoch = save_every_epoch
         ''' save all models during training '''
         self.save_every_epoch = save_every_epoch
         self.expt_path = expt_path
         self.net_file_name = net_file_name
-        if self.expt_path != '' and self.net_file_name != '' and self.save_every_epoch:
-            utils.make_and_check_dir(expt_path)
+        ## if we need to save all nets at every epochs
+        if self.save_every_epoch:
+            ## and the paths and files are actually passed by user (note '' == sort of None, or user didn't set them)
+            if self.expt_path != '' and self.net_file_name != '':
+                self.all_nets_path = os.path.join(expt_path, all_nets_folder) #expt_path/all_nets_folder
+                utils.make_and_check_dir(self.all_nets_path)
 
     def train_and_track_stats(self,net, nb_epochs,iterations=inf,target_train_loss=inf,precision=0.10**-7):
         '''
@@ -105,7 +118,8 @@ class Trainer:
                 inputs,targets = inputs.to(self.device),targets.to(self.device)
                 outputs = net(inputs)
                 #st()
-                loss = self.criterion(outputs,targets)
+                loss = self.criterion(outputs, targets)
+                #loss = self.criterion(outputs,targets) + 0.00001*get_norm(net)**2
                 loss.backward()
                 self.optimizer.step()
                 running_train_loss += loss.item()
@@ -131,5 +145,5 @@ class Trainer:
         ''' save net model '''
         if self.save_every_epoch:
             epoch_net_file_name = f'{self.net_file_name}_epoch_{epoch}'
-            net_path_to_filename = os.path.join(self.expt_path,epoch_net_file_name)
+            net_path_to_filename = os.path.join(self.all_nets_path,epoch_net_file_name)
             torch.save(net, net_path_to_filename)

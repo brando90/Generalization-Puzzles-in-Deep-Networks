@@ -34,7 +34,7 @@ scatter(w_all_norms,gen_errors);
 %plot(w_norms_means,gen_errors_means)
 %scatter(w_norms_means,gen_errors_means)
 lsline
-xlabel('||w||')
+xlabel('product norm, ||w_k||...||w_1||')
 ylabel('generalization error/test error')
 title('||w|| vs generalization error')
 %errorbar(w_norms_means,gen_errors_means,gen_errors_stds)
@@ -91,7 +91,8 @@ for expt_file_name = expt_data_filenames
     if epoch ~= -1
         train_error = train_errors(epoch);
         if train_error == 0
-            w_norm = sum(w_norms(:,epoch))
+            %w_norm = sum(w_norms(:,epoch))
+            w_norm = prod(w_norms(:,epoch))
             gen_error = test_errors(epoch)
             gen_errors = [gen_errors gen_error];
             w_norms_all = [w_norms_all w_norm];

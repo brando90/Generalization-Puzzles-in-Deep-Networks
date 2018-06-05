@@ -3,7 +3,7 @@
 #SBATCH --time=1-22:30
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
-#SBATCH --array=1-6
+#SBATCH --array=1-8
 #SBATCH --gres=gpu:1
 
 """
@@ -94,6 +94,8 @@ parser.add_argument('-dont_standardize_data','--dont_standardize_data',action='s
                     help='uses x-u/s, standardize data')
 parser.add_argument("-label_corrupt_prob", "--label_corrupt_prob", type=float, default=0.0,
                     help="The probability of a label getting corrupted")
+parser.add_argument('-only_1st_layer_bias','--only_1st_layer_bias',action='store_true',
+                    help='only the first layer will have a bias')
 ''' training argument '''
 parser.add_argument("-train_alg", "--train_alg", type=str, default='SGD',
                     help="Training algorithm to use")
@@ -152,11 +154,14 @@ def main(plot=True):
     month = calendar.month_name[today_obj.month]
     setup_time = time.time()
     ''' filenames '''
+    ## folder names
     results_root = './test_runs_flatness2'
-    expt_folder = f'flatness_{month}_label_corrupt_prob_{args.label_corrupt_prob}_exptlabel_{args.exptlabel}'
+    expt_folder = f'flatness_{month}_label_corrupt_prob_{args.label_corrupt_prob}_exptlabel_{args.exptlabel}_only_1st_layer_BIAS_{args.only_1st_layer_bias}'
     ## filenames
     matlab_file_name = f'flatness_{day}_{month}_sj_{sj}_staid_{satid}_seed_{seed}_{hostname}'
     net_file_name = f'net_{day}_{month}_sj_{sj}_staid_{satid}_seed_{seed}_{hostname}'
+    ## folder to hold all nets
+    all_nets_folder = f'nets_folder_{day}_{month}_sj_{sj}_staid_{satid}_seed_{seed}_{hostname}'
     ## experiment path
     expt_path = os.path.join(results_root,expt_folder)
     ''' experiment params '''
@@ -214,12 +219,12 @@ def main(plot=True):
         net = torch.nn.Sequential(OrderedDict([
             ('conv0', torch.nn.Conv2d(3,420,5,bias=True)),
             ('relu0', torch.nn.ReLU()),
-            ('conv1', torch.nn.Conv2d(420,10,5, bias=True)),
+            ('conv1', torch.nn.Conv2d(420,50,5, bias=True)),
             ('relu1', torch.nn.ReLU()),
             ('Flatten',Flatten()),
-            ('FC1', torch.nn.Linear(5760,200,bias=True)),
+            ('FC1', torch.nn.Linear(28800,50,bias=True)),
             ('relu2', torch.nn.ReLU()),
-            ('FC2', torch.nn.Linear(200, 10, bias=True))
+            ('FC2', torch.nn.Linear(50, 10, bias=True))
         ]))
         ##
         nets.append(net)
@@ -265,8 +270,10 @@ def main(plot=True):
         FCs = [len(classes)]
         ##
         CHW = (3,32,32)
-        net = nn_mdls.GBoixNet(CHW,Fs,Ks,FCs,do_bn)
+        net = nn_mdls.GBoixNet(CHW,Fs,Ks,FCs,do_bn,only_1st_layer_bias=args.only_1st_layer_bias)
+        ##
         nets.append(net)
+        other_stats = dict({'only_1st_layer_bias': args.only_1st_layer_bias}, **other_stats)
     elif mdl == 'interpolate':
         suffle_test = True
         batch_size = 2**10
@@ -371,47 +378,58 @@ def main(plot=True):
         nets.append(net_rlnl)
         other_stats = dict({'path': path, 'path_rlnl': path_rlnl}, **other_stats)
     elif mdl == 'load_one_net':
+        # path = os.path.join(results_root, '/')
         ''' load net '''
-        ## 1.0
-        #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_1.0_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_677_staid_5_seed_59829215980468561_polestar-old')
-        #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_1.0_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_674_staid_2_seed_41701220392276729_polestar-old')
-        #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_1.0_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_676_staid_4_seed_54684501513999395_polestar-old')
-        #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_1.0_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_673_staid_1_seed_57779243890869381_polestar-old')
-        ## 0.8
-        #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_0.8_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_10950499_staid_2_seed_9006288257684036_node004.cm.cluster')
-        ## 0.7
-        #path = os.path.join(results_root, 'flatness_May_label_corrupt_prob_0.7_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_10950496_staid_4_seed_55005976886300675_node004.cm.cluster')
-        ## 0.6
-        #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_0.6_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_780_staid_1_seed_2583642406948920_polestar-old')
-        ## 0.5
-        #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_0.5_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_0_staid_0_seed_45042856912691161_polestar')
-        ## 0.4
-        #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_0.4_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_781_staid_2_seed_8233191066269519_polestar-old')
-        ## 0.3
-        #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_0.3_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_786_staid_1_seed_22981577159876369_polestar-old')
-        ## 0.2
-        #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_0.2_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_683_staid_2_seed_62757268370691842_polestar-old')
-        ## 0.1
-        #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_0.1_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_784_staid_1_seed_30006724853600989_polestar-old')
-        ## 0.05
-        #path = os.path.join(results_root, 'flatness_May_label_corrupt_prob_0.05_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_802_staid_3_seed_11347587066395527_polestar-old')
-        ## 0.01
-        #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_0.01_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_811_staid_6_seed_41018024023337929_polestar-old')
-        ## 0.005
-        #path = os.path.join(results_root, 'flatness_May_label_corrupt_prob_0.005_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_20_May_sj_842_staid_1_seed_36581971144286716_polestar-old')
-        ## 0.001
-        #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_0.001_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_10951638_staid_4_seed_68150886325028224_node004.cm.cluster')
-        ## 0.0005
-        #path = os.path.join(results_root, 'flatness_May_label_corrupt_prob_0.0005_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_20_May_sj_843_staid_2_seed_40516994826727806_polestar-old')
         ## 0.0001
-        path = os.path.join(results_root,'flatness_May_label_corrupt_prob_0.0001_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_18_May_sj_10951641_staid_2_seed_55373094418342903_node001.cm.cluster')
-        ## 5e-5
-        #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_5e-05_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_21_May_sj_936_staid_5_seed_29221402749608965_polestar-old')
-        ## 5e-6
-        #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_5e-06_exptlabel_MoreRLInits_lr_0.01_momentum_0.9/net_21_May_sj_949_staid_5_seed_71926857789820853_polestar-old')
+        path = os.path.join(results_root,'flatness_June_label_corrupt_prob_0.0001_exptlabel_RLInits_only_1st_layer_BIAS_True_lr_0.01_momentum_0.9/net_4_June_sj_2930_staid_1_seed_44068746222566797_polestar-old')
+        ## 0.001
+        path = os.path.join(results_root,'flatness_June_label_corrupt_prob_0.001_exptlabel_RLInits_only_1st_layer_BIAS_True_lr_0.01_momentum_0.9/net_4_June_sj_2931_staid_1_seed_45909127992028746_polestar-old')
+        ## 0.01
+        path = os.path.join(results_root, 'flatness_June_label_corrupt_prob_0.01_exptlabel_RLInits_only_1st_layer_BIAS_True_lr_0.01_momentum_0.9/net_4_June_sj_2932_staid_1_seed_26063258295342124_polestar-old')
+        ## 0.1
+        path = os.path.join(results_root, 'flatness_June_label_corrupt_prob_0.1_exptlabel_RLInits_only_1st_layer_BIAS_True_lr_0.01_momentum_0.9/net_4_June_sj_2933_staid_1_seed_2488979218261661_polestar-old')
+        ## 0.5
+        path = os.path.join(results_root, 'flatness_June_label_corrupt_prob_0.5_exptlabel_RLInits_only_1st_layer_BIAS_True_lr_0.01_momentum_0.9/net_4_June_sj_2935_staid_1_seed_23538964881473123_polestar-old')
+        ## 0.75
+        #path = os.path.join(results_root, 'flatness_June_label_corrupt_prob_0.75_exptlabel_RLInits_only_1st_layer_BIAS_True_lr_0.01_momentum_0.9/net_4_June_sj_2936_staid_1_seed_63492237562680660_polestar-old')
+        ## 1.0
+        #path = os.path.join(results_root, 'flatness_June_label_corrupt_prob_1.0_exptlabel_RLInits_only_1st_layer_BIAS_True_lr_0.01_momentum_0.9/net_4_June_sj_2937_staid_1_seed_8973851686491033_polestar-old')
+        ''' load net '''
         net = torch.load(path)
         nets.append(net)
         other_stats = dict({'path': path}, **other_stats)
+    elif mdl == 'l2_norm_all_params':
+        ''' load net '''
+        # path = os.path.join(results_root,'flatness_June_label_corrupt_sqprob_0.0_exptlabel_WeightDecay_lambda100_lr_0.1_momentum_0.0/net_1_June_sj_2833_staid_2_seed_45828051420330772_polestar-old')
+        # path = os.path.join(results_root,'flatness_June_label_corrupt_prob_0.0_exptlabel_WeightDecay_lambda1_lr_0.1_momentum_0.0/net_1_June_sj_2830_staid_1_seed_53714812690274511_polestar-old')
+        # path = os.path.join(results_root,'flatness_June_label_corrupt_prob_0.0_exptlabel_WeightDecay_lambda0.1_lr_0.1_momentum_0.0/net_1_June_sj_2835_staid_2_seed_66755608399194708_polestar-old')
+        # path = os.path.join(results_root,'flatness_June_label_corrupt_prob_0.0_exptlabel_WeightDecay_lambda0.01_lr_0.1_momentum_0.0/net_1_June_sj_2832_staid_1_seed_47715620118836168_polestar-old')
+
+        #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_0.0_exptlabel_WeightDecay_lambda0.1_lr_0.01_momentum_0.9/net_31_May_sj_2784_staid_1_seed_59165331201064855_polestar-old')
+        #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_0.0_exptlabel_WeightDecay_lambda0.01_lr_0.01_momentum_0.9/net_31_May_sj_2792_staid_1_seed_42391375291583068_polestar-old')
+        #path = os.path.join(results_root,'flatness_May_label_corrupt_prob_0.0_exptlabel_WeightDecay_lambda0.001_lr_0.01_momentum_0.9/net_31_May_sj_2793_staid_2_seed_47559284752010338_polestar-old')
+
+        #path = os.path.join(results_root,'flatness_June_label_corrupt_prob_0.0_exptlabel_L2_squared_lambda1_lr_0.1_momentum_0.0/net_1_June_sj_2841_staid_2_seed_29441453139027048_polestar-old')
+        #path = os.path.join(results_root,'flatness_June_label_corrupt_prob_0.0_exptlabel_L2_squared_lambda0.1_lr_0.1_momentum_0.0/net_1_June_sj_2839_staid_2_seed_35447208985369634_polestar-old')
+        #path = os.path.join(results_root,'flatness_June_label_corrupt_prob_0.0_exptlabel_L2_squared_lambda0.01_lr_0.1_momentum_0.0/net_1_June_sj_2837_staid_2_seed_57556488720733908_polestar-old')
+        #path = os.path.join(results_root,'flatness_June_label_corrupt_prob_0.0_exptlabel_L2_squared_lambda0.001_lr_0.1_momentum_0.0/net_1_June_sj_2848_staid_1_seed_48943421305461120_polestar-old')
+        #path = os.path.join(results_root,'flatness_June_label_corrupt_prob_0.0_exptlabel_L2_squared_lambda0.0001_lr_0.1_momentum_0.0/net_1_June_sj_2850_staid_1_seed_2881772832480048_polestar-old')
+        #path = os.path.join(results_root,'flatness_June_label_corrupt_prob_0.0_exptlabel_L2_squared_lambda0.00001_lr_0.1_momentum_0.0/net_1_June_sj_2852_staid_1_seed_24293440492629928_polestar-old')
+        print(f'path = {path}')
+        net = torch.load(path)
+        ''' l2_norm_all_params '''
+        l2_norm_all_params(net)
+        ''' evaluate data set '''
+        standardize = not args.dont_standardize_data  # x - mu / std , [-1,+1]
+        error_criterion = metrics.error_criterion
+        criterion = torch.nn.CrossEntropyLoss()
+        trainset, trainloader, testset, testloader, classes_data = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,args.label_corrupt_prob,shuffle_train=shuffle_train,suffle_test=suffle_test,standardize=standardize)
+        train_loss_epoch, train_error_epoch = evalaute_mdl_data_set(criterion, error_criterion, net,trainloader,device)
+        test_loss_epoch, test_error_epoch = evalaute_mdl_data_set(criterion, error_criterion, net,testloader,device)
+        print(f'[-1, -1], (train_loss: {train_loss_epoch}, train error: {train_error_epoch}) , (test loss: {test_loss_epoch}, test error: {test_error_epoch})')
+        ''' end '''
+        nets.append(net)
+        sys.exit()
     else:
         print('RESTORED FROM PRE-TRAINED NET')
         suffle_test = False
@@ -471,7 +489,7 @@ def main(plot=True):
         ''' set up Trainer '''
         if args.save_every_epoch:
             save_every_epoch = args.save_every_epoch
-            trainer = Trainer(trainloader, testloader, optimizer, criterion, error_criterion, stats_collector, device, expt_path,net_file_name,save_every_epoch)
+            trainer = Trainer(trainloader, testloader, optimizer, criterion, error_criterion, stats_collector, device, expt_path,net_file_name,all_nets_folder,save_every_epoch)
         else:
             trainer = Trainer(trainloader,testloader, optimizer,criterion,error_criterion, stats_collector, device)
         last_errors = trainer.train_and_track_stats(net, nb_epochs,iterations)

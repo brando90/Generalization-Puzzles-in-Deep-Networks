@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #SBATCH --mem=7000
-#SBATCH --time=0-11:00
+#SBATCH --time=0-20:00
 #SBATCH --array=1-30
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
@@ -132,7 +132,7 @@ def main(plotting=False,save=False):
     lb_deg,ub_deg = 39,39
     degrees = list(range(lb_deg,ub_deg+1,step_deg))
     lambdas = [0]
-    nb_iterations = [int(40000000)]
+    nb_iterations = [int(25000000)]
     repetitions = len(degrees)*[30]
     ''' Experiment Number of vector elements'''
     # expt_type='NB_VEC_ELEMENTS'
