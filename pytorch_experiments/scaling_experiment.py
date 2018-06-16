@@ -89,9 +89,9 @@ class Normalizer:
         ''' '''
         ''' get net '''
         nets_folders = [filename for filename in os.listdir(path_to_folder_expts) if 'nets_folder' in filename]
-        net_folder = [filename for filename in nets_folders if f'seed_{seed_id}' in filename][0] # note seed are unique very h.p.
+        net_folder = [filename for filename in nets_folders if f'seed_{seed_id}' in filename] # note seed are unique very h.p.
         net_path = os.path.join(path_to_folder_expts,net_folder)
-        net_name = [net_name for net_name in os.listdir(net_path) if f'epoch_{epoch}' in filename][0]
+        net_name = [net_name for net_name in os.listdir(net_path) if f'epoch_{epoch}' in filename]
         net_path = os.path.join(net_path, net_name)
         net = torch.load(net_path)
         ''' normalize net '''
@@ -104,15 +104,18 @@ class Normalizer:
     def normalize_net(self,net):
         return self.normalization_scheme(net)
 
-def divide_params(net,norm):
+def divide_params(net,norm_func):
     '''
-    normalizes the network per layer
+    net: network
+    norm_func: function that returns the norm of W depending to the specified scheme.
+
+    normalizes the network per layer.
     '''
     params = net.named_parameters()
     dict_params = dict(params)
     for name, param in dict_params.items():
         if name in dict_params:
-            W_norm = norm(param)
+            W_norm = norm_func(param)
             new_param = param/W_norm
             dict_params[name] = new_param
     net.load_state_dict(dict_params)
@@ -139,6 +142,7 @@ def spectral_normalization(W):
     return spectral_norm
 
 def main():
+    # TODO: IMPORTANT: Don't forget to include biases in the [W, b]
     print('start main')
     path_all_expts = '/cbcl/cbcl01/brando90/home_simulation_research/overparametrized_experiments/pytorch_experiments/test_runs_flatness4'
     ''' expt_paths '''
@@ -150,10 +154,14 @@ def main():
     list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_0.5_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.1_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0')
     list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_0.75_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.1_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0')
     list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_1.0_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.1_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0')
+    ''' normalization scheme '''
+    normalization_scheme = lambda net: divide_params(net,frobenius_normalization)
+    normalization_scheme = lambda net: divide_params(net, l1_normalization)
+    normalization_scheme = lambda net: divide_params(net, spectral_normalization)
     ''' get results'''
     data_path = './data'
     target_loss = 0.0044
-    normalizer = Normalizer(data_path)
+    normalizer = Normalizer(data_path,normalization_scheme)
     train_all_losses, gen_all_errors = normalizer.extract_all_results_vs_test_errors(path_all_expts,list_names,target_loss)
     print(f'train_all_losses,gen_all_errors={train_all_losses,gen_all_errors}')
 
