@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#SBATCH --mem=7000
+#SBATCH --mem=90000
 #SBATCH --time=0-20:00
 #SBATCH --array=1-30
 #SBATCH --mail-type=END
@@ -132,7 +132,10 @@ def main(plotting=False,save=False):
     lb_deg,ub_deg = 39,39
     degrees = list(range(lb_deg,ub_deg+1,step_deg))
     lambdas = [0]
-    nb_iterations = [int(25000000)]
+    #nb_iterations = [int(2500000)]
+    #nb_iterations = [int(1000000)]
+    #nb_iterations = [int(5 * 10**6)]
+    #nb_iterations = [int(1.1 * 10 ** 7)]
     repetitions = len(degrees)*[30]
     ''' Experiment Number of vector elements'''
     # expt_type='NB_VEC_ELEMENTS'
@@ -253,10 +256,9 @@ def main(plotting=False,save=False):
     else:
         raise ValueError(f'MDL_2_TRAIN={MDL_2_TRAIN}')
     ''' TRAIN '''
-    #train_args = NamedDict({})
+    perturbfreq = 1.1 * 10**5
+    perturb_magnitude = 0.45
     if optimizer_mode =='SGD_AND_PERTURB':
-        perturbfreq = 1.3*10**7
-        perturb_magnitude = 0.0
         ##
         momentum = 0.0
         optim = torch.optim.SGD(mdl.parameters(), lr=eta, momentum=momentum)
@@ -267,8 +269,6 @@ def main(plotting=False,save=False):
             reg=reg,reg_lambda=reg_lambda,
             stats_collector=stats_collector)
     elif optimizer_mode == 'SGD_train_then_pert':
-        perturbfreq = 2500
-        perturb_magnitude = 0.45
         iterations_switch_mode = 1 # never perturb
         #iterations_switch_mode = nb_iter # always perturb
         iterations_switch_mode = nb_iter/2 # perturb for half

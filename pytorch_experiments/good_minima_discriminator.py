@@ -7,7 +7,7 @@ import sys
 import numpy as np
 from math import inf
 
-from new_training_algorithms import evalaute_mdl_data_set
+from new_training_algorithms import evalaute_running_mdl_data_set
 import nn_models as nn_mdls
 
 from pdb import set_trace as st
@@ -42,8 +42,8 @@ def perturb_model(net,perturbation_magnitudes,std_dict_params,relative,device,st
         perturbations.append(perturbation.norm(2))
         i+=1
     ''' evalaute model '''
-    train_loss, train_error = evalaute_mdl_data_set(criterion,error_criterion,net,trainloader,device)
-    test_loss, test_error = evalaute_mdl_data_set(criterion,error_criterion,net,testloader,device)
+    train_loss, train_error = evalaute_approx_mdl_data_set(criterion,error_criterion,net,trainloader,device)
+    test_loss, test_error = evalaute_approx_mdl_data_set(criterion,error_criterion,net,testloader,device)
     ''' record result '''
     stats_collector.append_losses_errors_accs(train_loss, train_error, test_loss, test_error)
     stats_collector.collect_mdl_params_stats(net)
@@ -75,8 +75,8 @@ def get_landscapes_stats_between_nets(net1,net2, interpolations, device,stats_co
         ''' interpolate nets with current alpha '''
         interpolated_net = convex_interpolate_nets(interpolated_net,net1,net2,alpha)
         ''' evalaute model '''
-        train_loss, train_error = evalaute_mdl_data_set(criterion,error_criterion,interpolated_net,trainloader,device,iterations)
-        test_loss, test_error = evalaute_mdl_data_set(criterion,error_criterion,interpolated_net,testloader,device,iterations)
+        train_loss, train_error = evalaute_running_mdl_data_set(criterion,error_criterion,interpolated_net,trainloader,device,iterations)
+        test_loss, test_error = evalaute_running_mdl_data_set(criterion,error_criterion,interpolated_net,testloader,device,iterations)
         ''' record result '''
         stats_collector.append_losses_errors_accs(train_loss, train_error, test_loss, test_error)
         stats_collector.collect_mdl_params_stats(interpolated_net)
@@ -145,8 +145,8 @@ def get_radius_errors_loss_list(dir_index, net,r_large,rs,device,stats_collector
     for epoch,r in enumerate(rs):
         ''' compute I(W+r*dx) = I(W+W_all)'''
         net_r = translate_net_by_rdx(net,net_r,r,dx)
-        Er_train_loss, Er_train_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,trainloader,device)
-        Er_test_loss, Er_test_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,testloader,device)
+        Er_train_loss, Er_train_error = evalaute_running_mdl_data_set(criterion,error_criterion,net_r,trainloader,device)
+        Er_test_loss, Er_test_error = evalaute_running_mdl_data_set(criterion,error_criterion,net_r,testloader,device)
         ''' record result '''
         stats_collector.append_losses_errors_accs(Er_train_loss, Er_train_error, Er_test_loss, Er_test_error)
         errors_losses = [Er_train_loss,Er_train_error,Er_test_loss,Er_test_error]
@@ -208,8 +208,8 @@ def get_radius_errors_loss_list_via_interpolation(dir_index, net,r_large,interpo
     for epoch,alpha in enumerate(interpolations):
         ''' compute I(W+r*dx) = I(W+W_all)'''
         net_r = convex_interpolate_nets(net_r,net1=net_end,net2=net,alpha=alpha) # alpha*net_end+(1-alpha)*net
-        Er_train_loss, Er_train_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,trainloader,device,iterations)
-        Er_test_loss, Er_test_error = evalaute_mdl_data_set(criterion,error_criterion,net_r,testloader,device,iterations)
+        Er_train_loss, Er_train_error = evalaute_running_mdl_data_set(criterion,error_criterion,net_r,trainloader,device,iterations)
+        Er_test_loss, Er_test_error = evalaute_running_mdl_data_set(criterion,error_criterion,net_r,testloader,device,iterations)
         ''' record result '''
         stats_collector.append_losses_errors_accs(Er_train_loss, Er_train_error, Er_test_loss, Er_test_error)
         errors_losses = [Er_train_loss,Er_train_error,Er_test_loss,Er_test_error]
@@ -269,10 +269,10 @@ class RandLandscapeInspector:
         dx = v/v.norm(2)
         ''' fill up I list '''
         r = self.r_initial
-        Loss_minima,Error_minima = evalaute_mdl_data_set(self.criterion,self.error_criterion,self.net,self.trainloader,self.device,self.iterations)
+        Loss_minima,Error_minima = evalaute_running_mdl_data_set(self.criterion,self.error_criterion,self.net,self.trainloader,self.device,self.iterations)
         while True:
             net_rdx = produce_new_translated_net(self.net,r,dx)
-            Loss_rdx,Error_rdx = evalaute_mdl_data_set(self.criterion,self.error_criterion,net_rdx,self.trainloader,self.device,self.iterations)
+            Loss_rdx,Error_rdx = evalaute_running_mdl_data_set(self.criterion,self.error_criterion,net_rdx,self.trainloader,self.device,self.iterations)
             diff = Error_rdx - Error_minima
             print(f'\n--\nr = {r}')
             print(f'Error_minima={Error_minima}')
@@ -309,11 +309,11 @@ class RandLandscapeInspector:
         dx = v/v.norm(2)
         ''' set up '''
         lb,ub = 0,2*self.r_initial
-        _,error_minima = evalaute_mdl_data_set(self.criterion,self.error_criterion,self.net,self.trainloader,self.device,self.iterations)
+        _,error_minima = evalaute_running_mdl_data_set(self.criterion,self.error_criterion,self.net,self.trainloader,self.device,self.iterations)
         y_target = error_minima + self.epsilon # I(W) + eps = I(W+0*dx) + eps
         def f(r):
             net_rdx = produce_new_translated_net(self.net, r, dx)
-            Loss_rdx, Error_rdx = evalaute_mdl_data_set(self.criterion, self.error_criterion, net_rdx, self.trainloader,self.device, self.iterations)
+            Loss_rdx, Error_rdx = evalaute_running_mdl_data_set(self.criterion, self.error_criterion, net_rdx, self.trainloader,self.device, self.iterations)
             return Error_rdx - y_target
         ''' start bisect method ''' # https://en.wikipedia.org/wiki/Bisection_method
         f_lb = error_minima - y_target
@@ -349,13 +349,13 @@ def print_evaluation_of_nets(net_nl,net_rlnl,criterion,error_criterion,trainload
     print(f'W_nl = {W_nl}')
     print(f'W_rlnl = {W_rlnl}')
     ''' train errors '''
-    loss_nl_train, error_nl_train = evalaute_mdl_data_set(criterion, error_criterion, net_nl, trainloader, device,iterations)
-    loss_rlnl_train, error_rlnl_train = evalaute_mdl_data_set(criterion, error_criterion, net_rlnl, trainloader, device,iterations)
+    loss_nl_train, error_nl_train = evalaute_running_mdl_data_set(criterion, error_criterion, net_nl, trainloader, device,iterations)
+    loss_rlnl_train, error_rlnl_train = evalaute_running_mdl_data_set(criterion, error_criterion, net_rlnl, trainloader, device,iterations)
     print(f'loss_nl_train, error_nl_train = {loss_nl_train, error_nl_train}')
     print(f'loss_rlnl_train, error_rlnl_train = {loss_rlnl_train, error_rlnl_train}')
     ''' test errors '''
-    loss_nl_test, error_nl_test = evalaute_mdl_data_set(criterion, error_criterion, net_nl, testloader, device,iterations)
-    loss_rlnl_test, error_rlnl_test = evalaute_mdl_data_set(criterion, error_criterion, net_rlnl, testloader, device,iterations)
+    loss_nl_test, error_nl_test = evalaute_running_mdl_data_set(criterion, error_criterion, net_nl, testloader, device,iterations)
+    loss_rlnl_test, error_rlnl_test = evalaute_running_mdl_data_set(criterion, error_criterion, net_rlnl, testloader, device,iterations)
     print(f'loss_nl_test, error_nl_test = {loss_nl_test, error_nl_test}')
     print(f'loss_rlnl_test, error_rlnl_test = {loss_rlnl_test, error_rlnl_test}')
 

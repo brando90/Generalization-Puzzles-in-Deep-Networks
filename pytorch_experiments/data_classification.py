@@ -214,3 +214,14 @@ def load_only_train(path_train,eps,batch_size_train,shuffle_train,num_workers):
     trainset = MyData(path_train,eps=eps,transform=get_standardized_transform())
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size_train,shuffle=shuffle_train, num_workers=num_workers)
     return trainset,trainloader
+
+
+#####
+
+def imagenet():
+    lql_imagenet_loc = '/cbcl/scratch01/datasets/imagenet2013'
+    # Data loading code
+    traindir = os.path.join(data_path, 'train')
+    valdir = os.path.join(data_path, 'val')
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])

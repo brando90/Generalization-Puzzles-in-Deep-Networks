@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#SBATCH --mem=20000
+#SBATCH --mem=30000
 #SBATCH --time=1-22:30
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
@@ -32,8 +32,6 @@ import torch.optim as optim
 
 import math
 
-import data_classification as data_class
-
 import nn_models as nn_mdls
 from nn_models import Flatten
 
@@ -43,6 +41,9 @@ from stats_collector import StatsCollector
 import metrics
 import utils
 import plot_utils
+
+import data_classification as data_class
+
 from good_minima_discriminator import get_errors_for_all_perturbations, perturb_model
 from good_minima_discriminator import get_landscapes_stats_between_nets
 from good_minima_discriminator import get_radius_errors_loss_list
@@ -55,7 +56,9 @@ from good_minima_discriminator import print_evaluation_of_nets
 from good_minima_discriminator import divide_params_by_taking_bias_into_account
 from good_minima_discriminator import l2_norm_all_params
 
-from new_training_algorithms import evalaute_mdl_data_set
+from new_training_algorithms import get_function_evaluation_from_name
+from new_training_algorithms import evalaute_running_mdl_data_set
+from new_training_algorithms import evalaute_mdl_on_full_data_set
 from new_training_algorithms import Trainer
 from new_training_algorithms import dont_train
 from new_training_algorithms import initialize_to_zero
@@ -90,6 +93,8 @@ parser.add_argument("-mdl", "--mdl", type=str, default='debug',
                     help="mdl") # options: debug, cifar_10_tutorial_net, BoixNet, LiaoNet
 parser.add_argument('-use_bn','--use_bn',action='store_true',
                     help='turns on BN')
+parser.add_argument('-use_dropout','--use_dropout',action='store_true',
+                    help='turns on dropout')
 parser.add_argument('-dont_standardize_data','--dont_standardize_data',action='store_true',
                     help='uses x-u/s, standardize data')
 parser.add_argument("-label_corrupt_prob", "--label_corrupt_prob", type=float, default=0.0,
@@ -107,6 +112,10 @@ parser.add_argument("-epsilon", "--epsilon", type=float, default=0.05,
                     help="Epsilon error.")
 parser.add_argument('-save_every_epoch','--save_every_epoch',action='store_true',
                     help='save model at the end of every epoch')
+parser.add_argument("-decay_rate", "--decay_rate", type=float, default=1.0,
+                    help="decay_rate for scheduler.")
+parser.add_argument("-evalaute_mdl_data_set", "--evalaute_mdl_data_set", type=str, default='evalaute_running_mdl_data_set',
+                    help="which method to evaluate the net at the end of each epoch.")
 ''' radius expt params '''
 parser.add_argument("-net_name", "--net_name", type=str, default='NL',
                     help="Training algorithm to use")
@@ -136,7 +145,7 @@ def main(plot=True):
     print(f'device = {device}')
     ''' '''
     store_net = True
-    other_stats = dict({'sj':sj,'satid':satid,'hostname':hostname})
+    other_stats = dict({'sj':sj,'satid':satid,'hostname':hostname,'label_corrupt_prob':args.label_corrupt_prob})
     ''' reproducibility setup/params'''
     #num_workers = 2 # how many subprocesses to use for data loading. 0 means that the data will be loaded in the main process.
     githash = subprocess.check_output(["git", "describe", "--always"]).strip()
@@ -155,7 +164,7 @@ def main(plot=True):
     setup_time = time.time()
     ''' filenames '''
     ## folder names
-    results_root = './test_runs_flatness2'
+    results_root = './test_runs_flatness5_ProperOriginalExpt'
     expt_folder = f'flatness_{month}_label_corrupt_prob_{args.label_corrupt_prob}_exptlabel_{args.exptlabel}_only_1st_layer_BIAS_{args.only_1st_layer_bias}'
     ## filenames
     matlab_file_name = f'flatness_{day}_{month}_sj_{sj}_staid_{satid}_seed_{seed}_{hostname}'
@@ -165,6 +174,7 @@ def main(plot=True):
     ## experiment path
     expt_path = os.path.join(results_root,expt_folder)
     ''' experiment params '''
+    evalaute_mdl_data_set = get_function_evaluation_from_name(args.evalaute_mdl_data_set)
     suffle_test = False
     shuffle_train = True
     nb_epochs = 4 if args.epochs is None else args.epochs
@@ -274,6 +284,24 @@ def main(plot=True):
         ##
         nets.append(net)
         other_stats = dict({'only_1st_layer_bias': args.only_1st_layer_bias}, **other_stats)
+    elif mdl == 'AllConvNetStefOe':
+        #batch_size_train = 16384 # 2**14
+        #batch_size_test = 16384
+        #batch_size_train = 2**10
+        batch_size_train = 2**10
+        batch_size_test = 2**10
+        ##
+        batch_size = batch_size_train
+        suffle_test = False
+        ## AllConvNet
+        only_1st_layer_bias = args.only_1st_layer_bias
+        CHW = (3,32,32)
+        dropout = args.use_dropout
+        net = nn_mdls.AllConvNetStefOe(nc=len(CHW),dropout=dropout,only_1st_layer_bias=only_1st_layer_bias)
+        ##
+        nets.append(net)
+        other_stats = dict({'only_1st_layer_bias': args.only_1st_layer_bias,'dropout':dropout}, **other_stats)
+        expt_path = f'{expt_path}_dropout_{dropout}'
     elif mdl == 'interpolate':
         suffle_test = True
         batch_size = 2**10
@@ -381,19 +409,19 @@ def main(plot=True):
         # path = os.path.join(results_root, '/')
         ''' load net '''
         ## 0.0001
-        path = os.path.join(results_root,'flatness_June_label_corrupt_prob_0.0001_exptlabel_RLInits_only_1st_layer_BIAS_True_lr_0.01_momentum_0.9/net_4_June_sj_2930_staid_1_seed_44068746222566797_polestar-old')
+        path = os.path.join(results_root,'flatness_June_label_corrupt_prob_0.0001_exptlabel_RLInits_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0/net_16_June_sj_691_staid_1_seed_11377480189713846_polestar-old')
         ## 0.001
-        path = os.path.join(results_root,'flatness_June_label_corrupt_prob_0.001_exptlabel_RLInits_only_1st_layer_BIAS_True_lr_0.01_momentum_0.9/net_4_June_sj_2931_staid_1_seed_45909127992028746_polestar-old')
-        ## 0.01
-        path = os.path.join(results_root, 'flatness_June_label_corrupt_prob_0.01_exptlabel_RLInits_only_1st_layer_BIAS_True_lr_0.01_momentum_0.9/net_4_June_sj_2932_staid_1_seed_26063258295342124_polestar-old')
+        #path = os.path.join(results_root,'flatness_June_label_corrupt_prob_0.001_exptlabel_RLInits_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0/net_16_June_sj_692_staid_1_seed_8681112135507692_polestar-old')
         ## 0.1
-        path = os.path.join(results_root, 'flatness_June_label_corrupt_prob_0.1_exptlabel_RLInits_only_1st_layer_BIAS_True_lr_0.01_momentum_0.9/net_4_June_sj_2933_staid_1_seed_2488979218261661_polestar-old')
+        #path = os.path.join(results_root, 'flatness_June_label_corrupt_prob_0.1_exptlabel_RLInits_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0/net_16_June_sj_694_staid_1_seed_70008282846077529_polestar-old')
+        ## 0.2
+        #path = os.path.join(results_root, 'flatness_June_label_corrupt_prob_0.2_exptlabel_RLInits_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0/net_16_June_sj_695_staid_1_seed_43685629665566974_polestar-old')
         ## 0.5
-        path = os.path.join(results_root, 'flatness_June_label_corrupt_prob_0.5_exptlabel_RLInits_only_1st_layer_BIAS_True_lr_0.01_momentum_0.9/net_4_June_sj_2935_staid_1_seed_23538964881473123_polestar-old')
+        #path = os.path.join(results_root, 'flatness_June_label_corrupt_prob_0.5_exptlabel_RLInits_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0/net_16_June_sj_696_staid_1_seed_20925030519560728_polestar-old')
         ## 0.75
-        #path = os.path.join(results_root, 'flatness_June_label_corrupt_prob_0.75_exptlabel_RLInits_only_1st_layer_BIAS_True_lr_0.01_momentum_0.9/net_4_June_sj_2936_staid_1_seed_63492237562680660_polestar-old')
+        #path = os.path.join(results_root, 'flatness_June_label_corrupt_prob_0.75_exptlabel_RLInits_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0/net_16_June_sj_697_staid_1_seed_6683390113151295_polestar-old')
         ## 1.0
-        #path = os.path.join(results_root, 'flatness_June_label_corrupt_prob_1.0_exptlabel_RLInits_only_1st_layer_BIAS_True_lr_0.01_momentum_0.9/net_4_June_sj_2937_staid_1_seed_8973851686491033_polestar-old')
+        #path = os.path.join(results_root, 'flatness_June_label_corrupt_prob_1.0_exptlabel_RLInits_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0/net_16_June_sj_698_staid_1_seed_60631186952644166_polestar-old')
         ''' load net '''
         net = torch.load(path)
         nets.append(net)
@@ -457,7 +485,6 @@ def main(plot=True):
     ''' Cross Entropy + Optmizer '''
     lr = 0.01
     momentum = 0.9
-    expt_path = f'{expt_path}_lr_{lr}_momentum_{momentum}'
     ## Error/Loss criterions
     error_criterion = metrics.error_criterion
     criterion = torch.nn.CrossEntropyLoss()
@@ -465,6 +492,14 @@ def main(plot=True):
     #criterion = torch.nn.MSELoss(size_average=True)
     optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
     other_stats = dict({'nb_epochs':nb_epochs,'batch_size':batch_size,'mdl':mdl,'lr':lr,'momentum':momentum, 'seed':seed,'githash':githash},**other_stats)
+    expt_path = f'{expt_path}_batch_size_train_{batch_size_train}_lr_{lr}_momentum_{momentum}'
+    ''' scheduler '''
+    milestones = [200, 250, 300]
+    gamma = args.decay_rate
+    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=milestones, gamma=gamma)
+    other_stats = dict({'milestones': milestones, 'gamma': gamma}, **other_stats)
+    milestones_str = ','.join(str(m) for m in milestones)
+    expt_path = f'{expt_path}_scheduler_milestones_{milestones_str}_gamma_{gamma}'
     ''' stats collector '''
     stats_collector = StatsCollector(net)
     ''' Verify model you got has the right error'''
@@ -489,9 +524,9 @@ def main(plot=True):
         ''' set up Trainer '''
         if args.save_every_epoch:
             save_every_epoch = args.save_every_epoch
-            trainer = Trainer(trainloader, testloader, optimizer, criterion, error_criterion, stats_collector, device, expt_path,net_file_name,all_nets_folder,save_every_epoch)
+            trainer = Trainer(trainloader, testloader, optimizer, scheduler, criterion, error_criterion, stats_collector, device, expt_path,net_file_name,all_nets_folder,save_every_epoch,args.evalaute_mdl_data_set)
         else:
-            trainer = Trainer(trainloader,testloader, optimizer,criterion,error_criterion, stats_collector, device)
+            trainer = Trainer(trainloader,testloader, optimizer, scheduler, criterion,error_criterion, stats_collector, device,evalaute_mdl_data_set=args.evalaute_mdl_data_set)
         last_errors = trainer.train_and_track_stats(net, nb_epochs,iterations)
         ''' Test the Network on the test data '''
         train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch = last_errors
@@ -613,20 +648,20 @@ def main(plot=True):
         ''' '''
         store_results = False
         store_net = False
-    elif args.train_alg == 'reach_target_loss':
-        iterations = inf
-        precision = 0.00001
-        ''' set target loss '''
-        loss_rlnl_train, error_rlnl_train = evalaute_mdl_data_set(criterion, error_criterion, net_rlnl, trainloader,device, iterations)
-        target_train_loss = loss_rlnl_train
-        ''' do SGD '''
-        trainer = Trainer(trainloader,testloader, optimizer,criterion,error_criterion, stats_collector, device)
-        last_errors = trainer.train_and_track_stats(net,nb_epochs,iterations=iterations,target_train_loss=target_train_loss,precision=precision)
-        ''' Test the Network on the test data '''
-        train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch = last_errors
-        print(f'train_loss_epoch={train_loss_epoch} train_error_epoch={train_error_epoch}')
-        print(f'test_loss_epoch={test_loss_epoch} test_error_epoch={test_error_epoch}')
-        st()
+    # elif args.train_alg == 'reach_target_loss':
+    #     iterations = inf
+    #     precision = 0.00001
+    #     ''' set target loss '''
+    #     loss_rlnl_train, error_rlnl_train = evalaute_mdl_data_set(criterion, error_criterion, net_rlnl, trainloader,device, iterations)
+    #     target_train_loss = loss_rlnl_train
+    #     ''' do SGD '''
+    #     trainer = Trainer(trainloader,testloader, optimizer,criterion,error_criterion, stats_collector, device)
+    #     last_errors = trainer.train_and_track_stats(net,nb_epochs,iterations=iterations,target_train_loss=target_train_loss,precision=precision)
+    #     ''' Test the Network on the test data '''
+    #     train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch = last_errors
+    #     print(f'train_loss_epoch={train_loss_epoch} train_error_epoch={train_error_epoch}')
+    #     print(f'test_loss_epoch={test_loss_epoch} test_error_epoch={test_error_epoch}')
+    #     st()
     elif args.train_alg == 'no_train':
         print('NO TRAIN BRANCH')
     print(f'expt_path={expt_path}')

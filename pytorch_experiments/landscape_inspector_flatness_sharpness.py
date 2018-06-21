@@ -9,13 +9,13 @@ import numpy as np
 from stats_collector import StatsCollector
 
 from new_training_algorithms import dont_train
-from new_training_algorithms import evalaute_mdl_data_set
+from new_training_algorithms import get_function_evaluation_from_name
 
 from pdb import set_trace as st
 
 class LandscapeInspector:
 
-    def __init__(self,net_original,net_pert, nb_epochs,iterations, trainloader,testloader, optimizer,criterion,error_criterion, device, lambdas,save_all_learning_curves=False,save_all_perts=False):
+    def __init__(self,net_original,net_pert, nb_epochs,iterations, trainloader,testloader, optimizer,criterion,error_criterion, device, lambdas,save_all_learning_curves=False,save_all_perts=False,evalaute_mdl_data_set='evalaute_mdl_on_full_data_set'):
         '''
         :return:
         '''
@@ -47,6 +47,12 @@ class LandscapeInspector:
         if self.save_all_learning_curves:
             # map [lambda/pert] -> stats collector
             self.stats_collector = StatsCollector(self.net_pert,trials=len(lambdas),epochs=self.nb_epochs+1)
+        ''' '''
+        evalaute_mdl_data_set = get_function_evaluation_from_name(evalaute_mdl_data_set)
+        if evalaute_mdl_data_set is None:
+            raise ValueError(f'Data set function evaluator evalaute_mdl_data_set={evalaute_mdl_data_set} is not defined.')
+        else:
+            self.evalaute_mdl_data_set = evalaute_mdl_data_set
 
     def do_sharpness_experiment(self):
         '''
@@ -65,7 +71,7 @@ class LandscapeInspector:
     def _record_sharpness(self,lambda_index):
         lambda_e = float(self.lambdas[lambda_index])
         ''' Add stats before training '''
-        train_loss_epoch, train_error_epoch = evalaute_mdl_data_set(self.criterion,self.error_criterion,self.net_pert,self.trainloader,self.device,self.iterations)
+        train_loss_epoch, train_error_epoch = self.evalaute_mdl_data_set(self.criterion,self.error_criterion,self.net_pert,self.trainloader,self.device,self.iterations)
         self.save_current_stats(0,lambda_index, train_loss_epoch,train_error_epoch)
         print(f'[{-1}, {-1}], (lambda={self.lambdas[lambda_index]}),(train_loss: {train_loss_epoch}, train error: {train_error_epoch}, adverserial objective: {None}, pert_W_norm(l=2): {self.get_pert_norm(l=2)})')
         st()

@@ -18,48 +18,75 @@ target_loss = 0.0044
 %[w_norms_means,w_norms_std, gen_errors_means,gen_errors_stds] = extract_w_norms_vs_gen_errors_results_stats(path_all_expts,list_names,target_loss);
 %w_norms_means
 %gen_errors_means
-[w_all_norms, gen_errors] = extract_w_norms_vs_gen_errors_results(path_all_expts,list_names,target_loss);
+[w_all_norms_each_layer, gen_errors] = extract_w_norms_vs_gen_errors_results(path_all_expts,list_names,target_loss);
 %%
-fig = figure;
-scatter(w_all_norms,gen_errors);
-%plot(w_norms_means,gen_errors_means)
-%scatter(w_norms_means,gen_errors_means)
-%%
-% norm = 'forbenius_norm';
-% xlabel('forbenius norm (of all weights): ||W||_F')
-% title('forbenius norm ||W|| vs generalization error')
-% lsline
-%%
-norm = 'product_norm';
-xlabel('product norm: ||w_k||...||w_1||')
-title('product norm ||w_k||...||w_1|| vs generalization error')
-%%
-norm = 'log_product_norm';
-xlabel('log of product norm: log||w_k||+...+log||w_1||')
-title('log of product norm log||w_k||+...+log||w_1|| vs generalization error')
+fig1 = figure;
+scatter( (w_all_norms_each_layer(1,:).^2+w_all_norms_each_layer(2,:).^2).^0.5 ,gen_errors);
 lsline
-%%
+norm1 = 'L2_norm_1st_layer';
+xlabel('L2 norm of first layer: ||W_1||')
+title('L2 norm ||W_1|| vs generalization error')
 ylabel('generalization error/test error')
-%errorbar(w_norms_means,gen_errors_means,gen_errors_stds)
+%%
+fig2 = figure;
+scatter(w_all_norms_each_layer(3,:),gen_errors);
+lsline
+norm2 = 'L2_norm_2nd_layer';
+xlabel('L2 norm of second layer: ||W_2||')
+title('L2 norm ||W_2|| vs generalization error')
+ylabel('generalization error/test error')
+%%
+fig3 = figure;
+scatter(w_all_norms_each_layer(4,:),gen_errors);
+lsline
+norm3 = 'L2_norm_3rd_layer';
+xlabel('L2 norm of third/final layer: ||W_3||')
+title('L2 norm ||W_3|| vs generalization error')
+ylabel('generalization error/test error')
 %% save figure
-saveas(fig,['gen_w_norms' norm]);
-saveas(fig,['gen_w_norms' norm],'pdf');
+saveas(fig1,['gen_w_norms' norm1]);
+saveas(fig1,['gen_w_norms' norm1],'pdf');
+saveas(fig2,['gen_w_norms' norm2]);
+saveas(fig2,['gen_w_norms' norm2],'pdf');
+saveas(fig3,['gen_w_norms' norm3]);
+saveas(fig3,['gen_w_norms' norm3],'pdf');
 %% HELPER FUNCTIONS
-function [w_all_norms, gen_all_errors] = extract_w_norms_vs_gen_errors_results(path_all_expts,list_names,target_loss)
-w_all_norms = [];
+function [w_all_norms_each_layer, gen_all_errors] = extract_w_norms_vs_gen_errors_results(path_all_expts,list_names,target_loss)
+w_all_norms_each_layer = [];
 gen_all_errors = [];
 for name = list_names
     path_to_folder_expts = fullfile(path_all_expts,name);
     %% extra all data from experiments
     [gen_errors, w_norms] = extract_results_with_target_loss(path_to_folder_expts,target_loss);
-    w_all_norms = [w_all_norms w_norms];
+    w_all_norms_each_layer = [w_all_norms_each_layer w_norms];
     gen_all_errors = [gen_all_errors gen_errors];
 end
 end
+%%
+function [w_norms_means,w_norms_std, gen_errors_means,gen_errors_stds] = extract_w_norms_vs_gen_errors_results_stats(path_all_expts,list_names,target_loss)
+w_norms_means = [];
+w_norms_stds = [];
+gen_errors_means = [];
+gen_errors_stds = [];
+for name = list_names
+    path_to_folder_expts = fullfile(path_all_expts,name);
+    %% extract stats
+    [w_norms_all, gen_errors] = extract_results_with_target_loss(path_to_folder_expts,target_loss);
+    w_norms_mean = mean(w_norms_all);
+    w_norms_std = std(w_norms_all);
+    gen_errors_mean = mean(gen_errors);
+    gen_errors_std = std(gen_errors);
+    %% store stats
+    w_norms_means = [w_norms_means w_norms_mean];
+    w_norms_stds = [w_norms_stds w_norms_std];
+    gen_errors_means = [gen_errors_means gen_errors_mean];
+    gen_errors_stds = [gen_errors_stds gen_errors_std];
+end
+end
 %
-function [gen_errors,w_norms_all] = extract_results_with_target_loss(path_to_folder_expts,target_loss)
+function [gen_errors,w_norms_all_each_layer] = extract_results_with_target_loss(path_to_folder_expts,target_loss)
 gen_errors = [];
-w_norms_all = [];
+w_norms_all_each_layer = [];
 %%
 path_plus_prefix_of_all_expts = fullfile(path_to_folder_expts,'/flatness_*');
 expt_data_files = dir(path_plus_prefix_of_all_expts);
@@ -69,23 +96,22 @@ for expt_file_name = expt_data_filenames
     path_to_data_file = fullfile(path_to_folder_expts,expt_file_name{1});
     load(path_to_data_file)
     %%
-    epoch = match_train_loss(target_loss,train_losses)
+    epoch = match_train_error(target_loss,train_losses);
     if epoch ~= -1
         train_error = train_errors(epoch);
         if train_error == 0
-            %w_norm = sum( w_norms(:,epoch).^2 )^0.5;
-            w1_norm = (w_norms(1,epoch)^2+w_norms(2,epoch)^2)^0.5;
-            w_norm = w1_norm*prod(w_norms(3:end,epoch));
-            w_norm = log(w_norm);
+            %w_norm = sum(w_norms(:,epoch))
+            %w_norm = prod(w_norms(:,epoch))
+            each_layer_weight = w_norms(:,epoch)
             gen_error = test_errors(epoch)
             gen_errors = [gen_errors gen_error];
-            w_norms_all = [w_norms_all w_norm];
+            w_norms_all_each_layer = [w_norms_all_each_layer each_layer_weight];
         end
     end
 end
 end
 %
-function [epoch] = match_train_loss(target_loss,train_losses)
+function [epoch] = match_train_error(target_loss,train_losses)
 for epoch = 1:length(train_losses)
     train_loss = train_losses(epoch);
     if abs(target_loss-train_loss) < 0.0001 % catch 0.044 match 2 sign figs

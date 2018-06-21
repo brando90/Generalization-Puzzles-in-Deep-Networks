@@ -75,6 +75,76 @@ class MMNISTNet(nn.Module):
 
 ##
 
+class AllConvNet(nn.Module):
+
+    def __init__(self, dropout=False, nc=3, num_classes=10,only_1st_layer_bias=False,do_bn=False):
+        super().__init__()
+        bias = True
+        self.dropout = do_bn
+        self.conv1 = nn.Conv2d(nc, 96, 3, padding=1,bias=True)
+        if only_1st_layer_bias:
+            bias = False
+        self.conv2 = nn.Conv2d(96, 96, 3, padding=1,bias=bias)
+        self.conv3 = nn.Conv2d(96, 96, 3, padding=1, stride=2,bias=bias)
+        self.conv4 = nn.Conv2d(96, 192, 3, padding=1,bias=bias)
+        self.conv5 = nn.Conv2d(192, 192, 3, padding=1,bias=bias)
+        self.conv6 = nn.Conv2d(192, 192, 3, padding=1, stride=2,bias=bias)
+        self.conv7 = nn.Conv2d(192, 192, 3, padding=1,bias=bias)
+        self.conv8 = nn.Conv2d(192, 192, 1,bias=bias)
+        self.conv9 = nn.Conv2d(192, num_classes, 1,bias=bias)
+
+    def forward(self, x):
+        conv1_out = F.relu(self.conv1(x))
+        conv2_out = F.relu(self.conv2(conv1_out))
+        conv3_out = F.relu(self.conv3(conv2_out))
+        conv4_out = F.relu(self.conv4(conv3_out))
+        conv5_out = F.relu(self.conv5(conv4_out))
+        conv6_out = F.relu(self.conv6(conv5_out))
+        conv7_out = F.relu(self.conv7(conv6_out))
+        conv8_out = F.relu(self.conv8(conv7_out))
+        class_out = F.relu(self.conv9(conv8_out))
+        pool_out = class_out.reshape(class_out.size(0), class_out.size(1), -1).mean(-1)
+        return pool_out
+
+class AllConvNetStefOe(nn.Module):
+    ## https://github.com/StefOe/all-conv-pytorch/blob/master/allconv.py
+
+    def __init__(self, dropout=False, nc=3, num_classes=10,only_1st_layer_bias=False):
+        super().__init__()
+        bias = True
+        self.dropout = dropout
+        self.conv1 = nn.Conv2d(nc, 96, 3, padding=1,bias=bias)
+        if only_1st_layer_bias:
+            bias = False
+        self.conv2 = nn.Conv2d(96, 96, 3, padding=1,bias=bias)
+        self.conv3 = nn.Conv2d(96, 96, 3, padding=1, stride=2,bias=bias)
+        self.conv4 = nn.Conv2d(96, 192, 3, padding=1,bias=bias)
+        self.conv5 = nn.Conv2d(192, 192, 3, padding=1,bias=bias)
+        self.conv6 = nn.Conv2d(192, 192, 3, padding=1, stride=2,bias=bias)
+        self.conv7 = nn.Conv2d(192, 192, 3, padding=1,bias=bias)
+        self.conv8 = nn.Conv2d(192, 192, 1,bias=bias)
+        self.conv9 = nn.Conv2d(192, num_classes, 1,bias=bias)
+
+    def forward(self, x):
+        if self.dropout:
+            x = F.dropout(x, .2)
+        conv1_out = F.relu(self.conv1(x))
+        conv2_out = F.relu(self.conv2(conv1_out))
+        conv3_out = F.relu(self.conv3(conv2_out))
+        if self.dropout:
+            conv3_out = F.dropout(conv3_out, .5)
+        conv4_out = F.relu(self.conv4(conv3_out))
+        conv5_out = F.relu(self.conv5(conv4_out))
+        conv6_out = F.relu(self.conv6(conv5_out))
+        if self.dropout:
+            conv6_out = F.dropout(conv6_out, .5)
+        conv7_out = F.relu(self.conv7(conv6_out))
+        conv8_out = F.relu(self.conv8(conv7_out))
+
+        class_out = F.relu(self.conv9(conv8_out))
+        pool_out = class_out.reshape(class_out.size(0), class_out.size(1), -1).mean(-1)
+        return pool_out
+
 class GBoixNet(nn.Module):
     def __init__(self,CHW, Fs, Ks, FCs,do_bn=False,only_1st_layer_bias=False):
         super(GBoixNet, self).__init__()

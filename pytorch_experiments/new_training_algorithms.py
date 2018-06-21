@@ -54,14 +54,16 @@ def initialize_to_zero(net):
         #st()
         param.zero_()
 
-def evalaute_mdl_data_set(loss,error,net,dataloader,device,iterations=inf):
+def evalaute_running_mdl_data_set(loss,error,net,dataloader,device,iterations=inf):
     '''
-    Evaluate the error of the model under some loss and error with a specific data set.
+    Evaluate the approx (batch) error of the model under some loss and error with a specific data set.
+    The batch error is an approximation of the train error (empirical error), so it computes average batch size error
+    over all the batches of a specific size. Specifically it computes:
+    avg_L = 1/N_B sum^{N_B}_{i=1} (1/B sum_{j \in B_i} l_j )
+    which is the average batch loss over N_B = ceiling(# data points/ B )
     '''
     running_loss,running_error = 0,0
     with torch.no_grad():
-        #st()
-        #for i,(samples) in enumerate(dataloader):
         for i,(inputs,targets) in enumerate(dataloader):
             if i >= iterations:
                 break
@@ -71,12 +73,44 @@ def evalaute_mdl_data_set(loss,error,net,dataloader,device,iterations=inf):
             running_error += error(outputs,targets).item()
     return running_loss/(i+1),running_error/(i+1)
 
+def evalaute_mdl_on_full_data_set(loss,error,net,dataloader,device,iterations=inf):
+    '''
+    Evaluate the error of the model under some loss and error with a specific data set, but use the full data set.
+    Note: this method is exact.
+    '''
+    N = len(dataloader.dataset)
+    avg_loss,avg_error = 0,0
+    with torch.no_grad():
+        for i,(inputs,targets) in enumerate(dataloader):
+            batch_size = targets.size()[0]
+            if i >= iterations:
+                n_total = batch_size*i
+                avg_loss = (N/batch_size)*avg_loss
+                avg_error = (N/batch_size)*avg_loss
+                return avg_loss/n_total,avg_error/n_total
+            inputs,targets = inputs.to(device), targets.to(device)
+            outputs = net(inputs)
+            avg_loss += (batch_size/N)*loss(outputs,targets).item()
+            avg_error += (batch_size/N)*error(outputs,targets).item()
+    return avg_loss,avg_error
+
+def get_function_evaluation_from_name(name):
+    if name == 'evalaute_running_mdl_data_set':
+        evalaute_mdl_data_set = evalaute_running_mdl_data_set
+    elif name == 'evalaute_mdl_on_full_data_set':
+        evalaute_mdl_data_set = evalaute_mdl_on_full_data_set
+    else:
+        return None
+    return evalaute_mdl_data_set
+
 class Trainer:
 
-    def __init__(self,trainloader,testloader, optimizer,criterion,error_criterion, stats_collector, device, expt_path='',net_file_name='',all_nets_folder='',save_every_epoch=False):
+    def __init__(self,trainloader,testloader, optimizer, scheduler, criterion,error_criterion, stats_collector, device,
+                 expt_path='',net_file_name='',all_nets_folder='',save_every_epoch=False, evalaute_mdl_data_set='evalaute_running_mdl_data_set'):
         self.trainloader = trainloader
         self.testloader = testloader
         self.optimizer = optimizer
+        self.scheduler = scheduler
         self.criterion = criterion
         self.error_criterion = error_criterion
         self.stats_collector = stats_collector
@@ -93,14 +127,18 @@ class Trainer:
             if self.expt_path != '' and self.net_file_name != '':
                 self.all_nets_path = os.path.join(expt_path, all_nets_folder) #expt_path/all_nets_folder
                 utils.make_and_check_dir(self.all_nets_path)
+        ''' '''
+        self.evalaute_mdl_data_set = get_function_evaluation_from_name(evalaute_mdl_data_set)
+        if evalaute_mdl_data_set is None:
+            raise ValueError(f'Data set function evaluator evalaute_mdl_data_set={evalaute_mdl_data_set} is not defined.')
 
     def train_and_track_stats(self,net, nb_epochs,iterations=inf,target_train_loss=inf,precision=0.10**-7):
         '''
         train net with nb_epochs and 1 epoch only # iterations = iterations
         '''
         ''' Add stats before training '''
-        train_loss_epoch, train_error_epoch = evalaute_mdl_data_set(self.criterion, self.error_criterion, net, self.trainloader, self.device, iterations)
-        test_loss_epoch, test_error_epoch = evalaute_mdl_data_set(self.criterion, self.error_criterion, net, self.testloader, self.device, iterations)
+        train_loss_epoch, train_error_epoch = self.evalaute_mdl_data_set(self.criterion, self.error_criterion, net, self.trainloader, self.device, iterations)
+        test_loss_epoch, test_error_epoch = self.evalaute_mdl_data_set(self.criterion, self.error_criterion, net, self.testloader, self.device, iterations)
         self.stats_collector.collect_mdl_params_stats(net)
         self.stats_collector.append_losses_errors_accs(train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch)
         print(f'[-1, -1], (train_loss: {train_loss_epoch}, train error: {train_error_epoch}) , (test loss: {test_loss_epoch}, test error: {test_error_epoch})')
@@ -109,6 +147,7 @@ class Trainer:
         ''' Start training '''
         print('about to start training')
         for epoch in range(nb_epochs):  # loop over the dataset multiple times
+            self.scheduler.step()
             net.train()
             running_train_loss,running_train_error = 0.0, 0.0
             for i,(inputs,targets) in enumerate(self.trainloader):
@@ -127,10 +166,14 @@ class Trainer:
                 ''' print error first iteration'''
                 #if i == 0 and epoch == 0: # print on the first iteration
                 #    print(data_train[0].data)
-            ''' End of Epoch: collect stats'''
-            train_loss_epoch, train_error_epoch = running_train_loss/(i+1), running_train_error/(i+1)
+            ''' End of Epoch: evaluate nets on data '''
             net.eval()
-            test_loss_epoch, test_error_epoch = evalaute_mdl_data_set(self.criterion,self.error_criterion,net,self.testloader,self.device,iterations)
+            if self.evalaute_mdl_data_set.__name__ == 'evalaute_running_mdl_data_set':
+                train_loss_epoch, train_error_epoch = running_train_loss/(i+1), running_train_error/(i+1)
+            else:
+                train_loss_epoch, train_error_epoch = self.evalaute_mdl_data_set(self.criterion, self.error_criterion, net, self.trainloader, self.device,iterations)
+            test_loss_epoch, test_error_epoch = self.evalaute_mdl_data_set(self.criterion,self.error_criterion,net,self.testloader,self.device,iterations)
+            ''' collect results at the end of epoch'''
             self.stats_collector.collect_mdl_params_stats(net)
             self.stats_collector.append_losses_errors_accs(train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch)
             print(f'[{epoch}, {i+1}], (train_loss: {train_loss_epoch}, train error: {train_error_epoch}) , (test loss: {test_loss_epoch}, test error: {test_error_epoch})')
