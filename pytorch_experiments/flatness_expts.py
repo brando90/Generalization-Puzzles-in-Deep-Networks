@@ -409,19 +409,21 @@ def main(plot=True):
         # path = os.path.join(results_root, '/')
         ''' load net '''
         ## 0.0001
-        path = os.path.join(results_root,'flatness_June_label_corrupt_prob_0.0001_exptlabel_RLInits_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0/net_16_June_sj_691_staid_1_seed_11377480189713846_polestar-old')
+        path = os.path.join(results_root,'flatness_June_label_corrupt_prob_0.0001_exptlabel_RLInits_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0/net_21_June_sj_974_staid_1_seed_44940314088747654_polestar-old')
         ## 0.001
-        #path = os.path.join(results_root,'flatness_June_label_corrupt_prob_0.001_exptlabel_RLInits_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0/net_16_June_sj_692_staid_1_seed_8681112135507692_polestar-old')
+        path = os.path.join(results_root,'flatness_June_label_corrupt_prob_0.001_exptlabel_RLInits_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0/net_21_June_sj_967_staid_1_seed_1986409594254668_polestar-old')
+        ## 0.01
+        path = os.path.join(results_root, 'flatness_June_label_corrupt_prob_0.01_exptlabel_RLInits_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0/net_21_June_sj_976_staid_1_seed_34669758900780265_polestar-old')
         ## 0.1
-        #path = os.path.join(results_root, 'flatness_June_label_corrupt_prob_0.1_exptlabel_RLInits_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0/net_16_June_sj_694_staid_1_seed_70008282846077529_polestar-old')
+        path = os.path.join(results_root,'flatness_June_label_corrupt_prob_0.1_exptlabel_RLInits_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0/net_21_June_sj_977_staid_1_seed_57003505407221650_polestar-old')
         ## 0.2
-        #path = os.path.join(results_root, 'flatness_June_label_corrupt_prob_0.2_exptlabel_RLInits_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0/net_16_June_sj_695_staid_1_seed_43685629665566974_polestar-old')
+        path = os.path.join(results_root, 'flatness_June_label_corrupt_prob_0.2_exptlabel_RLInits_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0/net_21_June_sj_978_staid_1_seed_63479113068450657_polestar-old')
         ## 0.5
-        #path = os.path.join(results_root, 'flatness_June_label_corrupt_prob_0.5_exptlabel_RLInits_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0/net_16_June_sj_696_staid_1_seed_20925030519560728_polestar-old')
+        path = os.path.join(results_root, 'flatness_June_label_corrupt_prob_0.5_exptlabel_RLInits_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0/net_21_June_sj_979_staid_1_seed_51183371945505111_polestar-old')
         ## 0.75
-        #path = os.path.join(results_root, 'flatness_June_label_corrupt_prob_0.75_exptlabel_RLInits_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0/net_16_June_sj_697_staid_1_seed_6683390113151295_polestar-old')
+        path = os.path.join(results_root, 'flatness_June_label_corrupt_prob_0.75_exptlabel_RLInits_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0/net_21_June_sj_980_staid_1_seed_63292262317939652_polestar-old')
         ## 1.0
-        #path = os.path.join(results_root, 'flatness_June_label_corrupt_prob_1.0_exptlabel_RLInits_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0/net_16_June_sj_698_staid_1_seed_60631186952644166_polestar-old')
+        path = os.path.join(results_root, 'flatness_June_label_corrupt_prob_1.0_exptlabel_RLInits_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0/net_21_June_sj_981_staid_1_seed_34295360820373818_polestar-old')
         ''' load net '''
         net = torch.load(path)
         nets.append(net)

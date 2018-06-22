@@ -13,6 +13,7 @@ current_directory = os.getcwd() #The method getcwd() returns current working dir
 sys.path.append(current_directory)
 
 import torch
+import numpy as np
 from math import inf
 
 import scipy
@@ -144,17 +145,36 @@ class Normalizer:
         return results
 
     def match_train_error(self,target_loss, mat_contents):
+        '''
+        gets the closest loss to the target loss.
+
+        :param target_loss:
+        :param mat_contents:
+        :return:
+        '''
         train_losses = mat_contents['train_losses'][0]
         train_errors = mat_contents['train_errors'][0]
+        ''' look for the closest trian loss to the target '''
+        differences_from_target_loss = []
+        list_epochs,list_seeds,list_losses = [], [], []
         for epoch in range(len(train_losses)):
             train_loss = train_losses[epoch]
-            if abs(train_loss - target_loss) < 0.0001:
+            differences_from_target = abs(train_loss - target_loss)
+            if differences_from_target < 0.0001:
                 train_error = train_errors[epoch]
                 if train_error == 0.0:
-                    print(f'train_loss={train_loss}')
                     seed = mat_contents['seed'][0][0]
-                    return epoch,seed,train_loss
-        return -1,-1,train_loss
+                    ''' append relevant results '''
+                    list_losses.append(train_loss)
+                    differences_from_target_loss.append(differences_from_target)
+                    list_epochs.append(epoch)
+                    list_seeds.append(seed)
+        if len(differences_from_target_loss) == 0:
+            epoch, seed_id, actual_train_loss = -1,-1,train_loss
+        else: # extract the loss with the smallest difference
+            index_smallest = np.argmin(differences_from_target_loss)
+            epoch, seed_id, actual_train_loss = list_epochs[index_smallest],list_seeds[index_smallest],list_losses[index_smallest]
+        return epoch, seed_id, actual_train_loss
 
     def get_results_from_normalized_net(self,epoch,seed_id, path_to_folder_expts):
         ''' '''
@@ -282,7 +302,7 @@ def spectral_normalization(W):
 def main():
     # TODO: IMPORTANT: Don't forget to include biases in the [W, b]
     print('start main')
-    path_all_expts = '/cbcl/cbcl01/brando90/home_simulation_research/overparametrized_experiments/pytorch_experiments/test_runs_flatness4'
+    path_all_expts = '/cbcl/cbcl01/brando90/home_simulation_research/overparametrized_experiments/pytorch_experiments/test_runs_flatness5_ProperOriginalExpt'
     ''' expt_paths '''
     list_names = []
     list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_NL_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0')
