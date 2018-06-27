@@ -21,7 +21,6 @@ import scipy
 import scipy.io as sio
 
 import data_classification as data_class
-from new_training_algorithms import evalaute_approx_mdl_data_set
 from new_training_algorithms import evalaute_mdl_on_full_data_set
 import metrics
 from good_minima_discriminator import divide_params_by
@@ -108,22 +107,18 @@ class Normalizer:
         ##
         epoch_numbers = []
         corruption_probs = []
-        ''' '''
+        ''' go through results and get the ones with specific target loss '''
         matlab_filenames = [filename for filename in os.listdir(path_to_folder_expts) if '.mat' in filename]
         for matlab_filename in matlab_filenames: # essentially looping through all the nets that were trained
             matlab_path = os.path.join(path_to_folder_expts,matlab_filename)
             mat_contents = sio.loadmat(matlab_path)
             ''' '''
             epoch,seed_id,actual_train_loss = self.match_train_error(target_loss, mat_contents)
-            #print(seed_id)
+            #epoch, seed_id, actual_train_loss = self.final_train_error(mat_contents)
             if seed_id != -1: # if matched train error actually matched something
-                normalized_results, unnormalized_results = self.get_results_from_normalized_net(epoch,seed_id, path_to_folder_expts)
+                normalized_results, unnormalized_results = self.get_results_from_normalized_net(epoch-1,seed_id, path_to_folder_expts) # not ethe -1 is cuz files where labeled with 0 as the first epoch and after that it ends at 299 which is the last one but train errors had 0th mean the virgin net
                 train_loss_norm, train_error_norm, test_loss_norm, test_error_norm = normalized_results
                 train_loss_un, train_error_un, test_loss_un, test_error_un = unnormalized_results
-                print(f'train_loss_norm, train_error_norm, test_loss_norm, test_error_norm = {train_loss_norm, train_error_norm, test_loss_norm, test_error_norm}')
-                print(f'train_loss_un, train_error_un, test_loss_un, test_error_un = {train_loss_un, train_error_un, test_loss_un, test_error_un}')
-                print(f'actual_train_loss={actual_train_loss}')
-                st()
                 ''' '''
                 corruption_prob = self.get_corruption_prob(path_to_folder_expts)
                 ''' append results '''
@@ -169,7 +164,38 @@ class Normalizer:
                     differences_from_target_loss.append(differences_from_target)
                     list_epochs.append(epoch)
                     list_seeds.append(seed)
-        if len(differences_from_target_loss) == 0:
+        if len(differences_from_target_loss) == 0: # if we collected no results
+            epoch, seed_id, actual_train_loss = -1,-1,train_loss
+        else: # extract the loss with the smallest difference
+            index_smallest = np.argmin(differences_from_target_loss)
+            epoch, seed_id, actual_train_loss = list_epochs[index_smallest],list_seeds[index_smallest],list_losses[index_smallest]
+        return epoch, seed_id, actual_train_loss
+
+    def final_train_error(self,mat_contents):
+        '''
+        gets the final train error
+
+        :param mat_contents:
+        :return:
+        '''
+        train_losses = mat_contents['train_losses'][0]
+        train_errors = mat_contents['train_errors'][0]
+        ''' look for the closest trian loss to the target '''
+        differences_from_target_loss = []
+        list_epochs,list_seeds,list_losses = [], [], []
+        ''' '''
+        epoch = len(train_errors)-1
+        train_error = train_errors[epoch]
+        train_loss = train_losses[epoch]
+        if train_error == 0.0:
+            differences_from_target = 0
+            seed = mat_contents['seed'][0][0]
+            ''' append relevant results '''
+            list_losses.append(train_loss)
+            differences_from_target_loss.append(differences_from_target)
+            list_epochs.append(epoch)
+            list_seeds.append(seed)
+        if len(differences_from_target_loss) == 0: # if we collected no results
             epoch, seed_id, actual_train_loss = -1,-1,train_loss
         else: # extract the loss with the smallest difference
             index_smallest = np.argmin(differences_from_target_loss)
@@ -182,14 +208,13 @@ class Normalizer:
         nets_folders = [filename for filename in os.listdir(path_to_folder_expts) if 'nets_folder' in filename]
         net_folder = [filename for filename in nets_folders if f'seed_{seed_id}' in filename][0] # note seed are unique very h.p.
         net_path = os.path.join(path_to_folder_expts,net_folder)
+        if len([net_name for net_name in os.listdir(net_path) if f'epoch_{epoch}' in net_name]) == 0:
+            st()
         net_name = [net_name for net_name in os.listdir(net_path) if f'epoch_{epoch}' in net_name][0]
         net_path = os.path.join(net_path, net_name)
         net = torch.load(net_path)
         ''' get unormalized test error '''
-        train_loss_un1, train_error_un = evalaute_mdl_on_full_data_set(self.loss, self.error, net, self.trainloader, self.device)
-        train_loss_un2, train_error_un = evalaute_approx_mdl_data_set(self.loss, self.error, net, self.trainloader,
-                                                                      self.device)
-        st()
+        train_loss_un, train_error_un = evalaute_mdl_on_full_data_set(self.loss, self.error, net, self.trainloader, self.device)
         test_loss_un, test_error_un = evalaute_mdl_on_full_data_set(self.loss, self.error, net, self.testloader, self.device)
         ''' normalize net '''
         net = self.normalize(net)
@@ -302,17 +327,19 @@ def spectral_normalization(W):
 def main():
     # TODO: IMPORTANT: Don't forget to include biases in the [W, b]
     print('start main')
+    #path_all_expts = '/cbcl/cbcl01/brando90/home_simulation_research/overparametrized_experiments/pytorch_experiments/test_runs_flatness4'
     path_all_expts = '/cbcl/cbcl01/brando90/home_simulation_research/overparametrized_experiments/pytorch_experiments/test_runs_flatness5_ProperOriginalExpt'
     ''' expt_paths '''
     list_names = []
-    list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_NL_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0')
-    list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_0.0001_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.01_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0')
-    list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_0.001_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.01_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0')
-    list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_0.1_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.01_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0')
-    list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_0.2_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.01_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0')
-    list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_0.5_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.01_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0')
-    list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_0.75_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.01_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0')
-    list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_1.0_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.01_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0')
+    list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_NL_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0')
+    list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_0.0001_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0')
+    list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_0.001_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0')
+    list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_0.01_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0')
+    list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_0.1_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0')
+    list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_0.2_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0')
+    list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_0.5_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0')
+    list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_0.75_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0')
+    list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_1.0_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0')
     ''' normalization scheme '''
     norm = 'frobenius'
     normalization_scheme = lambda net: divide_params(net,frobenius_normalization)
@@ -325,7 +352,8 @@ def main():
     normalizer = Normalizer(data_path,normalization_scheme)
     results = normalizer.extract_all_results_vs_test_errors(path_all_expts,list_names,target_loss)
     ''' '''
-    path = os.path.join(path_all_expts,f'loss_vs_gen_errors_norm_{norm}')
+    path = os.path.join(path_all_expts, f'loss_vs_gen_errors_norm_{norm}')
+    #path = os.path.join(path_all_expts,f'loss_vs_gen_errors_norm_{norm}_final')
     scipy.io.savemat(path, results)
     ''' plot '''
     #plt.scatter(train_all_losses,gen_all_errors)

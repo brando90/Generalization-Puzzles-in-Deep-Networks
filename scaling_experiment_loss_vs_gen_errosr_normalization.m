@@ -1,19 +1,20 @@
 clear;clc;
-load('./pytorch_experiments/test_runs_flatness4/loss_vs_gen_errors_norm_frobenius')
+%load('./pytorch_experiments/test_runs_flatness4/loss_vs_gen_errors_norm_frobenius')
+load('./pytorch_experiments/test_runs_flatness5_ProperOriginalExpt/loss_vs_gen_errors_norm_frobenius_final')
 %% test error vs train loss (all normalized)
 fig1 = figure;
 lscatter(train_all_losses_normalized,gen_all_errors_normalized,corruption_all_probs)
 %lsline
-title('The weights of all models are normalized')
-xlabel('Train Loss')
-ylabel('Test Error')
+%title('The weights of all models are normalized')
+xlabel('Train Loss (Network Normalized)')
+ylabel('Test Error (Network Normalized)')
 %% test loss vs train loss (all normalized)
 fig2 = figure;
 lscatter(train_all_losses_normalized,test_all_losses_normalized,corruption_all_probs)
 %lsline
-title('The weights of all models are normalized')
-xlabel('Train Loss')
-ylabel('Test Loss')
+%title('The weights of all models are normalized')
+xlabel('Train Loss (Network Normalized)')
+ylabel('Test Loss (Network Normalized)')
 %% test error (unormalized) vs train loss (normalized)
 fig3 = figure;
 lscatter(train_all_losses_normalized,gen_all_errors_unnormalized,corruption_all_probs)
