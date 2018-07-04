@@ -51,7 +51,14 @@ class StatsCollector:
             self.evalaute_mdl_data_set = evalaute_mdl_data_set
 
     def collect_mdl_params_stats(self,mdl):
-        ''' log parameter stats'''
+        '''
+            log parameter stats
+
+            Note: for each time this function is called, it appends the stats once. If it goes through each list and
+            append each time it means it extends the list each time it's called. If this function its called each time
+            at the end of every epoch it means that each list index will correspond to some value at some epoch depending
+            at that index.
+        '''
         for index, W in enumerate(mdl.parameters()):
             self.w_norms[index].append( W.data.norm(2) )
             if W.grad is not None:

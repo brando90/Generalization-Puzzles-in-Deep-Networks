@@ -43,11 +43,15 @@ def get_corruption_label( path_to_experiment ):
 
 class Normalizer:
 
-    def __init__(self,data_path,normalization_scheme,num_workers=10,label_corrupt_prob=0.0,batch_size_train=1024,batch_size_test=1024,standardize=True,iterations=inf):
+    def __init__(self,data_path,normalization_scheme,p,division_constant,num_workers=10,label_corrupt_prob=0.0,batch_size_train=1024,batch_size_test=1024,standardize=True,iterations=inf,label_corrupt_prob_rand=1.0):
         '''
         :param standardize: x - mu / std , [-1,+1]
         :return:
         '''
+        ''' '''
+        self.p = p
+        self.division_constant = division_constant
+        ''' '''
         self.normalize = normalization_scheme
         ''' '''
         self.error = metrics.error_criterion
@@ -55,7 +59,8 @@ class Normalizer:
         self.iterations = iterations
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.trainset, self.trainloader, self.testset, self.testloader, self.classes_data = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,label_corrupt_prob,standardize=standardize)
-        ''' dta we are collecting '''
+        self.trainset_rand, self.trainloader_rand, self.testset_rand, self.testloader_rand, self.classes_data_rand = data_class.get_cifer_data_processors(data_path, batch_size_train, batch_size_test, num_workers, label_corrupt_prob=label_corrupt_prob_rand, standardize=standardize)
+        ''' data we are collecting '''
         ## normalized
         self.train_all_losses_normalized = []
         self.train_all_errors_normalized = []
@@ -66,9 +71,22 @@ class Normalizer:
         self.train_all_errors_unnormalized = []
         self.test_all_losses_unnormalized = []
         self.gen_all_errors_unnormalized = []
+        ''' '''
+        ## normalized
+        self.train_all_losses_normalized_rand = []
+        self.train_all_errors_normalized_rand = []
+        self.test_all_losses_normalized_rand = []
+        self.gen_all_errors_normalized_rand = []
+        ## unnormalized
+        self.train_all_losses_unnormalized_rand = []
+        self.train_all_errors_unnormalized_rand = []
+        self.test_all_losses_unnormalized_rand = []
+        self.gen_all_errors_unnormalized_rand = []
         ##
         self.epoch_all_numbers = []
         self.corruption_all_probs = []
+        ##
+        self.wnorms = []
 
     def extract_all_results_vs_test_errors(self,path_all_expts,list_names,target_loss):
         '''
@@ -98,12 +116,18 @@ class Normalizer:
         :param target_loss:
         :return:
         '''
-        ##
+        ####
         train_losses_norm, train_errors_norm = [], []
         test_losses_norm, test_errors_norm = [], []
-        ##
+        #
         train_losses_unnorm, train_errors_unnorm = [], []
         test_losses_unnorm, test_errors_unnorm = [], []
+        ####
+        train_losses_norm_rand, train_errors_norm_rand = [], []
+        test_losses_norm_rand, test_errors_norm_rand = [], []
+        #
+        train_losses_unnorm_rand, train_errors_unnorm_rand = [], []
+        test_losses_unnorm_rand, test_errors_unnorm_rand = [], []
         ##
         epoch_numbers = []
         corruption_probs = []
@@ -113,20 +137,33 @@ class Normalizer:
             matlab_path = os.path.join(path_to_folder_expts,matlab_filename)
             mat_contents = sio.loadmat(matlab_path)
             ''' '''
-            epoch,seed_id,actual_train_loss = self.match_train_error(target_loss, mat_contents)
-            #epoch, seed_id, actual_train_loss = self.final_train_error(mat_contents)
+            #epoch,seed_id,actual_train_loss = self.match_zero_train_error(mat_contents)
+            #epoch, seed_id, actual_train_loss = self.match_train_loss(target_loss, mat_contents)
+            epoch, seed_id, actual_train_loss = self.final_train_error(mat_contents)
             if seed_id != -1: # if matched train error actually matched something
-                normalized_results, unnormalized_results = self.get_results_from_normalized_net(epoch-1,seed_id, path_to_folder_expts) # not ethe -1 is cuz files where labeled with 0 as the first epoch and after that it ends at 299 which is the last one but train errors had 0th mean the virgin net
+                #normalized_results, unnormalized_results = self.get_results_from_normalized_net(epoch-1,seed_id, path_to_folder_expts) # not ethe -1 is cuz files where labeled with 0 as the first epoch and after that it ends at 299 which is the last one but train errors had 0th mean the virgin net
+                normalized_results, unnormalized_results, normalized_results_rand, unnormalized_results_rand = self.get_results_from_normalized_net(epoch-1,seed_id, path_to_folder_expts)
+                ## extract natural labels results
                 train_loss_norm, train_error_norm, test_loss_norm, test_error_norm = normalized_results
                 train_loss_un, train_error_un, test_loss_un, test_error_un = unnormalized_results
+                ## extract random labels results
+                train_loss_norm_rand, train_error_norm_rand, test_loss_norm_rand, test_error_norm_rand = normalized_results_rand
+                train_loss_un_rand, train_error_un_rand, test_loss_un_rand, test_error_un_rand = unnormalized_results_rand
                 ''' '''
                 corruption_prob = self.get_corruption_prob(path_to_folder_expts)
                 ''' append results '''
+                #### natural label
                 train_losses_norm.append(train_loss_norm), train_errors_norm.append(train_error_norm)
                 test_losses_norm.append(test_loss_norm), test_errors_norm.append(test_error_norm)
-                ##
+                #
                 train_losses_unnorm.append(train_loss_un), train_errors_unnorm.append(train_error_un)
                 test_losses_unnorm.append(test_loss_un), test_errors_unnorm.append(test_error_un)
+                #### random label
+                train_losses_norm_rand.append(train_loss_norm_rand), train_errors_norm_rand.append(train_error_norm_rand)
+                test_losses_norm_rand.append(test_loss_norm_rand), test_errors_norm_rand.append(test_error_norm_rand)
+                #
+                train_losses_unnorm_rand.append(train_loss_un_rand), train_errors_unnorm_rand.append(train_error_un_rand)
+                test_losses_unnorm_rand.append(test_loss_un_rand), test_errors_unnorm_rand.append(test_error_un_rand)
                 ##
                 epoch_numbers.append(epoch)
                 ##
@@ -136,10 +173,14 @@ class Normalizer:
                             test_losses_norm=test_losses_norm, test_errors_norm=test_errors_norm,
                             train_losses_unnorm=train_losses_unnorm, train_errors_unnorm=train_errors_unnorm,
                             test_losses_unnorm=test_losses_unnorm, test_errors_unnorm=test_errors_unnorm,
+                            train_losses_norm_rand=train_losses_norm_rand, train_errors_norm_rand=train_errors_norm_rand,
+                            test_losses_norm_rand=test_losses_norm_rand, test_errors_norm_rand=test_errors_norm_rand,
+                            train_losses_unnorm_rand=train_losses_unnorm_rand, train_errors_unnorm_rand=train_errors_unnorm_rand,
+                            test_losses_unnorm_rand=test_losses_unnorm_rand, test_errors_unnorm_rand=test_errors_unnorm_rand,
                             epoch_numbers=epoch_numbers,corruption_probs=corruption_probs)
         return results
 
-    def match_train_error(self,target_loss, mat_contents):
+    def match_train_loss(self,target_loss, mat_contents):
         '''
         gets the closest loss to the target loss.
 
@@ -164,6 +205,36 @@ class Normalizer:
                     differences_from_target_loss.append(differences_from_target)
                     list_epochs.append(epoch)
                     list_seeds.append(seed)
+        if len(differences_from_target_loss) == 0: # if we collected no results
+            epoch, seed_id, actual_train_loss = -1,-1,train_loss
+        else: # extract the loss with the smallest difference
+            index_smallest = np.argmin(differences_from_target_loss)
+            epoch, seed_id, actual_train_loss = list_epochs[index_smallest],list_seeds[index_smallest],list_losses[index_smallest]
+        return epoch, seed_id, actual_train_loss
+
+    def match_zero_train_error(self, mat_contents):
+        '''
+        gets the closest loss to the target loss.
+
+        :param target_loss:
+        :param mat_contents:
+        :return:
+        '''
+        train_losses = mat_contents['train_losses'][0]
+        train_errors = mat_contents['train_errors'][0]
+        ''' look for the closest trian loss to the target '''
+        differences_from_target_loss = []
+        list_epochs,list_seeds,list_losses = [], [], []
+        for epoch in range(len(train_losses)):
+            train_loss = train_losses[epoch]
+            train_error = train_errors[epoch]
+            if train_error == 0.0:
+                seed = mat_contents['seed'][0][0]
+                ''' append relevant results '''
+                list_losses.append(train_loss)
+                differences_from_target_loss.append(0)
+                list_epochs.append(epoch)
+                list_seeds.append(seed)
         if len(differences_from_target_loss) == 0: # if we collected no results
             epoch, seed_id, actual_train_loss = -1,-1,train_loss
         else: # extract the loss with the smallest difference
@@ -216,17 +287,41 @@ class Normalizer:
         ''' get unormalized test error '''
         train_loss_un, train_error_un = evalaute_mdl_on_full_data_set(self.loss, self.error, net, self.trainloader, self.device)
         test_loss_un, test_error_un = evalaute_mdl_on_full_data_set(self.loss, self.error, net, self.testloader, self.device)
+        ## random labels
+        train_loss_un_rand, train_error_un_rand = evalaute_mdl_on_full_data_set(self.loss, self.error, net, self.trainloader_rand, self.device)
+        test_loss_un_rand, test_error_un_rand = evalaute_mdl_on_full_data_set(self.loss, self.error, net, self.testloader_rand, self.device)
         ''' normalize net '''
         net = self.normalize(net)
         ''' get normalized train errors '''
+        ## natural labels
         train_loss_norm, train_error_norm = evalaute_mdl_on_full_data_set(self.loss, self.error, net, self.trainloader, self.device)
         test_loss_norm, test_error_norm = evalaute_mdl_on_full_data_set(self.loss, self.error, net, self.testloader, self.device)
-        return (train_loss_norm, train_error_norm,test_loss_norm, test_error_norm),(train_loss_un,train_error_un,test_loss_un,test_error_un),
+        ## random labels
+        train_loss_norm_rand, train_error_norm_rand = evalaute_mdl_on_full_data_set(self.loss, self.error, net, self.trainloader_rand, self.device)
+        test_loss_norm_rand, test_error_norm_rand = evalaute_mdl_on_full_data_set(self.loss, self.error, net, self.testloader_rand, self.device)
+        ''' pack results '''
+        normalized_results = (train_loss_norm, train_error_norm, test_loss_norm, test_error_norm)
+        unnormalized_results = (train_loss_un, train_error_un, test_loss_un, test_error_un)
+        ##
+        normalized_results_rand = (train_loss_norm_rand, train_error_norm_rand, test_loss_norm_rand, test_error_norm_rand)
+        unnormalized_results_rand = (train_loss_un_rand, train_error_un_rand, test_loss_un_rand, test_error_un_rand)
+        ''' return '''
+        return normalized_results, unnormalized_results, normalized_results_rand, unnormalized_results_rand
 
     def normalize_net(self,net):
+        '''
+
+            Note: for each time this function is called, it appends the stats once. If it goes through each list and
+            append each time it means it extends the list each time it's called. If this function is called every time
+            we normalize a net, then it means that we are adding stats for every time a specific corruption of a net is
+            present. So each index corresponds to some corruption level on the corruption array that we are collecting.
+        '''
+        for index, W in enumerate(net.parameters()):
+            self.w_norms[index].append( W.norm(self.p) )
         return self.normalization_scheme(net)
 
     def collect_all(self,results):
+        ''' Natural Labels '''
         ## normalized
         self.train_all_losses_normalized.extend(results.train_losses_norm)
         self.train_all_errors_normalized.extend(results.train_errors_norm)
@@ -237,6 +332,17 @@ class Normalizer:
         self.train_all_errors_unnormalized.extend(results.train_errors_unnorm)
         self.test_all_losses_unnormalized.extend(results.test_losses_unnorm)
         self.gen_all_errors_unnormalized.extend(results.test_errors_unnorm)
+        ''' Random Labels '''
+        self.train_all_losses_normalized_rand.extend(results.train_losses_norm_rand)
+        self.train_all_errors_normalized_rand.extend(results.train_errors_norm_rand)
+        self.test_all_losses_normalized_rand.extend(results.test_losses_norm_rand)
+        self.gen_all_errors_normalized_rand.extend(results.test_errors_norm_rand)
+        ## unnormalized
+        self.train_all_losses_unnormalized_rand.extend(results.train_losses_unnorm_rand)
+        self.train_all_errors_unnormalized_rand.extend(results.train_errors_unnorm_rand)
+        self.test_all_losses_unnormalized_rand.extend(results.test_losses_unnorm_rand)
+        self.gen_all_errors_unnormalized_rand.extend(results.test_errors_unnorm_rand)
+
 
     def get_corruption_prob(self,name):
         '''
@@ -250,6 +356,8 @@ class Normalizer:
             # string it expects:
             # '/cbcl/cbcl01/brando90/home_simulation_research/overparametrized_experiments/pytorch_experiments/test_runs_flatness4/flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_0.0001_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.01_momentum_0.9_scheduler_milestones_[200, 250, 300]_gamma_1.0'
             corruption_prob = float( name.split('RLNL_')[1].split('_only_1st')[0] )
+        elif 'exptlabel_RL_only' in name:
+            corruption_prob = float(name.split('corrupt_prob_')[1].split('_exptlabel')[0])
         else:
             corruption_prob = 0.0
         return corruption_prob
@@ -299,10 +407,18 @@ def divide_params(net,norm_func):
                 dict_params[name] = new_param
             else:
                 W_norm = norm_func(param)
+                #print(f'W_norm = {W_norm}')
                 new_param = param/W_norm
                 dict_params[name] = new_param
     net.load_state_dict(dict_params)
     return net
+
+def lp_normalizer(W,p,division_constant=1):
+    '''
+        return W.norm(p)
+    '''
+    W = W/division_constant
+    return W.norm(p)
 
 def frobenius_normalization(W):
     '''
@@ -339,20 +455,26 @@ def main():
     list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_0.2_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0')
     list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_0.5_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0')
     list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_0.75_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0')
-    list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_1.0_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0')
+    ### list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_1.0_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0')
+    ### list_names.append('flatness_June_label_corrupt_prob_1.0_exptlabel_RLInits_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0')
+    #list_names.append('flatness_June_label_corrupt_prob_1.0_exptlabel_RL_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0')
     ''' normalization scheme '''
-    norm = 'frobenius'
-    normalization_scheme = lambda net: divide_params(net,frobenius_normalization)
-    #norm = 'l1'
-    #normalization_scheme = lambda net: divide_params(net, l1_normalization)
+    p = 1
+    division_constant = 1
+    norm = f'l{p}_division_constant{division_constant}'
+    weight_normalizer = lambda W: lp_normalizer(W,p,division_constant=division_constant)
+    normalization_scheme = lambda net: divide_params(net,weight_normalizer)
+    #norm = 'spectral'
     #normalization_scheme = lambda net: divide_params(net, spectral_normalization)
+    print(f'norm = {norm}')
     ''' get results'''
     data_path = './data'
     target_loss = 0.0044
-    normalizer = Normalizer(data_path,normalization_scheme)
+    normalizer = Normalizer(data_path,normalization_scheme, p,division_constant)
     results = normalizer.extract_all_results_vs_test_errors(path_all_expts,list_names,target_loss)
     ''' '''
     path = os.path.join(path_all_expts, f'loss_vs_gen_errors_norm_{norm}')
+    #path = os.path.join(path_all_expts, f'RL_corruption_1.0_loss_vs_gen_errors_norm_{norm}')
     #path = os.path.join(path_all_expts,f'loss_vs_gen_errors_norm_{norm}_final')
     scipy.io.savemat(path, results)
     ''' plot '''

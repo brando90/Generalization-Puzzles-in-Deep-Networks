@@ -1,20 +1,16 @@
 #!/usr/bin/env python
-#SBATCH --mem=90000
-#SBATCH --time=0-20:00
-#SBATCH --array=1-30
+#SBATCH --mem=7000
+#SBATCH --time=0-11:00
+#SBATCH --array=60-100
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
-''''
-#SBATCH --gres=gpu:1
+'''
+    #SBATCH --gres=gpu:1
 '''
 
 import time
 from datetime import date
 import calendar
-
-#from sklearn.linear_model import Ridge
-from sklearn.preprocessing import PolynomialFeatures
-#from sklearn.pipeline import make_pipeline
 
 import os
 import sys
@@ -48,10 +44,6 @@ import plot_utils
 
 from maps import NamedDict
 
-from metrics import calc_accuracy
-from metrics import calc_error
-from metrics import calc_loss
-
 import pdb
 from pdb import set_trace as st
 
@@ -60,7 +52,6 @@ import unittest
 import argparse
 
 ## python expt_file.py -satid 1 -sj 1
-## sbatch expt_file.py
 parser = argparse.ArgumentParser(description='Run experiment')
 parser.add_argument('-satid', '--satid',type=int,
                     help='satid',default=0)
@@ -76,33 +67,30 @@ else:
     sj = int(args.sj)
 debug = '_debug' if args.debug else ''
 
-def main(plotting=False,save=False):
+def main(**kwargs):
     ''' setup'''
     start_time = time.time()
     np.set_printoptions(suppress=True) #Whether or not suppress printing of small floating point values using scientific notation (default False).
     ##dtype = torch.cuda.FloatTensor # Uncomment this to run on GPU
     ''' pytorch dtype setup '''
-    # dtype_y = torch.LongTensor
     dtype_x = torch.FloatTensor
+    dtype_y = torch.LongTensor
     dtype_y = torch.FloatTensor
-    # dtype_x = torch.cuda.FloatTensor
-    # dtype_y = torch.cuda.FloatTensor
     ''' date parameters setup'''
     today_obj = date.today() # contains datetime.date(year, month, day); accessible via .day etc
     day = today_obj.day
     month = calendar.month_name[today_obj.month]
     ''' Model to train setup param '''
-    #MDL_2_TRAIN='logistic_regression_vec_mdl'
+    MDL_2_TRAIN='logistic_regression_vec_mdl'
     #MDL_2_TRAIN='logistic_regression_poly_mdl'
-    MDL_2_TRAIN = 'regression_poly_mdl'
     #MDL_2_TRAIN = 'HBF'
     ''' data file names '''
     truth_filename=''
     data_filename=''
-    #data_filename = 'classification_manual'
-    data_filename = 'regression_manual'
+    data_filename = 'classification_manual'
+    #data_filename = 'regression_manual'
     ''' Folder for experiment '''
-    experiment_name = 'RedoFig5_Cheby'
+    experiment_name = 'unit_logistic_regression'
     ##########
     ''' Regularization '''
     ##
@@ -127,42 +115,37 @@ def main(plotting=False,save=False):
     # nb_iterations = [ int(i) for i in np.linspace(lb,ub,N_iterations)]
     # repetitions = len(nb_iterations)*[10]
     ''' Experiment DEGREE/MONOMIALS '''
-    expt_type='DEGREES'
-    step_deg=1
-    lb_deg,ub_deg = 39,39
-    degrees = list(range(lb_deg,ub_deg+1,step_deg))
-    lambdas = [0]
-    #nb_iterations = [int(2500000)]
-    #nb_iterations = [int(1000000)]
-    #nb_iterations = [int(5 * 10**6)]
-    #nb_iterations = [int(1.1 * 10 ** 7)]
-    repetitions = len(degrees)*[30]
-    ''' Experiment Number of vector elements'''
-    # expt_type='NB_VEC_ELEMENTS'
-    # step=1
-    # lb_vec,ub_vec = 30,30
-    # nb_elements_vecs = list(range(lb_vec,ub_vec+1,step))
+    # expt_type='DEGREES'
+    # step_deg=1
+    # lb_deg,ub_deg = 1,100
+    # degrees = list(range(lb_deg,ub_deg+1,step_deg))
     # lambdas = [0]
-    # nb_iterations = [int(250000)]
-    # #nb_iterations = [int(2500)]
-    # repetitions = len(nb_elements_vecs)*[1]
+    # nb_iterations = [int(10000)]
+    # repetitions = len(degrees)*[1]
+    ''' Experiment Number of vector elements'''
+    expt_type='NB_VEC_ELEMENTS'
+    step=1
+    lb_vec,ub_vec = 1,100
+    nb_elements_vecs = list(range(lb_vec,ub_vec+1,step))
+    lambdas = [0]
+    nb_iterations = [int(50000)]
+    repetitions = len(nb_elements_vecs)*[1]
     ''' Get setup for process to run '''
     ps_params = NamedDict() # process params
     if expt_type == 'LAMBDAS':
         ps_params.degrees=[]
-        ps_params.reg_lambda = dispatcher_code.get_hp_to_run(hyper_params=lambdas,repetitions=repetitions,satid=satid)
+        ps_params.reg_lambda = get_hp_to_run(hyper_params=lambdas,repetitions=repetitions,satid=satid)
         ps_params.nb_iter = nb_iterations[0]
         #ps_params.prefix_experiment = f'it_{nb_iter}/lambda_{reg_lambda}_reg_{reg_type}'
     elif expt_type == 'ITERATIONS':
         ps_params.degrees=[]
         ps_params.reg_lambda = lambdas[0]
-        ps_params.nb_iter = dispatcher_code.get_hp_to_run(hyper_params=nb_iterations,repetitions=repetitions,satid=satid)
+        ps_params.nb_iter = get_hp_to_run(hyper_params=nb_iterations,repetitions=repetitions,satid=satid)
         #ps_params.prefix_experiment = f'lambda_{reg_lambda}/it_{nb_iter}_reg_{reg_type}'
     elif expt_type == 'DEGREES':
         ps_params.reg_lambda = lambdas[0]
-        ps_params.degree_mdl = dispatcher_code.get_hp_to_run(hyper_params=degrees,repetitions=repetitions,satid=satid)
+        ps_params.degree_mdl = get_hp_to_run(hyper_params=degrees,repetitions=repetitions,satid=satid)
         #ps_params.prefix_experiment = f'fig4_expt_lambda_{reg_lambda}_it_{nb_iter}/deg_{Degree_mdl}'
-        hp_param = ps_params.degree_mdl
     elif expt_type == 'NB_VEC_ELEMENTS':
         ps_params.reg_lambda = lambdas[0]
         ps_params.nb_elements_vec = dispatcher_code.get_hp_to_run(hyper_params=nb_elements_vecs,repetitions=repetitions,satid=satid)
@@ -180,10 +163,10 @@ def main(plotting=False,save=False):
         f_target = lambda x: np.int64( (np.dot(w_target,x) > 0).astype(int) )
         Xtr,Ytr, Xv,Yv, Xt,Yt = data_class.get_2D_classification_data(N_train,N_val,N_test,lb,ub,f_target)
     elif data_filename == 'regression_manual':
-        N_train,N_val,N_test = 9,81,100
+        N_train,N_val,N_test = 16,100,121
         lb,ub = -1,1
         f_target = lambda x: np.sin(2*np.pi*4*x)
-        Xtr,Ytr, Xv,Yv, Xt,Yt = data_reg.get_2D_regression_data_chebyshev_nodes(N_train,N_val,N_test,lb,ub,f_target)
+        Xtr,Ytr, Xv,Yv, Xt,Yt = data_reg.get_2D_regression_data(N_train,N_val,N_test,lb,ub,f_target)
     else:
         data = np.load( './data/{}'.format(data_filename) )
         if 'lb' and 'ub' in data:
@@ -194,43 +177,26 @@ def main(plotting=False,save=False):
     print(f'N_train={N_train}, N_test={N_test}')
     ########
     ''' SGD params '''
-    #optimizer_mode = 'SGD_AND_PERTURB'
-    optimizer_mode = 'SGD_train_then_pert'
-    M = int(Xtr.shape[0])
-    #M = int(81)
+    optimizer = 'SGD_AND_PERTURB'
+    M = int(Xtr.shape[0]/20)
+    M = int(81)
     eta = 0.2
-    momentum = 0.0
     nb_iter = nb_iterations[0]
     A = 0.0
     ##
     logging_freq = 1
     ''' MODEL '''
     if MDL_2_TRAIN=='logistic_regression_vec_mdl':
-        in_features=31
-        n_classes=1
-        bias=False
+        in_features=2
+        n_classes=2
+        bias=True
         mdl = mdl_lreg.get_logistic_regression_mdl(in_features,n_classes,bias)
         loss = torch.nn.CrossEntropyLoss(size_average=True)
         ''' stats collector '''
-        loss_collector = lambda mdl,X,Y: calc_loss(mdl,loss,X,Y)
-        acc_collector = calc_accuracy
-        acc_collector = calc_error
+        loss_collector = lambda mdl,X,Y: tr_alg.calc_loss(mdl,loss,X,Y)
+        acc_collector = tr_alg.calc_accuracy
+        acc_collector = tr_alg.calc_error
         stats_collector = tr_alg.StatsCollector(mdl, loss_collector,acc_collector)
-        ''' make features for data '''
-        poly = PolynomialFeatures(in_features-1)
-        Xtr,Xv,Xt = poly.fit_transform(Xtr), poly.fit_transform(Xv), poly.fit_transform(Xt)
-    elif MDL_2_TRAIN == 'regression_poly_mdl':
-        in_features = degrees[0]+1
-        mdl = mdl_lreg.get_logistic_regression_mdl(in_features, 1, bias=False)
-        loss = torch.nn.MSELoss(size_average=True)
-        ''' stats collector '''
-        loss_collector = lambda mdl, X, Y: calc_loss(mdl, loss, X, Y)
-        acc_collector = loss_collector
-        acc_collector = loss_collector
-        stats_collector = tr_alg.StatsCollector(mdl, loss_collector, acc_collector)
-        ''' make features for data '''
-        poly = PolynomialFeatures(in_features - 1)
-        Xtr, Xv, Xt = poly.fit_transform(Xtr), poly.fit_transform(Xv), poly.fit_transform(Xt)
     elif MDL_2_TRAIN=='HBF':
         bias=True
         D_in, D_out = Xtr.shape[0], Ytr.shape[1]
@@ -256,47 +222,23 @@ def main(plotting=False,save=False):
     else:
         raise ValueError(f'MDL_2_TRAIN={MDL_2_TRAIN}')
     ''' TRAIN '''
-    perturbfreq = 1.1 * 10**5
-    perturb_magnitude = 0.45
-    if optimizer_mode =='SGD_AND_PERTURB':
+    #train_args = NamedDict({})
+    if optimizer =='SGD_AND_PERTURB':
+        perturb_freq = 1000
+        perturb_magnitude = 0
         ##
         momentum = 0.0
         optim = torch.optim.SGD(mdl.parameters(), lr=eta, momentum=momentum)
-        ##
-        reg_lambda = ps_params.reg_lambda
         tr_alg.SGD_perturb(mdl, Xtr,Ytr,Xv,Yv,Xt,Yt, optim,loss, M,eta,nb_iter,A ,logging_freq,
-            dtype_x,dtype_y, perturbfreq,perturb_magnitude,
-            reg=reg,reg_lambda=reg_lambda,
+            dtype_x,dtype_y, perturb_freq,perturb_magnitude,
+            reg=reg,reg_lambda=ps_params.reg_lambda,
             stats_collector=stats_collector)
-    elif optimizer_mode == 'SGD_train_then_pert':
-        iterations_switch_mode = 1 # never perturb
-        #iterations_switch_mode = nb_iter # always perturb
-        iterations_switch_mode = nb_iter/2 # perturb for half
-        print(f'iterations_switch_mode={iterations_switch_mode}')
-        ##
-        optimizer = torch.optim.SGD(mdl.parameters(), lr=eta, momentum=momentum)
-        ##
-        reg_lambda = ps_params.reg_lambda
-        tr_alg.SGD_pert_then_train(mdl, Xtr,Ytr,Xv,Yv,Xt,Yt, optimizer,loss, M,nb_iter ,logging_freq ,dtype_x,dtype_y,
-                                   perturbfreq,perturb_magnitude, iterations_switch_mode, reg,reg_lambda, stats_collector)
     else:
         raise ValueError(f'MDL_2_TRAIN={MDL_2_TRAIN} not implemented')
     seconds,minutes,hours = utils.report_times(start_time)
     ''' Plots and Print statements'''
     print('\n----\a\a')
     print(f'some SGD params: batch_size={M}, eta={eta}, nb_iterations={nb_iter}')
-    if save:
-        ''' save experiment results to maltab '''
-        experiment_results=stats_collector.get_stats_dict()
-        experiment_results=NamedDict(seconds=seconds,minutes=minutes,hours=hours,**experiment_results)
-        save2matlab.save_experiment_results_2_matlab(experiment_results=experiment_results,
-            root_path=f'./test_runs_flatness3',
-            experiment_name=experiment_name,
-            training_config_name=f'nb_iterations_{nb_iterations[0]}_N_train_{Xtr.shape[0]}_N_test_{Xt.shape[0]}_batch_size_{M}_perturb_freq_{perturbfreq}_perturb_magnitude_{perturb_magnitude}_momentum_{momentum}_iterations_switch_mode_{iterations_switch_mode}',
-            main_experiment_params=f'{expt_type}_lambda_{ps_params.reg_lambda}_it_{nb_iter}_reg_{reg_type}',
-            expt_type=f'expt_type_{expt_type}_{hp_param}',
-            matlab_file_name=f'satid_{satid}_sid_{sj}_{month}_{day}'
-            )
     if MDL_2_TRAIN=='HBF':
         ''' print statements R/HBF'''
         print(f'distance_btw_data_points={Xtr[1] - Xtr[0]}')
@@ -320,6 +262,17 @@ def main(plotting=False,save=False):
         #plot_utils.print_gd_vs_pinv_params(mdl,c_pinv)
         plt.show()
     elif MDL_2_TRAIN=='logistic_regression_vec_mdl':
+        ''' save experiment results to maltab '''
+        experiment_results=stats_collector.get_stats_dict()
+        experiment_results=NamedDict(seconds=seconds,minutes=minutes,hours=hours,**experiment_results)
+        save2matlab.save_experiment_results_2_matlab(experiment_results=experiment_results,
+            root_path=f'./test_runs{debug}',
+            experiment_name=experiment_name,
+            training_config_name=f'N_train_{Xtr.shape[0]}_N_test_{Xt.shape[0]}_batch_size_{M}_perturb_freq_{perturb_freq}_perturb_magnitude_{perturb_magnitude}_momentum_{momentum}',
+            main_experiment_params=f'{expt_type}_lambda_{ps_params.reg_lambda}_it_{ps_params.nb_iter}_reg_{reg_type}',
+            expt_type=f'expt_type_{expt_type}_{satid}',
+            matlab_file_name=f'satid_{satid}_sid_{sj}_{month}_{day}'
+            )
         ''' arguments for plotting things '''
         f_mdl = lambda x: mdl( Variable(torch.FloatTensor(x),requires_grad=False) ).data.numpy()
         f_target = lambda x: -1*(w_target[0]/w_target[1])*x
@@ -333,13 +286,8 @@ def main(plotting=False,save=False):
         plot_utils.visualize_classification_data_learned_planes_2D(lb,ub,N_denseness,Xtr,Ytr,f_mdl,f_target)
         plot_utils.plot_weight_norm_vs_iterations(iterations,stats_collector.w_norms[0])
         plt.show()
-    if plotting:
-        legend_hyper_params = f'N_train={Xtr.shape[0]},N_test={Xt.shape[0]},batch-size={M},learning step={eta},# iterations = {nb_iter} momentum={momentum}, Model=Regression'
-        iterations = np.array(range(0, nb_iter))
-        plot_utils.plot_loss_errors(iterations, stats_collector, legend_hyper_params=legend_hyper_params)
-        plot_utils.plot_weight_norm_vs_iterations(iterations, stats_collector.w_norms[0])
-        plt.show()
 
 
 if __name__ == '__main__':
-    main(plotting=False,save=True)
+    #main(save_bulk_experiment=True,plotting=True)
+    main()

@@ -3,7 +3,7 @@
 #SBATCH --time=1-22:30
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
-#SBATCH --array=1-8
+#SBATCH --array=1-1
 #SBATCH --gres=gpu:1
 
 """
