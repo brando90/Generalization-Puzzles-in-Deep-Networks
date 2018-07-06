@@ -116,6 +116,10 @@ parser.add_argument("-decay_rate", "--decay_rate", type=float, default=1.0,
                     help="decay_rate for scheduler.")
 parser.add_argument("-evalaute_mdl_data_set", "--evalaute_mdl_data_set", type=str, default='evalaute_running_mdl_data_set',
                     help="which method to evaluate the net at the end of each epoch.")
+parser.add_argument("-means", "--means", type=str, default='',
+                    help="means for init")
+parser.add_argument("-stds", "--stds", type=str, default='',
+                    help="stds for init")
 ''' radius expt params '''
 parser.add_argument("-net_name", "--net_name", type=str, default='NL',
                     help="Training algorithm to use")
@@ -138,6 +142,15 @@ if 'SLURM_ARRAY_TASK_ID' in os.environ and 'SLURM_JOBID' in os.environ:
 print(f'storing results? = {not args.dont_save_expt_results}')
 
 def main(plot=True):
+    if args.means != '':
+        means = [float(x.strip()) for x in args.means.strip('[').strip(']').split(',')]
+    else:
+        means = []
+    if args.stds != '':
+        stds = [float(x.strip()) for x in args.stds.strip('[').strip(']').split(',')]
+    else:
+        stds = []
+    ##
     hostname = utils.get_hostname()
     ''' cuda '''
     use_cuda = torch.cuda.is_available()
@@ -281,6 +294,20 @@ def main(plot=True):
         ##
         CHW = (3,32,32)
         net = nn_mdls.GBoixNet(CHW,Fs,Ks,FCs,do_bn,only_1st_layer_bias=args.only_1st_layer_bias)
+        ##
+        params = net.named_parameters()
+        dict_params = dict(params)
+        i=0
+        for name, param in dict_params.items():
+            if name in dict_params:
+                print(name)
+                if name != 'conv0.bias':
+                    mu,s = means[i], stds[i]
+                    param.data.normal_(mean=mu,std=s)
+                    i+=1
+        ##
+        expt_path = f'{expt_path}_means_{args.means}_stds_{args.stds}'
+        other_stats = dict({'means': means, 'stds': stds}, **other_stats)
         ##
         nets.append(net)
         other_stats = dict({'only_1st_layer_bias': args.only_1st_layer_bias}, **other_stats)

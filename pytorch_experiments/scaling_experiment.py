@@ -8,6 +8,7 @@
 
 import sys
 import os
+import time
 
 current_directory = os.getcwd() #The method getcwd() returns current working directory of a process.
 sys.path.append(current_directory)
@@ -23,6 +24,7 @@ import scipy.io as sio
 import data_classification as data_class
 from new_training_algorithms import evalaute_mdl_on_full_data_set
 import metrics
+import utils
 from good_minima_discriminator import divide_params_by
 #from good_minima_discriminator import divide_params_by_taking_bias_into_account
 
@@ -52,7 +54,7 @@ class Normalizer:
         self.p = p
         self.division_constant = division_constant
         ''' '''
-        self.normalize = normalization_scheme
+        self.normalization_scheme = normalization_scheme
         ''' '''
         self.error = metrics.error_criterion
         self.loss = torch.nn.CrossEntropyLoss()
@@ -86,7 +88,7 @@ class Normalizer:
         self.epoch_all_numbers = []
         self.corruption_all_probs = []
         ##
-        self.wnorms = []
+        self.w_norms = [ ]
 
     def extract_all_results_vs_test_errors(self,path_all_expts,list_names,target_loss):
         '''
@@ -308,7 +310,7 @@ class Normalizer:
         ''' return '''
         return normalized_results, unnormalized_results, normalized_results_rand, unnormalized_results_rand
 
-    def normalize_net(self,net):
+    def normalize(self,net):
         '''
 
             Note: for each time this function is called, it appends the stats once. If it goes through each list and
@@ -316,8 +318,11 @@ class Normalizer:
             we normalize a net, then it means that we are adding stats for every time a specific corruption of a net is
             present. So each index corresponds to some corruption level on the corruption array that we are collecting.
         '''
+        if len(self.w_norms) == 0:
+            nb_param_groups = len(list(net.parameters()))
+            self.w_norms = [[] for i in range(nb_param_groups)]
         for index, W in enumerate(net.parameters()):
-            self.w_norms[index].append( W.norm(self.p) )
+            self.w_norms[index].append( W.norm(self.p).item() )
         return self.normalization_scheme(net)
 
     def collect_all(self,results):
@@ -365,7 +370,7 @@ class Normalizer:
     def return_results(self):
         attributes = [attribute for attribute in dir(self) if not attribute.startswith('__') and not callable(getattr(self, attribute))]
         results = {attribute:getattr(self,attribute) for attribute in attributes if 'normalized' in attribute}
-        results = dict({'epoch_all_numbers':self.epoch_all_numbers,'corruption_all_probs':self.corruption_all_probs}, **results)
+        results = dict({'epoch_all_numbers':self.epoch_all_numbers,'corruption_all_probs':self.corruption_all_probs,'w_norms':self.w_norms}, **results)
         return NamedDict(results)
 
     def return_attributes(self):
@@ -382,6 +387,7 @@ def divide_params(net,norm_func):
 
     normalizes the network per layer.
     '''
+    p = norm_func.p
     conv0_w = None
     ##
     params = net.named_parameters()
@@ -392,19 +398,18 @@ def divide_params(net,norm_func):
                 conv0_w = param
             elif name == 'conv0.bias':
                 conv0_b = param
-                ##
+                ''' get W_norm = []'''
                 w_norm = norm_func(conv0_w)
                 b_norm = norm_func(conv0_b)
-                if norm_func.__name__ == 'frobenius_normalization':
-                    W_norm = (w_norm**2+b_norm**2)**0.5
-                else:
-                    W_norm = w_norm + b_norm
+                ## W_norm = pth_root( ||w||^p + ||b||^p ), we need to compute first the sum of squares first basically, thats why we can't just add the norms
+                W_norm = (w_norm ** p + b_norm ** p) ** (1.0/p)
+                ''' normalize W and bias '''
                 ## normalize W
                 new_param = conv0_w / W_norm
                 dict_params['conv0.weight'] = new_param
                 ## normalize b
                 new_param = conv0_b / W_norm
-                dict_params[name] = new_param
+                dict_params['conv0.bias'] = new_param
             else:
                 W_norm = norm_func(param)
                 #print(f'W_norm = {W_norm}')
@@ -441,6 +446,7 @@ def spectral_normalization(W):
     return spectral_norm
 
 def main():
+    RL_str = ''
     # TODO: IMPORTANT: Don't forget to include biases in the [W, b]
     print('start main')
     #path_all_expts = '/cbcl/cbcl01/brando90/home_simulation_research/overparametrized_experiments/pytorch_experiments/test_runs_flatness4'
@@ -457,12 +463,17 @@ def main():
     list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_0.75_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0')
     ### list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_1.0_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0')
     ### list_names.append('flatness_June_label_corrupt_prob_1.0_exptlabel_RLInits_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0')
-    #list_names.append('flatness_June_label_corrupt_prob_1.0_exptlabel_RL_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0')
+    list_names.append('flatness_June_label_corrupt_prob_1.0_exptlabel_RL_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0')
+    #RL_str ='debug'
+    RL_str = 'RL_point_'
+    #RL_str = 'RL_point_and_0NL_'
+    #RL_str = 'Only_0NL_'
     ''' normalization scheme '''
-    p = 1
+    p = 29
     division_constant = 1
     norm = f'l{p}_division_constant{division_constant}'
     weight_normalizer = lambda W: lp_normalizer(W,p,division_constant=division_constant)
+    weight_normalizer.p = p
     normalization_scheme = lambda net: divide_params(net,weight_normalizer)
     #norm = 'spectral'
     #normalization_scheme = lambda net: divide_params(net, spectral_normalization)
@@ -473,7 +484,7 @@ def main():
     normalizer = Normalizer(data_path,normalization_scheme, p,division_constant)
     results = normalizer.extract_all_results_vs_test_errors(path_all_expts,list_names,target_loss)
     ''' '''
-    path = os.path.join(path_all_expts, f'loss_vs_gen_errors_norm_{norm}')
+    path = os.path.join(path_all_expts, f'{RL_str}loss_vs_gen_errors_norm_{norm}')
     #path = os.path.join(path_all_expts, f'RL_corruption_1.0_loss_vs_gen_errors_norm_{norm}')
     #path = os.path.join(path_all_expts,f'loss_vs_gen_errors_norm_{norm}_final')
     scipy.io.savemat(path, results)
@@ -484,5 +495,7 @@ def main():
     print('\a')
 
 if __name__ == '__main__':
+    time_taken = time.time()
     main()
+    seconds_setup, minutes_setup, hours_setup = utils.report_times(time_taken)
     print('end')
