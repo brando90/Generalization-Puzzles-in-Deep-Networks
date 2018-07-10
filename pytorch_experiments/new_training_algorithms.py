@@ -16,10 +16,10 @@ import nn_models as nn_mdls
 
 from pdb import set_trace as st
 
-def get_norm(net,l=2):
+def get_norm(net,p=2):
     w_norms = 0
     for index, W in enumerate(net.parameters()):
-        w_norms += W.norm(l)
+        w_norms += W.norm(p)
     return w_norms
 
 def divide_params_by(W,net):
@@ -106,7 +106,8 @@ def get_function_evaluation_from_name(name):
 class Trainer:
 
     def __init__(self,trainloader,testloader, optimizer, scheduler, criterion,error_criterion, stats_collector, device,
-                 expt_path='',net_file_name='',all_nets_folder='',save_every_epoch=False, evalaute_mdl_data_set='evalaute_running_mdl_data_set'):
+                 expt_path='',net_file_name='',all_nets_folder='',save_every_epoch=False, evalaute_mdl_data_set='evalaute_running_mdl_data_set',
+                 reg_param=0.0,p=2):
         self.trainloader = trainloader
         self.testloader = testloader
         self.optimizer = optimizer
@@ -115,6 +116,8 @@ class Trainer:
         self.error_criterion = error_criterion
         self.stats_collector = stats_collector
         self.device = device
+        self.reg_param = reg_param
+        self.p = p
         ''' '''
         self.stats_collector.save_every_epoch = save_every_epoch
         ''' save all models during training '''
@@ -157,8 +160,8 @@ class Trainer:
                 inputs,targets = inputs.to(self.device),targets.to(self.device)
                 outputs = net(inputs)
                 #st()
-                loss = self.criterion(outputs, targets)
-                #loss = self.criterion(outputs,targets) + 0.00001*get_norm(net)**2
+                #loss = self.criterion(outputs, targets)
+                loss = self.criterion(outputs,targets) + self.reg_param*get_norm(net,p=self.p)**2
                 loss.backward()
                 self.optimizer.step()
                 running_train_loss += loss.item()

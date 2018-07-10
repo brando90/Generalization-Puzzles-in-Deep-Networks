@@ -6,11 +6,15 @@
 %load('./pytorch_experiments/test_runs_flatness5_ProperOriginalExpt/loss_vs_gen_errors_norm_l1_divided_by_100')RL_corruption_1.0_loss_vs_gen_errors_norm_l2
 %load('./pytorch_experiments/test_runs_flatness5_ProperOriginalExpt/RL_corruption_1.0_loss_vs_gen_errors_norm_l2')
 %%
-RLs = 62:73;
-train_all_losses_normalized(RLs) = train_all_losses_normalized_rand(RLs);
-test_all_losses_normalized(RLs) = test_all_losses_normalized_rand(RLs);
-train_all_errors_unnormalized(RLs) = train_all_errors_unnormalized_rand(RLs);
-gen_all_errors_unnormalized(RLs) = gen_all_errors_unnormalized_rand(RLs);
+%%%%RLs = 8:19;
+% RLs = 62:73;
+% train_all_losses_normalized(RLs) = train_all_losses_normalized_rand(RLs);
+% test_all_losses_normalized(RLs) = test_all_losses_normalized_rand(RLs);
+% train_all_errors_unnormalized(RLs) = train_all_errors_unnormalized_rand(RLs);
+% gen_all_errors_unnormalized(RLs) = gen_all_errors_unnormalized_rand(RLs);
+% 
+% train_all_losses_unnormalized(RLs) = train_all_losses_unnormalized_rand(RLs);
+% test_all_losses_unnormalized(RLs) = test_all_losses_unnormalized_rand(RLs);
 %% test error vs train error 
 fig0 = figure;
 lscatter(train_all_errors_unnormalized,gen_all_errors_unnormalized,corruption_all_probs)
@@ -29,17 +33,22 @@ lscatter(train_all_losses_normalized,gen_all_errors_normalized,corruption_all_pr
 %title('The weights of all models are normalized')
 xlabel('Train Loss (Network Normalized)')
 ylabel('Test Error (Network Normalized)')
-%% test loss vs train loss (all normalized) - IMPORTANT
+%% IMPORTANT: test loss vs train loss (all normalized) - shows the linear correlation of the train loss and test loss
 fig2 = figure;
 lscatter(train_all_losses_normalized,test_all_losses_normalized,corruption_all_probs)
 %title('The weights of all models are normalized')
 xlabel('Train Loss (Network Normalized)')
 ylabel('Test Loss (Network Normalized)')
 hl = lsline;
-% B = [ones(size(hl.XData(:))), hl.XData(:)]\hl.YData(:);
-% Slope = B(2)
-% Intercept = B(1)
-%% test error (unormalized) vs train loss (normalized)
+B = [ones(size(hl.XData(:))), hl.XData(:)]\hl.YData(:);
+Slope = B(2)
+Intercept = B(1)
+X = train_all_losses_normalized;y = test_all_losses_normalized;
+mdl = fitlm(X,y);
+RMSE = mdl.RMSE
+Rsquared_Ordinary = mdl.Rsquared.Ordinary
+Rsquared_adjusted = mdl.Rsquared
+%% IMPORTANT: test error (unormalized) vs train loss (normalized), this checks if we can predict test error from train loss
 fig3 = figure;
 lscatter(train_all_losses_normalized,gen_all_errors_unnormalized,corruption_all_probs)
 %lsline
@@ -74,11 +83,11 @@ saveas(fig0,'test_error_vs_train_error_all_unnormalized','pdf');
 saveas(fig1,'test_error_vs_train_loss_all_normalized');
 saveas(fig1,'test_error_vs_train_loss_all_normalized','pdf');
 %
-saveas(fig2,'test_loss_vs_train_loss_all_normalized');
-saveas(fig2,'test_loss_vs_train_loss_all_normalized','pdf');
+saveas(fig2,'important_test_loss_vs_train_loss_all_normalized');
+saveas(fig2,'important_test_loss_vs_train_loss_all_normalized','pdf');
 %
-saveas(fig3,'test_error_vs_train_loss_unnormalized_vs_normalized');
-saveas(fig3,'test_error_vs_train_loss_unnormalized_vs_normalized','pdf');
+saveas(fig3,'important_test_error_vs_train_loss_unnormalized_vs_normalized');
+saveas(fig3,'important_test_error_vs_train_loss_unnormalized_vs_normalized','pdf');
 %
 saveas(fig4,'test_loss_vs_train_loss_unnormalized_vs_normalized');
 saveas(fig4,'test_loss_vs_train_loss_unnormalized_vs_normalized','pdf');

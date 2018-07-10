@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #SBATCH --mem=30000
-#SBATCH --time=1-22:30
+#SBATCH --time=2-22:30
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
 #SBATCH --array=1-1
@@ -86,6 +86,8 @@ parser.add_argument("-exptlabel", "--exptlabel", type=str, default='nolabel',
                     help="experiment label")
 parser.add_argument('-dont_save_expt_results','--dont_save_expt_results',action='store_true',
                     help='If on it does not saves experiment results')
+parser.add_argument("-data_set", "--data_set", type=str, default='cifar10',
+                    help="The type of data set")
 ''' NN related arguments '''
 parser.add_argument("-epochs", "--epochs", type=int, default=None,
                     help="The number of games to simulate")
@@ -101,25 +103,29 @@ parser.add_argument("-label_corrupt_prob", "--label_corrupt_prob", type=float, d
                     help="The probability of a label getting corrupted")
 parser.add_argument('-only_1st_layer_bias','--only_1st_layer_bias',action='store_true',
                     help='only the first layer will have a bias')
+parser.add_argument("-means", "--means", type=str, default='',
+                    help="means for init")
+parser.add_argument("-stds", "--stds", type=str, default='',
+                    help="stds for init")
 ''' training argument '''
 parser.add_argument("-train_alg", "--train_alg", type=str, default='SGD',
                     help="Training algorithm to use")
+parser.add_argument("-reg_param", "--reg_param", type=float, default=0.0,
+                    help="regularizer param for ||W||_norm")
+parser.add_argument("-Lp_norm", "--Lp_norm", type=float, default=2,
+                    help="Lp_norm ||W||_p which p to use")
 parser.add_argument("-noise_level", "--noise_level", type=float, default=0.0001,
                     help="Noise level for perturbation")
 parser.add_argument("-not_pert_w_norm2", "--not_pert_w_norm2",action='store_false',
                     help="Noise level for perturbation")
 parser.add_argument("-epsilon", "--epsilon", type=float, default=0.05,
-                    help="Epsilon error.")
+                    help="Epsilon error.") ## what is this?
 parser.add_argument('-save_every_epoch','--save_every_epoch',action='store_true',
                     help='save model at the end of every epoch')
 parser.add_argument("-decay_rate", "--decay_rate", type=float, default=1.0,
                     help="decay_rate for scheduler.")
 parser.add_argument("-evalaute_mdl_data_set", "--evalaute_mdl_data_set", type=str, default='evalaute_running_mdl_data_set',
                     help="which method to evaluate the net at the end of each epoch.")
-parser.add_argument("-means", "--means", type=str, default='',
-                    help="means for init")
-parser.add_argument("-stds", "--stds", type=str, default='',
-                    help="stds for init")
 ''' radius expt params '''
 parser.add_argument("-net_name", "--net_name", type=str, default='NL',
                     help="Training algorithm to use")
@@ -178,7 +184,8 @@ def main(plot=True):
     ''' filenames '''
     ## folder names
     results_root = './test_runs_flatness5_ProperOriginalExpt'
-    expt_folder = f'flatness_{month}_label_corrupt_prob_{args.label_corrupt_prob}_exptlabel_{args.exptlabel}_only_1st_layer_BIAS_{args.only_1st_layer_bias}'
+    expt_folder = f'flatness_{month}_label_corrupt_prob_{args.label_corrupt_prob}_exptlabel_{args.exptlabel}_' \
+                  f'only_1st_layer_BIAS_{args.only_1st_layer_bias}_data_set_{args.data_set}_reg_param_{args.reg_param}'
     ## filenames
     matlab_file_name = f'flatness_{day}_{month}_sj_{sj}_staid_{satid}_seed_{seed}_{hostname}'
     net_file_name = f'net_{day}_{month}_sj_{sj}_staid_{satid}_seed_{seed}_{hostname}'
@@ -200,8 +207,11 @@ def main(plot=True):
     mdl = args.mdl
     do_bn = args.use_bn
     other_stats = dict({'mdl':mdl,'do_bn':do_bn},**other_stats)
-    ##
-    classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
+    ## TODO fix hack
+    if args.data_set == 'cifar10':
+        classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
+    else:
+        classes = list(range(100))
     nets = []
     print(f'model = {mdl}')
     if mdl == 'cifar_10_tutorial_net':
@@ -286,25 +296,29 @@ def main(plot=True):
         batch_size = batch_size_train
         suffle_test = False
         ## conv params
-        nb_conv_layers=2
+        nb_conv_layers=4
         Fs = [24]*nb_conv_layers
         Ks = [5]*nb_conv_layers
+        nb_conv_layers = 4
+        Fs = [60] * nb_conv_layers
+        Ks = [5] * nb_conv_layers
         ## fc params
         FCs = [len(classes)]
         ##
         CHW = (3,32,32)
         net = nn_mdls.GBoixNet(CHW,Fs,Ks,FCs,do_bn,only_1st_layer_bias=args.only_1st_layer_bias)
         ##
-        params = net.named_parameters()
-        dict_params = dict(params)
-        i=0
-        for name, param in dict_params.items():
-            if name in dict_params:
-                print(name)
-                if name != 'conv0.bias':
-                    mu,s = means[i], stds[i]
-                    param.data.normal_(mean=mu,std=s)
-                    i+=1
+        if len(means) != 0 and len(stds) != 0:
+            params = net.named_parameters()
+            dict_params = dict(params)
+            i = 0
+            for name, param in dict_params.items():
+                if name in dict_params:
+                    print(name)
+                    if name != 'conv0.bias':
+                        mu,s = means[i], stds[i]
+                        param.data.normal_(mean=mu,std=s)
+                        i+=1
         ##
         expt_path = f'{expt_path}_means_{args.means}_stds_{args.stds}'
         other_stats = dict({'means': means, 'stds': stds}, **other_stats)
@@ -480,7 +494,7 @@ def main(plot=True):
         standardize = not args.dont_standardize_data  # x - mu / std , [-1,+1]
         error_criterion = metrics.error_criterion
         criterion = torch.nn.CrossEntropyLoss()
-        trainset, trainloader, testset, testloader, classes_data = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,args.label_corrupt_prob,shuffle_train=shuffle_train,suffle_test=suffle_test,standardize=standardize)
+        trainset, trainloader, testset, testloader, classes_data = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,args.label_corrupt_prob,shuffle_train=shuffle_train,suffle_test=suffle_test,standardize=standardize,type_cifar=args.dat_set)
         train_loss_epoch, train_error_epoch = evalaute_mdl_data_set(criterion, error_criterion, net,trainloader,device)
         test_loss_epoch, test_error_epoch = evalaute_mdl_data_set(criterion, error_criterion, net,testloader,device)
         print(f'[-1, -1], (train_loss: {train_loss_epoch}, train error: {train_error_epoch}) , (test loss: {test_loss_epoch}, test error: {test_error_epoch})')
@@ -506,11 +520,11 @@ def main(plot=True):
     ''' get data set '''
     #st()
     standardize = not args.dont_standardize_data # x - mu / std , [-1,+1]
-    trainset,trainloader, testset,testloader, classes_data = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,args.label_corrupt_prob,shuffle_train=shuffle_train,suffle_test=suffle_test,standardize=standardize)
+    trainset,trainloader, testset,testloader, classes_data = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,args.label_corrupt_prob,shuffle_train=shuffle_train,suffle_test=suffle_test,standardize=standardize,type_cifar=args.data_set)
     #check_order_data(trainloader)
     #st()
-    if classes_data != classes:
-        raise ValueError(f'Pre specificed classes {classes} does not match data classes {classes_data}.')
+    #if classes_data != classes:
+    #    raise ValueError(f'Pre specificed classes {classes} does not match data classes {classes_data}.')
     ''' Cross Entropy + Optmizer '''
     lr = 0.01
     momentum = 0.9
@@ -521,14 +535,14 @@ def main(plot=True):
     #criterion = torch.nn.MSELoss(size_average=True)
     optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
     other_stats = dict({'nb_epochs':nb_epochs,'batch_size':batch_size,'mdl':mdl,'lr':lr,'momentum':momentum, 'seed':seed,'githash':githash},**other_stats)
-    expt_path = f'{expt_path}_batch_size_train_{batch_size_train}_lr_{lr}_momentum_{momentum}'
+    expt_path = f'{expt_path}_batch_size_train_{batch_size_train}_lr_{lr}_momentum_{momentum}_epochs_{nb_epochs}'
     ''' scheduler '''
     milestones = [200, 250, 300]
     gamma = args.decay_rate
     scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=milestones, gamma=gamma)
     other_stats = dict({'milestones': milestones, 'gamma': gamma}, **other_stats)
     milestones_str = ','.join(str(m) for m in milestones)
-    expt_path = f'{expt_path}_scheduler_milestones_{milestones_str}_gamma_{gamma}'
+    #expt_path = f'{expt_path}_scheduler_milestones_{milestones_str}_gamma_{gamma}'
     ''' stats collector '''
     stats_collector = StatsCollector(net)
     ''' Verify model you got has the right error'''
@@ -553,9 +567,12 @@ def main(plot=True):
         ''' set up Trainer '''
         if args.save_every_epoch:
             save_every_epoch = args.save_every_epoch
-            trainer = Trainer(trainloader, testloader, optimizer, scheduler, criterion, error_criterion, stats_collector, device, expt_path,net_file_name,all_nets_folder,save_every_epoch,args.evalaute_mdl_data_set)
+            trainer = Trainer(trainloader, testloader, optimizer, scheduler, criterion, error_criterion, stats_collector,
+                              device, expt_path,net_file_name,all_nets_folder,save_every_epoch,args.evalaute_mdl_data_set,
+                              reg_param=args.reg_param,p=args.Lp_norm)
         else:
-            trainer = Trainer(trainloader,testloader, optimizer, scheduler, criterion,error_criterion, stats_collector, device,evalaute_mdl_data_set=args.evalaute_mdl_data_set)
+            trainer = Trainer(trainloader,testloader, optimizer, scheduler, criterion,error_criterion, stats_collector,
+                              device,evalaute_mdl_data_set=args.evalaute_mdl_data_set,reg_param=args.reg_param,p=args.Lp_norm)
         last_errors = trainer.train_and_track_stats(net, nb_epochs,iterations)
         ''' Test the Network on the test data '''
         train_loss_epoch, train_error_epoch, test_loss_epoch, test_error_epoch = last_errors

@@ -4,7 +4,7 @@
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
 #SBATCH --array=1-1
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:4
 
 import sys
 import os
@@ -463,14 +463,14 @@ def main():
     list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_0.75_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0')
     ### list_names.append('flatness_June_label_corrupt_prob_0.0_exptlabel_RLNL_1.0_only_1st_layer_BIAS_True_batch_size_train_256_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0')
     ### list_names.append('flatness_June_label_corrupt_prob_1.0_exptlabel_RLInits_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0')
-    list_names.append('flatness_June_label_corrupt_prob_1.0_exptlabel_RL_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0')
+    #list_names.append('flatness_June_label_corrupt_prob_1.0_exptlabel_RL_only_1st_layer_BIAS_True_batch_size_train_1024_lr_0.01_momentum_0.9_scheduler_milestones_200,250,300_gamma_1.0')
     #RL_str ='debug'
-    RL_str = 'RL_point_'
+    #RL_str = 'RL_point_'
     #RL_str = 'RL_point_and_0NL_'
     #RL_str = 'Only_0NL_'
     ''' normalization scheme '''
-    p = 29
-    division_constant = 1
+    p = 1
+    division_constant = 100
     norm = f'l{p}_division_constant{division_constant}'
     weight_normalizer = lambda W: lp_normalizer(W,p,division_constant=division_constant)
     weight_normalizer.p = p
