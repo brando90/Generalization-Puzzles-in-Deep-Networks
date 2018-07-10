@@ -144,6 +144,7 @@ def main(**kwargs):
     step_deg=1
     lb_deg,ub_deg = 1,100
     degrees = list(range(lb_deg,ub_deg+1,step_deg))
+    st()
     lambdas = [0]
     #nb_iter = 1600*1000
     #nb_iter = 10*1000*1000

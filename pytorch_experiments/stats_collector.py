@@ -2,9 +2,11 @@
 
 import numpy as np
 
-from maps import NamedDict
+from maps import NamedDict # don't remove this
 
-from new_training_algorithms import evalaute_mdl_data_set
+from new_training_algorithms import get_function_evaluation_from_name
+#from new_training_algorithms import evalaute_running_mdl_data_set
+import nn_models as nn_mdls
 
 import utils
 
@@ -14,7 +16,8 @@ class StatsCollector:
     '''
     Class that has all the stats collected during training.
     '''
-    def __init__(self,net,trials=1,epochs=0):
+    def __init__(self,net,trials=1,epochs=0,save_every_epoch=False,evalaute_mdl_data_set='evalaute_running_mdl_data_set'):
+        self.save_every_epoch = save_every_epoch
         ''' loss & errors lists'''
         self.train_losses, self.val_losses, self.test_losses = [], [], []
         self.train_errors, self.val_errors, self.test_errors = [], [], []
@@ -37,9 +40,25 @@ class StatsCollector:
         self.all_train_accs, self.all_val_accs, self.all_test_accs = np.zeros(D), [],  np.zeros(D)
         ''' '''
         self.random_dirs = []
+        ''' '''
+        if self.save_every_epoch:
+            self.weights = np.zeros(epochs,)
+        ''' '''
+        evalaute_mdl_data_set = get_function_evaluation_from_name(evalaute_mdl_data_set)
+        if evalaute_mdl_data_set is None:
+            raise ValueError(f'Data set function evaluator evalaute_mdl_data_set={evalaute_mdl_data_set} is not defined.')
+        else:
+            self.evalaute_mdl_data_set = evalaute_mdl_data_set
 
     def collect_mdl_params_stats(self,mdl):
-        ''' log parameter stats'''
+        '''
+            log parameter stats
+
+            Note: for each time this function is called, it appends the stats once. If it goes through each list and
+            append each time it means it extends the list each time it's called. If this function its called each time
+            at the end of every epoch it means that each list index will correspond to some value at some epoch depending
+            at that index.
+        '''
         for index, W in enumerate(mdl.parameters()):
             self.w_norms[index].append( W.data.norm(2) )
             if W.grad is not None:
@@ -60,8 +79,8 @@ class StatsCollector:
             self.perturbations_norms[index].append( perturbations[index].norm(2) )
 
     def record_errors_loss_reference_net(self,criterion,error_criterion,net,trainloader,testloader,enable_cuda):
-        train_loss, train_error = evalaute_mdl_data_set(criterion,error_criterion,net,trainloader,enable_cuda)
-        test_loss, test_error = evalaute_mdl_data_set(criterion,error_criterion,net,testloader,enable_cuda)
+        train_loss, train_error = self.evalaute_mdl_data_set(criterion,error_criterion,net,trainloader,enable_cuda)
+        test_loss, test_error = self.evalaute_mdl_data_set(criterion,error_criterion,net,testloader,enable_cuda)
         self.ref_train_losses, self.ref_test_losses = train_loss, train_error
         self.ref_train_accs, self.ref_test_accs = test_loss, test_error
 

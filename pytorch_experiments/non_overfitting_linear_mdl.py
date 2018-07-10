@@ -60,7 +60,7 @@ def get_models():
 
 def main():
     expt_type = 'polynomial'
-    data_filename = 'regression_manual'
+    data_filename = 'classification_manual'
     ######## data set
     ''' Get data set'''
     if data_filename == 'classification_manual':

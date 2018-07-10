@@ -9,6 +9,20 @@ import copy
 
 from pdb import set_trace as st
 
+class Flatten(nn.Module):
+    def forward(self, input):
+        return input.view(input.size(0), -1)
+
+def reset_parameters(net):
+    params = net.named_parameters()
+    # for name,param in params:
+    #     param.reset_parameters()
+    for name, param_train in params:
+        layer_name, param_name = name.split('.')
+        layer = getattr(net, layer_name)
+        layer.reset_parameters()
+
+
 def count_nb_params(net):
     count = 0
     for p in net.parameters():
@@ -61,21 +75,93 @@ class MMNISTNet(nn.Module):
 
 ##
 
+class AllConvNet(nn.Module):
+
+    def __init__(self, dropout=False, nc=3, num_classes=10,only_1st_layer_bias=False,do_bn=False):
+        super().__init__()
+        bias = True
+        self.dropout = do_bn
+        self.conv1 = nn.Conv2d(nc, 96, 3, padding=1,bias=True)
+        if only_1st_layer_bias:
+            bias = False
+        self.conv2 = nn.Conv2d(96, 96, 3, padding=1,bias=bias)
+        self.conv3 = nn.Conv2d(96, 96, 3, padding=1, stride=2,bias=bias)
+        self.conv4 = nn.Conv2d(96, 192, 3, padding=1,bias=bias)
+        self.conv5 = nn.Conv2d(192, 192, 3, padding=1,bias=bias)
+        self.conv6 = nn.Conv2d(192, 192, 3, padding=1, stride=2,bias=bias)
+        self.conv7 = nn.Conv2d(192, 192, 3, padding=1,bias=bias)
+        self.conv8 = nn.Conv2d(192, 192, 1,bias=bias)
+        self.conv9 = nn.Conv2d(192, num_classes, 1,bias=bias)
+
+    def forward(self, x):
+        conv1_out = F.relu(self.conv1(x))
+        conv2_out = F.relu(self.conv2(conv1_out))
+        conv3_out = F.relu(self.conv3(conv2_out))
+        conv4_out = F.relu(self.conv4(conv3_out))
+        conv5_out = F.relu(self.conv5(conv4_out))
+        conv6_out = F.relu(self.conv6(conv5_out))
+        conv7_out = F.relu(self.conv7(conv6_out))
+        conv8_out = F.relu(self.conv8(conv7_out))
+        class_out = F.relu(self.conv9(conv8_out))
+        pool_out = class_out.reshape(class_out.size(0), class_out.size(1), -1).mean(-1)
+        return pool_out
+
+class AllConvNetStefOe(nn.Module):
+    ## https://github.com/StefOe/all-conv-pytorch/blob/master/allconv.py
+
+    def __init__(self, dropout=False, nc=3, num_classes=10,only_1st_layer_bias=False):
+        super().__init__()
+        bias = True
+        self.dropout = dropout
+        self.conv1 = nn.Conv2d(nc, 96, 3, padding=1,bias=bias)
+        if only_1st_layer_bias:
+            bias = False
+        self.conv2 = nn.Conv2d(96, 96, 3, padding=1,bias=bias)
+        self.conv3 = nn.Conv2d(96, 96, 3, padding=1, stride=2,bias=bias)
+        self.conv4 = nn.Conv2d(96, 192, 3, padding=1,bias=bias)
+        self.conv5 = nn.Conv2d(192, 192, 3, padding=1,bias=bias)
+        self.conv6 = nn.Conv2d(192, 192, 3, padding=1, stride=2,bias=bias)
+        self.conv7 = nn.Conv2d(192, 192, 3, padding=1,bias=bias)
+        self.conv8 = nn.Conv2d(192, 192, 1,bias=bias)
+        self.conv9 = nn.Conv2d(192, num_classes, 1,bias=bias)
+
+    def forward(self, x):
+        if self.dropout:
+            x = F.dropout(x, .2)
+        conv1_out = F.relu(self.conv1(x))
+        conv2_out = F.relu(self.conv2(conv1_out))
+        conv3_out = F.relu(self.conv3(conv2_out))
+        if self.dropout:
+            conv3_out = F.dropout(conv3_out, .5)
+        conv4_out = F.relu(self.conv4(conv3_out))
+        conv5_out = F.relu(self.conv5(conv4_out))
+        conv6_out = F.relu(self.conv6(conv5_out))
+        if self.dropout:
+            conv6_out = F.dropout(conv6_out, .5)
+        conv7_out = F.relu(self.conv7(conv6_out))
+        conv8_out = F.relu(self.conv8(conv7_out))
+
+        class_out = F.relu(self.conv9(conv8_out))
+        pool_out = class_out.reshape(class_out.size(0), class_out.size(1), -1).mean(-1)
+        return pool_out
+
 class GBoixNet(nn.Module):
-    def __init__(self,CHW, Fs, Ks, FCs,do_bn=False):
+    def __init__(self,CHW, Fs, Ks, FCs,do_bn=False,only_1st_layer_bias=False):
         super(GBoixNet, self).__init__()
         C,H,W = CHW
         self.do_bn = do_bn
         self.nb_conv_layers = len(Fs)
         ''' Initialize Conv layers '''
+        layer = 0
         self.convs = []
         self.bns_convs = []
         out = Variable(torch.FloatTensor(1, C,H,W))
         in_channels = C
         for i in range(self.nb_conv_layers):
             F,K = Fs[i], Ks[i]
+            bias = self._bias_flag(only_1st_layer_bias,layer)
             ##
-            conv = nn.Conv2d(in_channels,F,K) #(in_channels, out_channels, kernel_size)
+            conv = nn.Conv2d(in_channels,F,K,bias=bias) #(in_channels, out_channels, kernel_size)
             setattr(self,f'conv{i}',conv)
             self.convs.append(conv)
             ##
@@ -86,6 +172,7 @@ class GBoixNet(nn.Module):
             ##
             in_channels = F
             out = conv(out)
+            layer+=1
         ''' Initialize FC layers'''
         self.nb_fcs_layers = len(FCs)
         ##
@@ -95,8 +182,9 @@ class GBoixNet(nn.Module):
         in_features = CHW
         for i in range(self.nb_fcs_layers-1):
             out_features = FCs[i]
+            bias = self._bias_flag(only_1st_layer_bias, i)
             ##
-            fc = nn.Linear(in_features, out_features)
+            fc = nn.Linear(in_features, out_features, bias=bias)
             setattr(self,f'fc{i}', fc)
             self.fcs.append(fc)
             ##
@@ -107,13 +195,17 @@ class GBoixNet(nn.Module):
                 self.bns_fcs.append(bn_fc)
             ##
             in_features = out_features
+            layer+=1
         ##
         i = self.nb_fcs_layers-1
         out_features = FCs[i]
-        fc = nn.Linear(in_features, out_features)
+        bias = self._bias_flag(only_1st_layer_bias, layer)
+        fc = nn.Linear(in_features, out_features, bias=bias)
+        layer+=1
         ##
         setattr(self,f'fc{i}', fc)
         self.fcs.append(fc)
+        self.nb_layers = layer
 
     def forward(self, x):
         ''' conv layers '''
@@ -139,6 +231,16 @@ class GBoixNet(nn.Module):
         fc = self.fcs[self.nb_fcs_layers-1]
         x = fc(x)
         return x
+
+    def _bias_flag(self,only_1st_layer_bias,i):
+        '''
+        We want to return always True if only_1st_layer_bias==False (since it means every layer should have a bias)
+        and if only_1st_layer_bias=True then we want to return True only if i==0 (first layer)
+        '''
+        if not only_1st_layer_bias: # only_1st_layer_bias == False
+            return True
+        else: # only_1st_layer_bias == True
+            return i == 0 ## True only if its the first layer
 
 ##
 

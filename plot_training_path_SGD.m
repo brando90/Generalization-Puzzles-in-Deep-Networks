@@ -10,9 +10,11 @@ plot(xaxis,train_losses);hold;
 plot(xaxis,test_losses);
 legend('train loss','test loss')
 title('losses vs epochs')
-%saveas(fig_errors,['./fig_errors_seed' num2str(seed)],'pdf')
-%saveas(fig_losses,['./fig_losses_seed' num2str(seed)],'pdf')
+saveas(fig_errors,['./fig_errors_seed' num2str(seed)],'pdf')
+saveas(fig_losses,['./fig_losses_seed' num2str(seed)],'pdf')
+saveas(fig_errors,['./fig_errors_seed' num2str(seed)])
+saveas(fig_losses,['./fig_losses_seed' num2str(seed)])
 nb_epochs
-train_errors(end)
 hours
 nb_params
+train_errors(end)
