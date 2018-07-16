@@ -193,6 +193,10 @@ def main(plot=True):
     all_nets_folder = f'nets_folder_{day}_{month}_sj_{sj}_staid_{satid}_seed_{seed}_{hostname}'
     ## experiment path
     expt_path = os.path.join(results_root,expt_folder)
+    ''' data set '''
+    data_path = './data'
+    standardize = not args.dont_standardize_data # x - mu / std , [-1,+1]
+    trainset, testset, classes = data_class.get_data_processors(data_path,args.label_corrupt_prob,dataset_type=args.data_set,standardize=standardize)
     ''' experiment params '''
     evalaute_mdl_data_set = get_function_evaluation_from_name(args.evalaute_mdl_data_set)
     suffle_test = False
@@ -202,17 +206,11 @@ def main(plot=True):
     #batch_size_train,batch_size_test = batch_size,batch_size
     batch_size_train = batch_size
     batch_size_test = 256
-    data_path = './data'
     ''' get NN '''
+    nets = []
     mdl = args.mdl
     do_bn = args.use_bn
     other_stats = dict({'mdl':mdl,'do_bn':do_bn},**other_stats)
-    ## TODO fix hack
-    if args.data_set == 'cifar10':
-        classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
-    else:
-        classes = list(range(100))
-    nets = []
     print(f'model = {mdl}')
     if mdl == 'cifar_10_tutorial_net':
         suffle_test = False
@@ -305,11 +303,13 @@ def main(plot=True):
         ## fc params
         FCs = [len(classes)]
         ##
+        print(f'------> FCs = {FCs}')
         if args.data_set == 'mnist':
             CHW = (1, 28, 28)
         else:
             CHW = (3,32,32)
         net = nn_mdls.GBoixNet(CHW,Fs,Ks,FCs,do_bn,only_1st_layer_bias=args.only_1st_layer_bias)
+        print(f'net = {net}')
         ##
         if len(means) != 0 and len(stds) != 0:
             params = net.named_parameters()
@@ -417,7 +417,6 @@ def main(plot=True):
         l2_norm_all_params(net_nl)
         print('RLNL')
         l2_norm_all_params(net_rlnl)
-        st()
         ''' modify nets '''
         W_nl = 1
         W_rlnl = (get_norm(net_rlnl, l=2)/get_norm(net_nl, l=2)) # 2.284937620162964
@@ -432,7 +431,6 @@ def main(plot=True):
         #net_rlnl = divide_params_by(W_rlnl, net_rlnl)
         net_rlnl = divide_params_by_taking_bias_into_account(W=W_rlnl,net=net_rlnl)
         print(f'norm of weight AFTER division: get_norm(net_nl,l=2)={get_norm(net_nl,l=2)}, get_norm(net_rlnl,l=2)={get_norm(net_rlnl,l=2)}')
-        st()
         nets.append(net_nl)
         nets.append(net_rlnl)
         other_stats = dict({'W_rlnl':W_rlnl,'W_nl':W_nl})
@@ -497,7 +495,9 @@ def main(plot=True):
         standardize = not args.dont_standardize_data  # x - mu / std , [-1,+1]
         error_criterion = metrics.error_criterion
         criterion = torch.nn.CrossEntropyLoss()
-        trainset, trainloader, testset, testloader, classes_data = data_class.get_data_processors(data_path,batch_size_train,batch_size_test,num_workers,args.label_corrupt_prob,shuffle_train=shuffle_train,suffle_test=suffle_test,standardize=standardize,dataset_type=args.data_set)
+        trainset, testset, classes = data_class.get_data_processors(data_path, args.label_corrupt_prob,dataset_type=args.data_set,standardize=standardize)
+        trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size_train, shuffle=shuffle_train,num_workers=num_workers)
+        testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size_test, shuffle=suffle_test,num_workers=num_workers)
         train_loss_epoch, train_error_epoch = evalaute_mdl_data_set(criterion, error_criterion, net,trainloader,device)
         test_loss_epoch, test_error_epoch = evalaute_mdl_data_set(criterion, error_criterion, net,testloader,device)
         print(f'[-1, -1], (train_loss: {train_loss_epoch}, train error: {train_error_epoch}) , (test loss: {test_loss_epoch}, test error: {test_error_epoch})')
@@ -521,13 +521,8 @@ def main(plot=True):
         net.to(device)
     nb_params = nn_mdls.count_nb_params(net)
     ''' get data set '''
-    #st()
-    standardize = not args.dont_standardize_data # x - mu / std , [-1,+1]
-    trainset,trainloader, testset,testloader, classes_data = data_class.get_data_processors(data_path,batch_size_train,batch_size_test,num_workers,args.label_corrupt_prob,shuffle_train=shuffle_train,suffle_test=suffle_test,standardize=standardize,dataset_type=args.data_set)
-    #check_order_data(trainloader)
-    #st()
-    #if classes_data != classes:
-    #    raise ValueError(f'Pre specificed classes {classes} does not match data classes {classes_data}.')
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size_train, shuffle=shuffle_train, num_workers=num_workers)
+    testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size_test, shuffle=suffle_test, num_workers=num_workers)
     ''' Cross Entropy + Optmizer '''
     lr = 0.01
     momentum = 0.9

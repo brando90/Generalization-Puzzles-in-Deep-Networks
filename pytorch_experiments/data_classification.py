@@ -128,6 +128,37 @@ class CIFAR10RandomLabels(torchvision.datasets.CIFAR10):
     else:
       self.test_labels = labels
 
+class MNISTRandomLabels(torchvision.datasets.MNIST):
+  """MNIST dataset, with support for randomly corrupt labels.
+  Params
+  ------
+  corrupt_prob: float
+    Default 0.0. The probability of a label being replaced with
+    random label.
+  num_classes: int
+    Default 10. The number of classes in the dataset.
+  """
+  def __init__(self, corrupt_prob=0.0, num_classes=10, **kwargs):
+    super(MNISTRandomLabels, self).__init__(**kwargs)
+    self.n_classes = num_classes
+    if corrupt_prob > 0:
+      self.corrupt_labels(corrupt_prob)
+
+  def corrupt_labels(self, corrupt_prob):
+    labels = np.array(self.train_labels if self.train else self.test_labels)
+    np.random.seed(12345)
+    mask = np.random.rand(len(labels)) <= corrupt_prob
+    rnd_labels = np.random.choice(self.n_classes, mask.sum())
+    labels[mask] = rnd_labels
+    # we need to explicitly cast the labels from npy.int64 to
+    # builtin int type, otherwise pytorch will fail...
+    labels = [int(x) for x in labels]
+
+    if self.train:
+      self.train_labels = labels
+    else:
+      self.test_labels = labels
+
 def get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,label_corrupt_prob,shuffle_train=True,suffle_test=False,standardize=False,type_cifar='cifar10'):
     '''
         The output of torchvision datasets are PILImage images of range [0, 1].
@@ -198,7 +229,7 @@ def this_guys_preprocessor():
 
 #####
 
-def get_data_processors(data_path,batch_size_train,batch_size_test,num_workers,label_corrupt_prob,shuffle_train=True,suffle_test=False,standardize=False,dataset_type='cifar10'):
+def get_data_processors(data_path,label_corrupt_prob,dataset_type,standardize=False):
     '''
         The output of torchvision datasets are PILImage images of range [0, 1].
         We transform them to Tensors of (gau)normalized range [-1, 1].
@@ -222,13 +253,9 @@ def get_data_processors(data_path,batch_size_train,batch_size_test,num_workers,l
     transform = transforms.Compose(transform)
     ''' get cifar data '''
     if dataset_type == 'cifar10':
-        ''' train data processor '''
-        #trainset = torchvision.datasets.CIFAR10(root=data_path, train=True,download=True, transform=transform)
-        trainset = CIFAR10RandomLabels(root=data_path, train=True, download=True,transform=transform, num_classes=10,corrupt_prob=label_corrupt_prob)
-        ''' test data processor '''
-        # testset = torchvision.datasets.CIFAR10(root=data_path, train=False,download=True, transform=transform)
-        testset = CIFAR10RandomLabels(root=data_path, train=False, download=True, transform=transform, num_classes=10,
-                                      corrupt_prob=label_corrupt_prob)
+        ''' train sets '''
+        trainset = CIFAR10RandomLabels(root=data_path, train=True, download=True,transform=transform, num_classes=10, corrupt_prob=label_corrupt_prob)
+        testset = CIFAR10RandomLabels(root=data_path, train=False, download=True, transform=transform, num_classes=10, corrupt_prob=label_corrupt_prob)
         ''' classes '''
         classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
     elif dataset_type == 'cifar100':
@@ -247,20 +274,13 @@ def get_data_processors(data_path,batch_size_train,batch_size_test,num_workers,l
         ## TODO
         classes = list(range(100))
     else:
-        if label_corrupt_prob != 0:
-            raise ValueError('label_corrupt_prob not implemented yet, have it be zero.')
-        trainset = torchvision.datasets.MNIST(root=data_path, train=True, download=True, transform=transform)
-        testset = torchvision.datasets.MNIST(root=data_path, train=False, download=True, transform=transform)
-        ## TODO
+        trainset = MNISTRandomLabels(root=data_path, train=True, download=True,transform=transform, num_classes=10, corrupt_prob=label_corrupt_prob)
+        testset = MNISTRandomLabels(root=data_path, train=False, download=True, transform=transform, num_classes=10, corrupt_prob=label_corrupt_prob)
+        ''' classes '''
         classes = list(range(10))
-    ''' '''
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size_train, shuffle=shuffle_train,
-                                              num_workers=num_workers)
-    testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size_test, shuffle=suffle_test,
-                                             num_workers=num_workers)
     ''' return trainer processors'''
-    return trainset,trainloader, testset,testloader, classes
-
+    print(f'------> classes = {classes}')
+    return trainset, testset, classes
 
 ##
 

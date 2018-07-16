@@ -4,7 +4,7 @@
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
 #SBATCH --array=1-1
-#SBATCH --gres=gpu:4
+#SBATCH --gres=gpu:1
 
 import sys
 import os
@@ -46,7 +46,7 @@ def get_corruption_label( path_to_experiment ):
 
 class Normalizer:
 
-    def __init__(self,data_path,normalization_scheme,p,division_constant,num_workers=10,label_corrupt_prob=0.0,batch_size_train=1024,batch_size_test=1024,standardize=True,iterations=inf,label_corrupt_prob_rand=1.0):
+    def __init__(self,data_path,normalization_scheme,p,division_constant,data_set,num_workers=10,label_corrupt_prob=0.0,batch_size_train=1024,batch_size_test=1024,standardize=True,iterations=inf,label_corrupt_prob_rand=1.0):
         '''
         :param standardize: x - mu / std , [-1,+1]
         :return:
@@ -57,12 +57,13 @@ class Normalizer:
         ''' '''
         self.normalization_scheme = normalization_scheme
         ''' '''
+        self.data_set = data_set
         self.error = metrics.error_criterion
         self.loss = torch.nn.CrossEntropyLoss()
         self.iterations = iterations
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.trainset, self.trainloader, self.testset, self.testloader, self.classes_data = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,label_corrupt_prob,standardize=standardize)
-        self.trainset_rand, self.trainloader_rand, self.testset_rand, self.testloader_rand, self.classes_data_rand = data_class.get_cifer_data_processors(data_path, batch_size_train, batch_size_test, num_workers, label_corrupt_prob=label_corrupt_prob_rand, standardize=standardize)
+        self.trainset, self.trainloader, self.testset, self.testloader, self.classes_data = data_class.get_data_processors(data_path,batch_size_train,batch_size_test,num_workers,label_corrupt_prob,standardize=standardize, dataset_type=data_set)
+        self.trainset_rand, self.trainloader_rand, self.testset_rand, self.testloader_rand, self.classes_data_rand = data_class.get_data_processors(data_path, batch_size_train, batch_size_test, num_workers, label_corrupt_prob=label_corrupt_prob_rand, standardize=standardize, dataset_type=data_set)
         ''' data we are collecting '''
         ## normalized
         self.train_all_losses_normalized = []
@@ -570,8 +571,8 @@ def main():
     #path_all_expts = '/cbcl/cbcl01/brando90/home_simulation_research/overparametrized_experiments/pytorch_experiments/test_runs_flatness4'
     path_all_expts = '/cbcl/cbcl01/brando90/home_simulation_research/overparametrized_experiments/pytorch_experiments/test_runs_flatness5_ProperOriginalExpt'
     ''' expt_paths '''
-    #list_names, RL_str = lists.experiment_RLNL_RL()
-    list_names, RL_str = lists.experiment_BigInits_MNIST()
+    #list_names, RL_str, data_set = lists.experiment_RLNL_RL()
+    list_names, RL_str, data_set = lists.experiment_BigInits_MNIST()
     ''' normalization scheme '''
     p = 2
     division_constant = 1
@@ -585,10 +586,10 @@ def main():
     ''' get results'''
     data_path = './data'
     target_loss = 0.0044
-    normalizer = Normalizer(data_path,normalization_scheme, p,division_constant)
+    normalizer = Normalizer(data_path,normalization_scheme, p,division_constant, data_set)
     results = normalizer.extract_all_results_vs_test_errors(path_all_expts,list_names,target_loss)
     ''' '''
-    path = os.path.join(path_all_expts, f'{RL_str}loss_vs_gen_errors_norm_{norm}')
+    path = os.path.join(path_all_expts, f'{RL_str}loss_vs_gen_errors_norm_{norm}_data_set_{data_set}')
     #path = os.path.join(path_all_expts, f'RL_corruption_1.0_loss_vs_gen_errors_norm_{norm}')
     #path = os.path.join(path_all_expts,f'loss_vs_gen_errors_norm_{norm}_final')
     scipy.io.savemat(path, results)
