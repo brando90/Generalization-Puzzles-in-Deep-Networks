@@ -159,61 +159,9 @@ class MNISTRandomLabels(torchvision.datasets.MNIST):
     else:
       self.test_labels = labels
 
-def get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,label_corrupt_prob,shuffle_train=True,suffle_test=False,standardize=False,type_cifar='cifar10'):
-    '''
-        The output of torchvision datasets are PILImage images of range [0, 1].
-        We transform them to Tensors of (gau)normalized range [-1, 1].
-
-        Params:
-            num_workers = how many subprocesses to use for data loading. 0 means that the data will be loaded in the main process.
-    '''
-    transform = []
-    ''' converts (HxWxC) in range [0,255] to [0.0,1.0] '''
-    to_tensor = transforms.ToTensor()
-    transform.append(to_tensor)
-    ''' Given meeans (M1,...,Mn) and std: (S1,..,Sn) for n channels, input[channel] = (input[channel] - mean[channel]) / std[channel] '''
-    if standardize:
-        gaussian_normalize = transforms.Normalize( (0.5, 0.5, 0.5), (0.5, 0.5, 0.5) )
-        transform.append(gaussian_normalize)
-    ''' transform them to Tensors of normalized range [-1, 1]. '''
-    transform = transforms.Compose(transform)
-    ''' get cifar data '''
-    if type_cifar == 'cifar10':
-        ''' train data processor '''
-        #trainset = torchvision.datasets.CIFAR10(root=data_path, train=True,download=True, transform=transform)
-        trainset = CIFAR10RandomLabels(root=data_path, train=True, download=True,transform=transform, num_classes=10,corrupt_prob=label_corrupt_prob)
-        ''' test data processor '''
-        # testset = torchvision.datasets.CIFAR10(root=data_path, train=False,download=True, transform=transform)
-        testset = CIFAR10RandomLabels(root=data_path, train=False, download=True, transform=transform, num_classes=10,
-                                      corrupt_prob=label_corrupt_prob)
-        ''' classes '''
-        classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
-    else:
-        if label_corrupt_prob != 0:
-            raise ValueError('label_corrupt_prob not implemented yet, have it be zero.')
-        trainset = torchvision.datasets.CIFAR100(root=data_path, train=True,download=True, transform=transform)
-        #trainset = CIFAR100RandomLabels(root=data_path, train=True, download=True, transform=transform, num_classes=100,
-        #                               corrupt_prob=label_corrupt_prob)
-        #trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size_train, shuffle=shuffle_train,
-        #                                          num_workers=num_workers)
-        ''' test data processor '''
-        testset = torchvision.datasets.CIFAR100(root=data_path, train=False,download=True, transform=transform)
-        #testset = CIFAR100RandomLabels(root=data_path, train=False, download=True, transform=transform, num_classes=100,
-        #                              corrupt_prob=label_corrupt_prob)
-        ''' classes '''
-        ## TODO
-        classes = list(range(100))
-    ''' '''
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size_train, shuffle=shuffle_train,
-                                              num_workers=num_workers)
-    testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size_test, shuffle=suffle_test,
-                                             num_workers=num_workers)
-    ''' return trainer processors'''
-    return trainset,trainloader, testset,testloader, classes
-
 ####
 
-def this_guys_preprocessor():
+def other_preprocessing():
     transform_train = transforms.Compose([
         transforms.RandomCrop(32, padding=4),
         transforms.RandomHorizontalFlip(),
@@ -226,8 +174,6 @@ def this_guys_preprocessor():
         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
     ])
     return transform_train, transform_test
-
-#####
 
 def get_data_processors(data_path,label_corrupt_prob,dataset_type,standardize=False):
     '''
