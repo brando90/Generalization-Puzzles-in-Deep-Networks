@@ -3,7 +3,7 @@
 #SBATCH --time=2-22:30
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
-#SBATCH --array=1-1
+#SBATCH --array=1-2
 #SBATCH --gres=gpu:1
 
 """
@@ -296,16 +296,19 @@ def main(plot=True):
         batch_size = batch_size_train
         suffle_test = False
         ## conv params
-        nb_conv_layers=4
+        nb_conv_layers=2
         Fs = [24]*nb_conv_layers
         Ks = [5]*nb_conv_layers
-        nb_conv_layers = 4
-        Fs = [60] * nb_conv_layers
-        Ks = [5] * nb_conv_layers
+        #nb_conv_layers = 4
+        #Fs = [60] * nb_conv_layers
+        #Ks = [5] * nb_conv_layers
         ## fc params
         FCs = [len(classes)]
         ##
-        CHW = (3,32,32)
+        if args.data_set == 'mnist':
+            CHW = (1, 28, 28)
+        else:
+            CHW = (3,32,32)
         net = nn_mdls.GBoixNet(CHW,Fs,Ks,FCs,do_bn,only_1st_layer_bias=args.only_1st_layer_bias)
         ##
         if len(means) != 0 and len(stds) != 0:
@@ -494,7 +497,7 @@ def main(plot=True):
         standardize = not args.dont_standardize_data  # x - mu / std , [-1,+1]
         error_criterion = metrics.error_criterion
         criterion = torch.nn.CrossEntropyLoss()
-        trainset, trainloader, testset, testloader, classes_data = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,args.label_corrupt_prob,shuffle_train=shuffle_train,suffle_test=suffle_test,standardize=standardize,type_cifar=args.dat_set)
+        trainset, trainloader, testset, testloader, classes_data = data_class.get_data_processors(data_path,batch_size_train,batch_size_test,num_workers,args.label_corrupt_prob,shuffle_train=shuffle_train,suffle_test=suffle_test,standardize=standardize,dataset_type=args.data_set)
         train_loss_epoch, train_error_epoch = evalaute_mdl_data_set(criterion, error_criterion, net,trainloader,device)
         test_loss_epoch, test_error_epoch = evalaute_mdl_data_set(criterion, error_criterion, net,testloader,device)
         print(f'[-1, -1], (train_loss: {train_loss_epoch}, train error: {train_error_epoch}) , (test loss: {test_loss_epoch}, test error: {test_error_epoch})')
@@ -520,7 +523,7 @@ def main(plot=True):
     ''' get data set '''
     #st()
     standardize = not args.dont_standardize_data # x - mu / std , [-1,+1]
-    trainset,trainloader, testset,testloader, classes_data = data_class.get_cifer_data_processors(data_path,batch_size_train,batch_size_test,num_workers,args.label_corrupt_prob,shuffle_train=shuffle_train,suffle_test=suffle_test,standardize=standardize,type_cifar=args.data_set)
+    trainset,trainloader, testset,testloader, classes_data = data_class.get_data_processors(data_path,batch_size_train,batch_size_test,num_workers,args.label_corrupt_prob,shuffle_train=shuffle_train,suffle_test=suffle_test,standardize=standardize,dataset_type=args.data_set)
     #check_order_data(trainloader)
     #st()
     #if classes_data != classes:
