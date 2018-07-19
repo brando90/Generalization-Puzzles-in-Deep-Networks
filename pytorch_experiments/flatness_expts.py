@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-#SBATCH --mem=30000
+#SBATCH --mem=10000
 #SBATCH --time=2-22:30
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
-#SBATCH --array=1-4
+#SBATCH --array=1-3
 #SBATCH --gres=gpu:1
 
 """
@@ -295,7 +295,7 @@ def main(plot=True):
         suffle_test = False
         ## conv params
         nb_conv_layers=2
-        Fs = [24]*nb_conv_layers
+        Fs = [34]*nb_conv_layers
         Ks = [5]*nb_conv_layers
         #nb_conv_layers = 4
         #Fs = [60] * nb_conv_layers
@@ -524,8 +524,8 @@ def main(plot=True):
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size_train, shuffle=shuffle_train, num_workers=num_workers)
     testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size_test, shuffle=suffle_test, num_workers=num_workers)
     ''' Cross Entropy + Optmizer '''
-    lr = 0.01
-    momentum = 0.9
+    lr = 0.02
+    momentum = 0.95
     ## Error/Loss criterions
     error_criterion = metrics.error_criterion
     criterion = torch.nn.CrossEntropyLoss()
@@ -730,9 +730,14 @@ def main(plot=True):
         print(f'saving final net mdl!')
         net_path_to_filename = os.path.join(expt_path,net_file_name)
         torch.save(net,net_path_to_filename)
-    # restored_net = utils.restore_entire_mdl(path)
-    # loss_restored,error_restored = tr_alg.evalaute_mdl_data_set(criterion,error_criterion,restored_net,testloader,device)
-    #print(f'\nloss_restored={loss_restored},error_restored={error_restored}\a')
+        ''' check the error of net saved '''
+        loss_original, error_original = evalaute_mdl_data_set(criterion, error_criterion, net, trainloader,device)
+        restored_net = utils.restore_entire_mdl(net_path_to_filename)
+        loss_restored,error_restored = evalaute_mdl_data_set(criterion,error_criterion,restored_net,trainloader,device)
+        print()
+        print(f'net_path_to_filename = {net_path_to_filename}')
+        print(f'loss_original={loss_original},error_original={error_original}\a')
+        print(f'loss_restored={loss_restored},error_restored={error_restored}\a')
     ''' send e-mail '''
     if hostname == 'polestar' or args.email:
         message = f'SLURM Job_id=MANUAL Name=flatness_expts.py Ended, ' \

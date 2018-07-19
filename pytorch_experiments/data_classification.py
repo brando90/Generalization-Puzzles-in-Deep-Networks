@@ -219,11 +219,13 @@ def get_data_processors(data_path,label_corrupt_prob,dataset_type,standardize=Fa
         ''' classes '''
         ## TODO
         classes = list(range(100))
-    else:
+    elif dataset_type == 'mnist':
         trainset = MNISTRandomLabels(root=data_path, train=True, download=True,transform=transform, num_classes=10, corrupt_prob=label_corrupt_prob)
         testset = MNISTRandomLabels(root=data_path, train=False, download=True, transform=transform, num_classes=10, corrupt_prob=label_corrupt_prob)
         ''' classes '''
         classes = list(range(10))
+    else:
+        raise ValueError(f'dataset_type = {dataset_type}')
     ''' return trainer processors'''
     print(f'------> classes = {classes}')
     return trainset, testset, classes

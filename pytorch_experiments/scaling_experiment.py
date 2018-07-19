@@ -34,6 +34,10 @@ from maps import NamedDict
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
+import nn_models as nn_mdls
+import math
+from new_training_algorithms import get_function_evaluation_from_name
+
 from pdb import set_trace as st
 
 def get_corruption_label( path_to_experiment ):
@@ -62,8 +66,13 @@ class Normalizer:
         self.loss = torch.nn.CrossEntropyLoss()
         self.iterations = iterations
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.trainset, self.trainloader, self.testset, self.testloader, self.classes_data = data_class.get_data_processors(data_path,batch_size_train,batch_size_test,num_workers,label_corrupt_prob,standardize=standardize, dataset_type=data_set)
-        self.trainset_rand, self.trainloader_rand, self.testset_rand, self.testloader_rand, self.classes_data_rand = data_class.get_data_processors(data_path, batch_size_train, batch_size_test, num_workers, label_corrupt_prob=label_corrupt_prob_rand, standardize=standardize, dataset_type=data_set)
+        ''' data loaders '''
+        self.trainset, self.testset, self.classes_data = data_class.get_data_processors(data_path,label_corrupt_prob,standardize=standardize,dataset_type=data_set)
+        self.trainloader = torch.utils.data.DataLoader(self.trainset, batch_size=batch_size_train, shuffle=False, num_workers=num_workers)
+        self.testloader = torch.utils.data.DataLoader(self.testset, batch_size=batch_size_test, shuffle=True, num_workers=num_workers)
+        self.trainset_rand, self.testset_rand, self.classes_data_rand = data_class.get_data_processors(data_path,label_corrupt_prob_rand,standardize=standardize,dataset_type=data_set)
+        self.trainloader_rand = torch.utils.data.DataLoader(self.trainset, batch_size=batch_size_train, shuffle=True, num_workers=num_workers)
+        self.testloader_rand = torch.utils.data.DataLoader(self.testset, batch_size=batch_size_test, shuffle=False, num_workers=num_workers)
         ''' data we are collecting '''
         ## normalized
         self.train_all_losses_normalized = []
@@ -346,9 +355,11 @@ class Normalizer:
             mat_contents = sio.loadmat(matlab_path)
             # train_losses = mat_contents['train_losses'][0]
             train_errors = mat_contents['train_errors'][0]
-            std = mat_contents['stds'][0][0]
+            #std = mat_contents['stds'][0][0]
+            std = -1
             epoch = len(train_errors)
             if train_errors[-1] == 0:
+                print(f'train_errors[-1] = {train_errors[-1]}')
                 results = self.get_results_of_net(net_filename,path_to_folder_expts)
                 normalized_results, unnormalized_results, normalized_results_rand, unnormalized_results_rand = results
                 ''' '''
@@ -359,6 +370,46 @@ class Normalizer:
                 train_loss_norm_rand, train_error_norm_rand, test_loss_norm_rand, test_error_norm_rand = normalized_results_rand
                 train_loss_un_rand, train_error_un_rand, test_loss_un_rand, test_error_un_rand = unnormalized_results_rand
                 ''' '''
+                if train_error_norm != 0 or train_error_un != 0:
+                    print(f'path_to_folder_expts = {path_to_folder_expts}')
+                    print(f'net_filename = {net_filename}')
+                    print(f'seed = {seed}')
+                    print(f'matlab_filename = {matlab_filename}')
+                    ''' '''
+                    use_cuda = torch.cuda.is_available()
+                    device = torch.device("cuda" if use_cuda else "cpu")
+                    ''' '''
+                    data_set = 'mnist'
+                    data_eval_type = 'evalaute_mdl_on_full_data_set'
+                    evalaute_mdl_data_set = get_function_evaluation_from_name(data_eval_type)
+                    ''' data '''
+                    data_path = './data'
+                    print(f'data_set = {data_set}')
+                    trainset, testset, classes = data_class.get_data_processors(data_path, 0.0, dataset_type=data_set,standardize=True)
+                    trainloader = torch.utils.data.DataLoader(trainset, batch_size=1024, shuffle=True,num_workers=10)
+                    testloader = torch.utils.data.DataLoader(testset, batch_size=1024, shuffle=False,num_workers=10)
+                    trainloader = self.trainloader
+                    testloader = self.testloader
+                    ''' Criterion '''
+                    error_criterion = metrics.error_criterion
+                    criterion = torch.nn.CrossEntropyLoss()
+                    iterations = math.inf
+                    ''' Nets'''
+                    net_path = os.path.join(path_to_folder_expts, net_filename)
+                    net = utils.restore_entire_mdl(net_path).cuda()
+                    # net2 = utils.restore_entire_mdl(path).cuda()
+                    # net3 = utils.restore_entire_mdl(path).cuda()
+                    ''' stats about the nets '''
+                    train_loss_epoch, train_error_epoch = evalaute_mdl_data_set(criterion, error_criterion, net,trainloader, device)
+                    test_loss_epoch, test_error_epoch = evalaute_mdl_data_set(criterion, error_criterion, net,testloader, device)
+                    nb_params = nn_mdls.count_nb_params(net)
+                    ''' print net stats '''
+                    print(f'train_loss_norm, train_error_norm, test_loss_norm, test_error_norm = {train_loss_norm, train_error_norm, test_loss_norm, test_error_norm}')
+                    print(f'train_loss_un, train_error_un, test_loss_un, test_error_un = {train_loss_un, train_error_un, test_loss_un, test_error_un}')
+                    print(f'train_loss_epoch, train_error_epoch  = {train_loss_epoch}, {train_error_epoch}')
+                    print(f'test_loss_epoch, test_error_epoch  = {test_loss_epoch}, {test_error_epoch}')
+                    print(f'nb_params {nb_params}')
+                    st()
                 corruption_prob = self.get_corruption_prob(path_to_folder_expts)
                 ''' append results '''
                 #### natural label
@@ -572,7 +623,8 @@ def main():
     path_all_expts = '/cbcl/cbcl01/brando90/home_simulation_research/overparametrized_experiments/pytorch_experiments/test_runs_flatness5_ProperOriginalExpt'
     ''' expt_paths '''
     #list_names, RL_str, data_set = lists.experiment_RLNL_RL()
-    list_names, RL_str, data_set = lists.experiment_BigInits_MNIST()
+    list_names, RL_str, data_set = lists.experiment_BigInits_MNIST_34u_2c_1fc()
+    list_names, RL_str, data_set_type = lists.DEBUG_KNOWN_NET()
     ''' normalization scheme '''
     p = 2
     division_constant = 1
@@ -586,7 +638,7 @@ def main():
     ''' get results'''
     data_path = './data'
     target_loss = 0.0044
-    normalizer = Normalizer(data_path,normalization_scheme, p,division_constant, data_set)
+    normalizer = Normalizer(data_path,normalization_scheme, p,division_constant, data_set_type)
     results = normalizer.extract_all_results_vs_test_errors(path_all_expts,list_names,target_loss)
     ''' '''
     path = os.path.join(path_all_expts, f'{RL_str}loss_vs_gen_errors_norm_{norm}_data_set_{data_set}')
