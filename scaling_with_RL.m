@@ -1,10 +1,10 @@
-%clear;clc;
-%load('./pytorch_experiments/test_runs_flatness4/loss_vs_gen_errors_norm_frobenius')
-%load('./pytorch_experiments/test_runs_flatness5_ProperOriginalExpt/loss_vs_gen_errors_norm_frobenius_final')
-%load('./pytorch_experiments/test_runs_flatness5_ProperOriginalExpt/loss_vs_gen_errors_norm_l1')
-%load('./pytorch_experiments/test_runs_flatness5_ProperOriginalExpt/loss_vs_gen_errors_norm_l1_divided_by_10')
-%load('./pytorch_experiments/test_runs_flatness5_ProperOriginalExpt/loss_vs_gen_errors_norm_l1_divided_by_100')RL_corruption_1.0_loss_vs_gen_errors_norm_l2
-%load('./pytorch_experiments/test_runs_flatness5_ProperOriginalExpt/RL_corruption_1.0_loss_vs_gen_errors_norm_l2')
+% plot RL vs NL
+% markers for NL indicate the amount of std in init.
+% 1) markers for RL indicate the amount of corruption of label (all have the same type of initialization)
+% 2) markers for RL indicate the size of initialization (but can have a
+% constant amount of corruption first and then increase it later. Note that
+% to indicate this increase in corruption in label we would need perhaps
+% colors of dots increasing in darkness for more corrupted)
 %%
 markers = corruption_all_probs;
 markers = std_inits_all;
@@ -53,28 +53,9 @@ ylabel('Test Error (Network Normalized)')
 % Rsquared_adjusted = mdl.Rsquared
 %
 fig2 = figure;
-
-% X_nl = train_all_losses_normalized(1:7);
-% Y_nl = test_all_losses_normalized(1:7);
-% X_rl = train_all_losses_normalized(RLs);
-% Y_rl = test_all_losses_normalized(RLs);
-% X = [X_nl X_rl];
-% Y = [Y_nl Y_rl];
-% markers_XY = [markers(1:7) markers(RLs)];
-% lscatter(X,Y,markers_XY)
-%c = repelem([0 0.4470 0.7410],length(X),1);
-c = [0 0.4470 0.7410];
-%scatter(X,Y,c)
-%scatter(X,Y,[0 0.4470 0.7410])
-%scatter(X,Y)
-%scatter(X,Y,'MarkerEdgeColor',c)
-%hold;
 lscatter(train_all_losses_normalized,test_all_losses_normalized,markers)
-
 hold;
 hl = lsline;
-
-%title('The weights of all models are normalized')
 B = [ones(size(hl.XData(:))), hl.XData(:)]\hl.YData(:);
 Slope = B(2)
 Intercept = B(1)
@@ -83,32 +64,18 @@ mdl = fitlm(X,y);
 RMSE = mdl.RMSE
 Rsquared_Ordinary = mdl.Rsquared.Ordinary
 Rsquared_adjusted = mdl.Rsquared
-
 xlabel('Train Loss (Network Normalized)')
 ylabel('Test Loss (Network Normalized)')
-%% IMPORTANT: test error (unormalized) vs train loss (normalized), this checks if we can predict test error from train loss
+%% IMPORTANT TEST ERROR CORRELATION: test error (unormalized) vs train loss (normalized)
 fig3 = figure;
 lscatter(train_all_losses_normalized,gen_all_errors_unnormalized,markers)
 %lsline
 %title('Train Loss vs Test Error')
 xlabel('Train Loss (Network Normalized)')
 ylabel('Test Error (Network Unnormalized)')
-%% test loss (unormalized) vs train loss (normalized), not interesting cuz unnormalized loss diverges to infinity
-fig4 = figure;
-lscatter(train_all_losses_normalized,test_all_losses_unnormalized,markers)
-%lsline
-%title('Train Loss vs Test Loss')
-xlabel('Train Loss (Network Normalized)')
-ylabel('Test Loss (Network Unnormalized)')
 %% CONTROL1: test loss (unormalized) vs train loss (unnormalized)
 fig5 = figure;
 lscatter(train_all_losses_unnormalized,test_all_losses_unnormalized,markers)
-% h = scatter(train_all_losses_unnormalized,test_all_losses_unnormalized)
-% c = get(h,'Color')
-% c{1}
-% c{2}
-
-%lsline
 title('Control 1: The weights of all models are unnormalized')
 xlabel('Train Loss (Network Unnormalized)')
 ylabel('Test Loss (Network Unnormalized)')
@@ -132,9 +99,6 @@ saveas(fig2,'important_test_loss_vs_train_loss_all_normalized','pdf');
 %
 saveas(fig3,'important_test_error_vs_train_loss_unnormalized_vs_normalized');
 saveas(fig3,'important_test_error_vs_train_loss_unnormalized_vs_normalized','pdf');
-%
-saveas(fig4,'test_loss_vs_train_loss_unnormalized_vs_normalized');
-saveas(fig4,'test_loss_vs_train_loss_unnormalized_vs_normalized','pdf');
 %
 saveas(fig5,'control1_test_error_vs_train_loss_all_unnormalized');
 saveas(fig5,'control1_test_error_vs_train_loss_all_unnormalized','pdf');

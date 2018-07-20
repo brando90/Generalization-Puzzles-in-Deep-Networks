@@ -141,6 +141,7 @@ class MNISTRandomLabels(torchvision.datasets.MNIST):
   def __init__(self, corrupt_prob=0.0, num_classes=10, **kwargs):
     super(MNISTRandomLabels, self).__init__(**kwargs)
     self.n_classes = num_classes
+    self.corrupt_prob = corrupt_prob
     if corrupt_prob > 0:
       self.corrupt_labels(corrupt_prob)
 

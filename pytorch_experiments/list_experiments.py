@@ -58,23 +58,25 @@ def experiment_BigInits_MNIST_34u_2c_1fc():
     '''
     data_set_type = 'mnist'
     RL_str = ''
-    list_names = []
-    list_names.append('flatness_July_label_corrupt_prob_0.0_exptlabel_NL_34_units_2_layers_only_1st_layer_BIAS_True_data_set_mnist_reg_param_0.0_means_[0,0,0]_stds_[0.001,0.001,0.001]_batch_size_train_1024_lr_0.01_momentum_0.9_epochs_800')
-    list_names.append('flatness_July_label_corrupt_prob_0.0_exptlabel_NL_34_units_2_layers_only_1st_layer_BIAS_True_data_set_mnist_reg_param_0.0_means_[0,0,0]_stds_[0.01,0.01,0.01]_batch_size_train_1024_lr_0.01_momentum_0.9_epochs_800')
-    list_names.append('flatness_July_label_corrupt_prob_0.0_exptlabel_NL_34_units_2_layers_only_1st_layer_BIAS_True_data_set_mnist_reg_param_0.0_means_[0,0,0]_stds_[0.05,0.05,0.05]_batch_size_train_1024_lr_0.01_momentum_0.9_epochs_800')
-    list_names.append('flatness_July_label_corrupt_prob_0.0_exptlabel_NL_34_units_2_layers_only_1st_layer_BIAS_True_data_set_mnist_reg_param_0.0_means_[0,0,0]_stds_[0.075,0.075,0.075]_batch_size_train_1024_lr_0.01_momentum_0.9_epochs_800')
-    list_names.append('flatness_July_label_corrupt_prob_0.0_exptlabel_NL_34_units_2_layers_only_1st_layer_BIAS_True_data_set_mnist_reg_param_0.0_means_[0,0,0]_stds_[0.1,0.1,0.1]_batch_size_train_1024_lr_0.01_momentum_0.9_epochs_800')
-    list_names.append('flatness_July_label_corrupt_prob_0.0_exptlabel_NL_34_units_2_layers_only_1st_layer_BIAS_True_data_set_mnist_reg_param_0.0_means_[0,0,0]_stds_[0.125,0.125,0.125]_batch_size_train_1024_lr_0.01_momentum_0.9_epochs_800')
-    list_names.append('flatness_July_label_corrupt_prob_0.0_exptlabel_NL_34_units_2_layers_only_1st_layer_BIAS_True_data_set_mnist_reg_param_0.0_means_[0,0,0]_stds_[0.15,0.15,0.15]_batch_size_train_1024_lr_0.01_momentum_0.9_epochs_800')
-    list_names.append('flatness_July_label_corrupt_prob_0.0_exptlabel_NL_34_units_2_layers_only_1st_layer_BIAS_True_data_set_mnist_reg_param_0.0_means_[0,0,0]_stds_[0.18,0.18,0.18]_batch_size_train_1024_lr_0.01_momentum_0.9_epochs_800')
-    list_names.append('flatness_July_label_corrupt_prob_0.0_exptlabel_NL_34_units_2_layers_only_1st_layer_BIAS_True_data_set_mnist_reg_param_0.0_means_[0,0,0]_stds_[0.19,0.19,0.19]_batch_size_train_1024_lr_0.01_momentum_0.9_epochs_800')
-    list_names.append('flatness_July_label_corrupt_prob_0.0_exptlabel_NL_24_units_2_layers_only_1st_layer_BIAS_True_data_set_mnist_reg_param_0.0_means_[0,0,0]_stds_[0.2,0.2,0.2]_batch_size_train_1024_lr_0.01_momentum_0.9_epochs_800')
-    ##list_names.append('')
     #RL_str = 'debug'
-    #RL_str = 'RL_point_'
+    RL_str = 'RL_point_'
     #RL_str = 'RL_point_and_0NL_'
     #RL_str = 'Only_NL_'
-    RL_str = 'Large_Inits'
+    #RL_str = 'Large_Inits'
+    ''' list names '''
+    list_names = []
+    #list_names.append('flatness_July_label_corrupt_prob_0.0_exptlabel_NL_34_units_2_layers_only_1st_layer_BIAS_True_data_set_mnist_reg_param_0.0_means_[0,0,0]_stds_[0.001,0.001,0.001]_batch_size_train_1024_lr_0.01_momentum_0.9_epochs_800')
+    #list_names.append('flatness_July_label_corrupt_prob_0.0_exptlabel_NL_34_units_2_layers_only_1st_layer_BIAS_True_data_set_mnist_reg_param_0.0_means_[0,0,0]_stds_[0.01,0.01,0.01]_batch_size_train_1024_lr_0.01_momentum_0.9_epochs_800')
+    #list_names.append('flatness_July_label_corrupt_prob_0.0_exptlabel_NL_34_units_2_layers_only_1st_layer_BIAS_True_data_set_mnist_reg_param_0.0_means_[0,0,0]_stds_[0.05,0.05,0.05]_batch_size_train_1024_lr_0.01_momentum_0.9_epochs_800')
+    #list_names.append('flatness_July_label_corrupt_prob_0.0_exptlabel_NL_34_units_2_layers_only_1st_layer_BIAS_True_data_set_mnist_reg_param_0.0_means_[0,0,0]_stds_[0.075,0.075,0.075]_batch_size_train_1024_lr_0.01_momentum_0.9_epochs_800')
+    #list_names.append('flatness_July_label_corrupt_prob_0.0_exptlabel_NL_34_units_2_layers_only_1st_layer_BIAS_True_data_set_mnist_reg_param_0.0_means_[0,0,0]_stds_[0.1,0.1,0.1]_batch_size_train_1024_lr_0.01_momentum_0.9_epochs_800')
+    #list_names.append('flatness_July_label_corrupt_prob_0.0_exptlabel_NL_34_units_2_layers_only_1st_layer_BIAS_True_data_set_mnist_reg_param_0.0_means_[0,0,0]_stds_[0.125,0.125,0.125]_batch_size_train_1024_lr_0.01_momentum_0.9_epochs_800')
+    #list_names.append('flatness_July_label_corrupt_prob_0.0_exptlabel_NL_34_units_2_layers_only_1st_layer_BIAS_True_data_set_mnist_reg_param_0.0_means_[0,0,0]_stds_[0.15,0.15,0.15]_batch_size_train_1024_lr_0.01_momentum_0.9_epochs_800')
+    #list_names.append('flatness_July_label_corrupt_prob_0.0_exptlabel_NL_34_units_2_layers_only_1st_layer_BIAS_True_data_set_mnist_reg_param_0.0_means_[0,0,0]_stds_[0.18,0.18,0.18]_batch_size_train_1024_lr_0.01_momentum_0.9_epochs_800')
+    #list_names.append('flatness_July_label_corrupt_prob_0.0_exptlabel_NL_34_units_2_layers_only_1st_layer_BIAS_True_data_set_mnist_reg_param_0.0_means_[0,0,0]_stds_[0.19,0.19,0.19]_batch_size_train_1024_lr_0.01_momentum_0.9_epochs_800')
+    ####list_names.append('flatness_July_label_corrupt_prob_0.0_exptlabel_NL_24_units_2_layers_only_1st_layer_BIAS_True_data_set_mnist_reg_param_0.0_means_[0,0,0]_stds_[0.2,0.2,0.2]_batch_size_train_1024_lr_0.01_momentum_0.9_epochs_800')
+    if 'RL' in RL_str:
+        list_names.append('flatness_July_label_corrupt_prob_1.0_exptlabel_NL_34_units_2_layers_only_1st_layer_BIAS_True_data_set_mnist_reg_param_0.0_means_[0,0,0]_stds_[0.01,0.01,0.01]_batch_size_train_1024_lr_0.01_momentum_0.9_epochs_800')
     return list_names, RL_str, data_set_type
 
 def DEBUG_KNOWN_NET():
