@@ -37,9 +37,10 @@ xlabel('Train Loss (Network Normalized)')
 ylabel('Test Error (Network Normalized)')
 %% IMPORTANT: test loss vs train loss (all normalized) - shows the linear correlation of the train loss and test loss
 fig2 = figure;
-lscatter(train_all_losses_normalized,test_all_losses_normalized,markers)
-hold;
+scatter(train_all_losses_normalized,test_all_losses_normalized,markers)
 hl = lsline;
+scatter(train_all_losses_normalized,test_all_losses_normalized,markers)
+scatter(train_all_losses_normalized,test_all_losses_normalized,markers)
 %scatter(train_all_losses_normalized(RL),test_all_losses_normalized(RL));
 %hold;
 %%%%

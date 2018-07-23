@@ -3,7 +3,7 @@
 #SBATCH --time=2-22:30
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
-#SBATCH --array=1-4
+#SBATCH --array=1-2
 #SBATCH --gres=gpu:1
 
 """
@@ -145,6 +145,7 @@ if 'SLURM_ARRAY_TASK_ID' in os.environ and 'SLURM_JOBID' in os.environ:
     satid = int(os.environ['SLURM_ARRAY_TASK_ID'])
     sj = int(os.environ['SLURM_JOBID'])
 
+print(f'args = {args}\n')
 print(f'storing results? = {not args.dont_save_expt_results}')
 
 def main(plot=True):
@@ -524,8 +525,8 @@ def main(plot=True):
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size_train, shuffle=shuffle_train, num_workers=num_workers)
     testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size_test, shuffle=suffle_test, num_workers=num_workers)
     ''' Cross Entropy + Optmizer '''
-    lr = 0.02
-    momentum = 0.95
+    lr = 0.01
+    momentum = 0.9
     ## Error/Loss criterions
     error_criterion = metrics.error_criterion
     criterion = torch.nn.CrossEntropyLoss()

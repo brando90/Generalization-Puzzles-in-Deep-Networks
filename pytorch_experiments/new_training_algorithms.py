@@ -94,6 +94,23 @@ def evalaute_mdl_on_full_data_set(loss,error,net,dataloader,device,iterations=in
             avg_error += (batch_size/N)*error(outputs,targets).item()
     return avg_loss,avg_error
 
+def collect_hist(net,dataloader,device):
+    '''
+    Collect histogram of activations of last layer.
+    '''
+    N = len(dataloader.dataset)
+    ''' '''
+    hist = np.zeros( (N,10) ) ## TODO fix hack, don't hardcode # of classes
+    j = 0
+    with torch.no_grad():
+        for i,(inputs,targets) in enumerate(dataloader):
+            batch_size = targets.size()[0]
+            inputs,targets = inputs.to(device), targets.to(device)
+            outputs = net(inputs)
+            hist[j:j+batch_size,:] = outputs.cpu().numpy()
+            j += batch_size
+    return hist
+
 def get_function_evaluation_from_name(name):
     if name == 'evalaute_running_mdl_data_set':
         evalaute_mdl_data_set = evalaute_running_mdl_data_set
