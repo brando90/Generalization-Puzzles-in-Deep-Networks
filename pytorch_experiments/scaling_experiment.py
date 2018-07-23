@@ -98,10 +98,10 @@ class Normalizer:
         ##
         self.w_norms_all = [ ]
         ''' '''
-        self.hist_train_norm = []
-        self.hist_test_norm = []
-        self.hist_train_un = []
-        self.hist_test_un = []
+        self.hist_all_train_norm = []
+        self.hist_all_test_norm = []
+        self.hist_all_train_un = []
+        self.hist_all_test_un = []
 
     def extract_all_results_vs_test_errors(self,path_all_expts,target_loss):
         '''
@@ -395,6 +395,7 @@ class Normalizer:
         print(f'-------------> frac zero train error = {nb_zero_train_error}/{len(net_filenames)} = {nb_zero_train_error/len(net_filenames)}')
         ''' organize/collect results'''
         ## IMPORTANT: adding things to this list is not enough to return it to matlab, also edit collect_all
+        ## the field name needs the string all as part of its name for it to be saved
         results = NamedDict(train_losses_norm=train_losses_norm, train_errors_norm=train_errors_norm,
                             test_losses_norm=test_losses_norm, test_errors_norm=test_errors_norm,
                             train_losses_unnorm=train_losses_unnorm, train_errors_unnorm=train_errors_unnorm,
@@ -458,11 +459,12 @@ class Normalizer:
         self.std_inits_all.extend(results.stds_inits)
         ''' '''
         if 'hist_train_norm' in results:
+            print('SAVED HISTOGRAMS')
             ## TODO fix, add for loop over all mdls
-            self.hist_train_norm = results.hist_train_norm
-            self.hist_test_norm = results.hist_test_norm
-            self.hist_train_un = results.hist_train_un
-            self.hist_test_un = results.hist_test_un
+            self.hist_all_train_norm = results.hist_train_norm
+            self.hist_all_test_norm = results.hist_test_norm
+            self.hist_all_train_un = results.hist_train_un
+            self.hist_all_test_un = results.hist_test_un
 
     def get_corruption_prob(self,name):
         '''
