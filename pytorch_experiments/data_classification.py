@@ -176,7 +176,7 @@ def other_preprocessing():
     ])
     return transform_train, transform_test
 
-def get_data_processors(data_path,label_corrupt_prob,dataset_type,standardize=False):
+def get_data_processors(data_path,label_corrupt_prob,dataset_type,standardize=False,type_standardize='default'):
     '''
         The output of torchvision datasets are PILImage images of range [0, 1].
         We transform them to Tensors of (gau)normalized range [-1, 1].
@@ -191,8 +191,15 @@ def get_data_processors(data_path,label_corrupt_prob,dataset_type,standardize=Fa
     ''' Given meeans (M1,...,Mn) and std: (S1,..,Sn) for n channels, input[channel] = (input[channel] - mean[channel]) / std[channel] '''
     if standardize:
         if dataset_type == 'cifar10' or dataset_type == 'cifar100':
-            gaussian_normalize = transforms.Normalize( (0.5, 0.5, 0.5), (0.5, 0.5, 0.5) )
-            transform.append(gaussian_normalize)
+            if type_standardize == 'default':
+                gaussian_normalize = transforms.Normalize( (0.5, 0.5, 0.5), (0.5, 0.5, 0.5) )
+                transform.append(gaussian_normalize)
+            elif type_standardize == 'data_stats':
+                print('>>>>>> using DATA STATS')
+                gaussian_normalize = transforms.Normalize( (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010) )
+                transform.append(gaussian_normalize)
+            else:
+                raise ValueError(f'Error what type of standardization, type_standardize = {type_standardize} not available')
         elif dataset_type == 'mnist':
             gaussian_normalize = transforms.Normalize( (0.1307,), (0.3081,) )
             transform.append(gaussian_normalize)

@@ -14,6 +14,8 @@ for i=1:length(corruption_all_probs)
     if corruption_all_probs(i) == 1.0
         markers(i) = 1;
         RL = [RL i]
+    else
+        markers(i) = 0;
     end
 end
 %% test error vs train error 

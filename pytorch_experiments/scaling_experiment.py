@@ -50,7 +50,7 @@ def get_corruption_label( path_to_experiment ):
 
 class Normalizer:
 
-    def __init__(self,list_names,data_path,normalization_scheme,p,division_constant,data_set,num_workers=10,label_corrupt_prob=0.0,batch_size_train=1024,batch_size_test=1024,standardize=True,iterations=inf,label_corrupt_prob_rand=1.0):
+    def __init__(self,list_names,data_path,normalization_scheme,p,division_constant,data_set,num_workers=10,batch_size_train=1024,batch_size_test=1024,standardize=True,iterations=inf,type_standardize='default'):
         '''
         :param standardize: x - mu / std , [-1,+1]
         :return:
@@ -74,7 +74,7 @@ class Normalizer:
         for i,name in enumerate(self.list_names):
             corruption_prob = self.get_corruption_prob(name)
             if corruption_prob not in self.loaders:
-                trainset, testset, classes_data = data_class.get_data_processors(data_path,corruption_prob,standardize=standardize,dataset_type=data_set)
+                trainset, testset, classes_data = data_class.get_data_processors(data_path,corruption_prob,data_set,standardize=standardize,type_standardize=type_standardize)
                 trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size_train, shuffle=False, num_workers=num_workers)
                 testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size_test, shuffle=True, num_workers=num_workers)
                 ''' '''
@@ -657,6 +657,36 @@ def divide_params(net,norm_func):
     net.load_state_dict(dict_params)
     return net
 
+def get_product_norm(net, norm_func):
+    '''
+    net: network
+    norm_func: function that returns the norm of W depending to the specified scheme.
+
+    normalizes the network per layer.
+    '''
+    p = norm_func.p
+    conv0_w = None
+    ##
+    prod_W_norm = 1.0
+    ##
+    params = net.named_parameters()
+    dict_params = dict(params)
+    for name, param in dict_params.items():
+        if name in dict_params:
+            if name == 'conv0.weight':
+                conv0_w = param
+            elif name == 'conv0.bias':
+                conv0_b = param
+                w_norm = norm_func(conv0_w)
+                b_norm = norm_func(conv0_b)
+                ## W_norm = pth_root( ||w||^p + ||b||^p ), we need to compute first the sum of squares first basically, thats why we can't just add the norms
+                W_norm = (w_norm ** p + b_norm ** p) ** (1.0 / p)
+            else:
+                W_norm = norm_func(param)
+            ''' product norm collection '''
+            prod_W_norm = prod_W_norm * W_norm
+    return prod_W_norm
+
 def lp_normalizer(W,p,division_constant=1):
     '''
         return W.norm(p)
@@ -698,6 +728,7 @@ def main():
     #list_names, RL_str, data_set_type = lists.experiment_BigInits_MNIST_different_HP()
     #list_names, RL_str, data_set_type = lists.experiment_cifar100_big_inits()
     list_names, RL_str, data_set_type = lists.experiment_BigInits_MNIST_different_HP_HISTOGRAM()
+    #list_names, RL_str, data_set_type = lists.experiment_Lambdas()
     print(f'RL_str = {RL_str}')
     ''' normalization scheme '''
     p = 2
@@ -710,9 +741,10 @@ def main():
     #normalization_scheme = lambda net: divide_params(net, spectral_normalization)
     print(f'norm = {norm}')
     ''' get results'''
+    type_standardize = 'default'
     data_path = './data'
     target_loss = 0.0044
-    normalizer = Normalizer(list_names, data_path,normalization_scheme, p,division_constant, data_set_type)
+    normalizer = Normalizer(list_names, data_path,normalization_scheme, p,division_constant, data_set_type, type_standardize=type_standardize)
     #results = normalizer.extract_all_results_vs_test_errors(path_all_expts,target_loss)
     results = normalizer.get_hist_from_single_net(path_all_expts)
     ''' '''

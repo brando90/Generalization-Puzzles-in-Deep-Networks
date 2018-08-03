@@ -3,7 +3,7 @@
 #SBATCH --time=2-22:30
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
-#SBATCH --array=1-2
+#SBATCH --array=1-8
 #SBATCH --gres=gpu:1
 
 """
@@ -98,7 +98,11 @@ parser.add_argument('-use_bn','--use_bn',action='store_true',
 parser.add_argument('-use_dropout','--use_dropout',action='store_true',
                     help='turns on dropout')
 parser.add_argument('-dont_standardize_data','--dont_standardize_data',action='store_true',
-                    help='uses x-u/s, standardize data')
+                    help='uses x-u/s, standardize data for preprocessing')
+
+parser.add_argument('-type_standardize','--type_standardize', type=str, default='default',
+                    help='type standardize for preprocessing')
+
 parser.add_argument("-label_corrupt_prob", "--label_corrupt_prob", type=float, default=0.0,
                     help="The probability of a label getting corrupted")
 parser.add_argument('-only_1st_layer_bias','--only_1st_layer_bias',action='store_true',
@@ -197,7 +201,7 @@ def main(plot=True):
     ''' data set '''
     data_path = './data'
     standardize = not args.dont_standardize_data # x - mu / std , [-1,+1]
-    trainset, testset, classes = data_class.get_data_processors(data_path,args.label_corrupt_prob,dataset_type=args.data_set,standardize=standardize)
+    trainset, testset, classes = data_class.get_data_processors(data_path,args.label_corrupt_prob,dataset_type=args.data_set,standardize=standardize,type_standardize=args.type_standardize)
     ''' experiment params '''
     evalaute_mdl_data_set = get_function_evaluation_from_name(args.evalaute_mdl_data_set)
     suffle_test = False
@@ -211,7 +215,7 @@ def main(plot=True):
     nets = []
     mdl = args.mdl
     do_bn = args.use_bn
-    other_stats = dict({'mdl':mdl,'do_bn':do_bn},**other_stats)
+    other_stats = dict({'mdl':mdl,'do_bn':do_bn, 'type_standardize':args.type_standardize},**other_stats)
     print(f'model = {mdl}')
     if mdl == 'cifar_10_tutorial_net':
         suffle_test = False
@@ -333,8 +337,10 @@ def main(plot=True):
         #batch_size_train = 16384 # 2**14
         #batch_size_test = 16384
         #batch_size_train = 2**10
-        batch_size_train = 2**10
-        batch_size_test = 2**10
+        # batch_size_train = 2**10
+        # batch_size_test = 2**10
+        batch_size_train = 32
+        batch_size_test = 124
         ##
         batch_size = batch_size_train
         suffle_test = False
@@ -525,7 +531,7 @@ def main(plot=True):
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size_train, shuffle=shuffle_train, num_workers=num_workers)
     testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size_test, shuffle=suffle_test, num_workers=num_workers)
     ''' Cross Entropy + Optmizer '''
-    lr = 0.01
+    lr = 0.001
     momentum = 0.9
     ## Error/Loss criterions
     error_criterion = metrics.error_criterion
@@ -537,11 +543,13 @@ def main(plot=True):
     expt_path = f'{expt_path}_batch_size_train_{batch_size_train}_lr_{lr}_momentum_{momentum}_epochs_{nb_epochs}'
     ''' scheduler '''
     milestones = [200, 250, 300]
-    gamma = args.decay_rate
-    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=milestones, gamma=gamma)
-    other_stats = dict({'milestones': milestones, 'gamma': gamma}, **other_stats)
+    scheduler_gamma = args.decay_rate
+    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=milestones, gamma=scheduler_gamma)
+    other_stats = dict({'milestones': milestones, 'scheduler_gamma': scheduler_gamma}, **other_stats)
     milestones_str = ','.join(str(m) for m in milestones)
     #expt_path = f'{expt_path}_scheduler_milestones_{milestones_str}_gamma_{gamma}'
+    expt_path = f'{expt_path}_scheduler_gamma_{scheduler_gamma}'
+    print(f'scheduler_gamma = {scheduler_gamma}')
     ''' stats collector '''
     stats_collector = StatsCollector(net)
     ''' Verify model you got has the right error'''
