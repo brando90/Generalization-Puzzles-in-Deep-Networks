@@ -14,7 +14,7 @@ saveas(fig_errors,['./fig_errors_seed' num2str(seed)],'pdf')
 saveas(fig_losses,['./fig_losses_seed' num2str(seed)],'pdf')
 saveas(fig_errors,['./fig_errors_seed' num2str(seed)])
 saveas(fig_losses,['./fig_losses_seed' num2str(seed)])
-nb_epochs
+%nb_epochs
 hours
-nb_params
+%nb_params
 train_errors(end)

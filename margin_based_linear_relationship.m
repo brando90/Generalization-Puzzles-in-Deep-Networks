@@ -11,19 +11,20 @@ name = "Large_Inits_HIST_0.075loss_vs_gen_errors_norm_l2_division_constant1_data
 name = "Large_Inits_HIST_0.1loss_vs_gen_errors_norm_l2_division_constant1_data_set_mnist.mat";list_names=[list_names, name];
 name = "Large_Inits_HIST_0.125loss_vs_gen_errors_norm_l2_division_constant1_data_set_mnist.mat";list_names=[list_names, name];
 %name = "";list_names=[list_names, name];
-%%
-gamma = 0.015;
+%% get K_alphas
+gamma = 0.01;
 [K_gammas,list_train_all_losses_normalized,stds] = extract_all_margin_based_values(path_all_expts,list_names,gamma);
-%%
+%% plot scatter of K_gamma vs normalized train loss
+fig1 = figure;
 str_K_gamma = ['K_{' num2str(gamma) '}'];
-%scatter(list_train_all_losses_normalized,K_gammas)
-lscatter(list_train_all_losses_normalized,K_gammas,stds)
+scatter(list_train_all_losses_normalized,K_gammas)
+%lscatter(list_train_all_losses_normalized,K_gammas,stds)
 xlabel('normalized train loss');
 ylabel(str_K_gamma);
 title([str_K_gamma ' vs normalized train loss']);
-lsline
+%lsline
 %%
-name = ['hist_all_test_un' str_K_gamma];
+name = ['K' strrep(num2str(gamma),'.','p')]
 saveas(fig1,name);
 saveas(fig1,name,'pdf');
 %%
