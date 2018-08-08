@@ -126,6 +126,8 @@ parser.add_argument("-epsilon", "--epsilon", type=float, default=0.05,
                     help="Epsilon error.") ## what is this?
 parser.add_argument('-save_every_epoch','--save_every_epoch',action='store_true',
                     help='save model at the end of every epoch')
+parser.add_argument("-lr", "--lr", type=float, default=0.01,
+                    help="decay_rate for scheduler.")
 parser.add_argument("-decay_rate", "--decay_rate", type=float, default=1.0,
                     help="decay_rate for scheduler.")
 parser.add_argument("-evalaute_mdl_data_set", "--evalaute_mdl_data_set", type=str, default='evalaute_running_mdl_data_set',
@@ -353,6 +355,26 @@ def main(plot=True):
         nets.append(net)
         other_stats = dict({'only_1st_layer_bias': args.only_1st_layer_bias,'dropout':dropout}, **other_stats)
         expt_path = f'{expt_path}_dropout_{dropout}'
+    elif mdl == 'AndyNet':
+        #batch_size_train = 16384 # 2**14
+        #batch_size_test = 16384
+        #batch_size_train = 2**10
+        batch_size_train = 2**10
+        batch_size_test = 2**10
+        # batch_size_train = 32
+        # batch_size_test = 124
+        ##
+        batch_size = batch_size_train
+        suffle_test = False
+        ## AndyNet
+        #only_1st_layer_bias = args.only_1st_layer_bias ## TODO fix
+        only_1st_layer_bias = args.only_1st_layer_bias
+        CHW = (3,32,32)
+        net = nn_mdls.get_AndyNet()
+        ##
+        nets.append(net)
+        other_stats = dict({'only_1st_layer_bias': args.only_1st_layer_bias}, **other_stats)
+        expt_path = f'{expt_path}'
     elif mdl == 'interpolate':
         suffle_test = True
         batch_size = 2**10
@@ -527,22 +549,33 @@ def main(plot=True):
     for net in nets:
         net.to(device)
     nb_params = nn_mdls.count_nb_params(net)
+    ''' stats collector '''
+    stats_collector = StatsCollector(net)
     ''' get data set '''
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size_train, shuffle=shuffle_train, num_workers=num_workers)
     testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size_test, shuffle=suffle_test, num_workers=num_workers)
     ''' Cross Entropy + Optmizer '''
-    lr = 0.001
+    lr = args.lr
     momentum = 0.9
     ## Error/Loss criterions
     error_criterion = metrics.error_criterion
     criterion = torch.nn.CrossEntropyLoss()
     #criterion = torch.nn.MultiMarginLoss()
     #criterion = torch.nn.MSELoss(size_average=True)
-    optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
+    print(f'Training Algorithm = {args.train_alg}')
+    if args.train_alg == 'SGD':
+        optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
+    elif args.train_alg == 'Adam':
+        optimizer = optim.Adam(net.parameters(), lr=lr)
+    else:
+        raise ValueError(f'Training alg not existent: {args.train_alg}')
     other_stats = dict({'nb_epochs':nb_epochs,'batch_size':batch_size,'mdl':mdl,'lr':lr,'momentum':momentum, 'seed':seed,'githash':githash},**other_stats)
-    expt_path = f'{expt_path}_batch_size_train_{batch_size_train}_lr_{lr}_momentum_{momentum}_epochs_{nb_epochs}'
+    expt_path = f'{expt_path}_args.train_alg_{args.train_alg}_batch_train_{batch_size_train}_lr_{lr}_moment_{momentum}_epochs_{nb_epochs}'
     ''' scheduler '''
-    milestones = [200, 250, 300]
+    milestones = [20, 30, 40]
+    #milestones = [200, 250, 300]
+    #milestones = [700, 800, 900]
+    #milestones = [1700, 1800, 1900]
     scheduler_gamma = args.decay_rate
     scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=milestones, gamma=scheduler_gamma)
     other_stats = dict({'milestones': milestones, 'scheduler_gamma': scheduler_gamma}, **other_stats)
@@ -550,8 +583,6 @@ def main(plot=True):
     #expt_path = f'{expt_path}_scheduler_milestones_{milestones_str}_gamma_{gamma}'
     expt_path = f'{expt_path}_scheduler_gamma_{scheduler_gamma}'
     print(f'scheduler_gamma = {scheduler_gamma}')
-    ''' stats collector '''
-    stats_collector = StatsCollector(net)
     ''' Verify model you got has the right error'''
     train_loss_epoch, train_error_epoch = evalaute_mdl_data_set(criterion, error_criterion, net, trainloader, device)
     test_loss_epoch, test_error_epoch = evalaute_mdl_data_set(criterion, error_criterion, net, testloader, device)
@@ -568,7 +599,7 @@ def main(plot=True):
     training_time = time.time()
     print(f'----\nSTART training: label_corrupt_prob={args.label_corrupt_prob},nb_epochs={nb_epochs},batch_size={batch_size},lr={lr},momentum={momentum},mdl={mdl},batch-norm={do_bn},nb_params={nb_params}')
     ## START TRAIN
-    if args.train_alg == 'SGD':
+    if args.train_alg == 'SGD' or args.train_alg == 'Adam':
         #iterations = 4 # the number of iterations to get a sense of test error, smaller faster larger more accurate. Grows as sqrt(n) though.
         iterations = inf
         ''' set up Trainer '''

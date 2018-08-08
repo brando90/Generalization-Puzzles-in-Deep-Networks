@@ -365,7 +365,8 @@ class Normalizer:
                 corruption_prob = self.get_corruption_prob(path_to_folder_expts)
                 epoch = len(train_errors)
                 ''' get results from normalized net'''
-                results = self.get_results_of_net(net_filename,path_to_folder_expts,corruption_prob)
+                #results = self.get_results_of_net(net_filename,path_to_folder_expts,corruption_prob)
+                results = self.get_results_of_net_divided_by_product_norm(net_filename, path_to_folder_expts, corruption_prob)
                 ## extract results
                 normalized_results, unnormalized_results = results
                 train_loss_norm, train_error_norm, test_loss_norm, test_error_norm = normalized_results
@@ -419,6 +420,27 @@ class Normalizer:
         ''' get normalized train errors '''
         train_loss_norm, train_error_norm = evalaute_mdl_on_full_data_set(self.loss, self.error, net, trainloader, self.device)
         test_loss_norm, test_error_norm = evalaute_mdl_on_full_data_set(self.loss, self.error, net, testloader, self.device)
+        ''' pack results '''
+        normalized_results = (train_loss_norm, train_error_norm, test_loss_norm, test_error_norm)
+        unnormalized_results = (train_loss_un, train_error_un, test_loss_un, test_error_un)
+        ''' return '''
+        return normalized_results, unnormalized_results
+
+    def get_results_of_net_divided_by_product_norm(self,net_filename,path_to_folder_expts,corruption_prob):
+        ''' '''
+        trainloader = self.loaders[corruption_prob][0]
+        testloader = self.loaders[corruption_prob][1]
+        ''' '''
+        net_path = os.path.join(path_to_folder_expts,net_filename)
+        net = torch.load(net_path)
+        ''' get unormalized test error '''
+        train_loss_un, train_error_un = evalaute_mdl_on_full_data_set(self.loss, self.error, net, trainloader, self.device)
+        test_loss_un, test_error_un = evalaute_mdl_on_full_data_set(self.loss, self.error, net, testloader, self.device)
+        ''' get product norm of net '''
+        product_norm = self.normalization_scheme(net)
+        ''' get normalized train errors '''
+        train_loss_norm, train_error_norm = train_loss_un/product_norm ,train_error_un/product_norm
+        test_loss_norm, test_error_norm = test_loss_un/product_norm, test_error_un/product_norm
         ''' pack results '''
         normalized_results = (train_loss_norm, train_error_norm, test_loss_norm, test_error_norm)
         unnormalized_results = (train_loss_un, train_error_un, test_loss_un, test_error_un)
@@ -681,11 +703,13 @@ def get_product_norm(net, norm_func):
                 b_norm = norm_func(conv0_b)
                 ## W_norm = pth_root( ||w||^p + ||b||^p ), we need to compute first the sum of squares first basically, thats why we can't just add the norms
                 W_norm = (w_norm ** p + b_norm ** p) ** (1.0 / p)
+                ''' product norm collection '''
+                prod_W_norm = prod_W_norm * W_norm
             else:
                 W_norm = norm_func(param)
-            ''' product norm collection '''
-            prod_W_norm = prod_W_norm * W_norm
-    return prod_W_norm
+                ''' product norm collection '''
+                prod_W_norm = prod_W_norm * W_norm
+    return prod_W_norm.item()
 
 def lp_normalizer(W,p,division_constant=1):
     '''
@@ -727,8 +751,9 @@ def main():
     #list_names, RL_str, data_set_type = lists.experiment_BigInits_MNIST_34u_2c_1fc_hyperparams2()
     #list_names, RL_str, data_set_type = lists.experiment_BigInits_MNIST_different_HP()
     #list_names, RL_str, data_set_type = lists.experiment_cifar100_big_inits()
-    list_names, RL_str, data_set_type = lists.experiment_BigInits_MNIST_different_HP_HISTOGRAM()
+    #list_names, RL_str, data_set_type = lists.experiment_BigInits_MNIST_different_HP_HISTOGRAM()
     #list_names, RL_str, data_set_type = lists.experiment_Lambdas()
+    list_names, RL_str, data_set_type = lists.experiment_BigInits_MNIST_different_HP_product_norm_div()
     print(f'RL_str = {RL_str}')
     ''' normalization scheme '''
     p = 2
@@ -736,7 +761,9 @@ def main():
     norm = f'l{p}_division_constant{division_constant}'
     weight_normalizer = lambda W: lp_normalizer(W,p,division_constant=division_constant)
     weight_normalizer.p = p
-    normalization_scheme = lambda net: divide_params(net,weight_normalizer)
+    #normalization_scheme = lambda net: divide_params(net,weight_normalizer)
+    product_norm = lambda net: get_product_norm(net,weight_normalizer)
+    normalization_scheme = product_norm
     #norm = 'spectral'
     #normalization_scheme = lambda net: divide_params(net, spectral_normalization)
     print(f'norm = {norm}')
@@ -745,8 +772,8 @@ def main():
     data_path = './data'
     target_loss = 0.0044
     normalizer = Normalizer(list_names, data_path,normalization_scheme, p,division_constant, data_set_type, type_standardize=type_standardize)
-    #results = normalizer.extract_all_results_vs_test_errors(path_all_expts,target_loss)
-    results = normalizer.get_hist_from_single_net(path_all_expts)
+    results = normalizer.extract_all_results_vs_test_errors(path_all_expts, target_loss)
+    #results = normalizer.get_hist_from_single_net(path_all_expts)
     ''' '''
     path = os.path.join(path_all_expts, f'{RL_str}loss_vs_gen_errors_norm_{norm}_data_set_{data_set_type}')
     #path = os.path.join(path_all_expts, f'RL_corruption_1.0_loss_vs_gen_errors_norm_{norm}')

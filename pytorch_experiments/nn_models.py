@@ -10,8 +10,9 @@ import copy
 from pdb import set_trace as st
 
 class Flatten(nn.Module):
-    def forward(self, input):
-        return input.view(input.size(0), -1)
+   def forward(self, x):
+       N, C, H, W = x.size() # read in N, C, H, W
+       return x.view(N, -1)  # "flatten" the C * H * W values into a single vector per image
 
 def reset_parameters(net):
     params = net.named_parameters()
@@ -376,6 +377,33 @@ class LiaoNet(nn.Module):
         #if self.do_bn:
         #    x = self.bn_fc(x)
         return x
+
+####
+
+def get_AndyNet():
+    mdl = nn.Sequential(
+        nn.Conv2d(3, 96, kernel_size=3, stride=1),
+        nn.ReLU(),
+        nn.BatchNorm2d(96),
+        nn.Conv2d(96, 96, kernel_size=3, stride=1),
+        nn.ReLU(),
+        nn.BatchNorm2d(96),
+        nn.Conv2d(96, 96, kernel_size=3, stride=2),
+        nn.ReLU(),
+        nn.BatchNorm2d(96),
+        nn.Conv2d(96, 192, kernel_size=3, stride=1),
+        nn.ReLU(),
+        nn.BatchNorm2d(192),
+        nn.Conv2d(192, 192, kernel_size=3, stride=1),
+        nn.ReLU(),
+        nn.BatchNorm2d(192),
+        nn.Conv2d(192, 192, kernel_size=3, stride=2),
+        nn.ReLU(),
+        nn.BatchNorm2d(192),
+        Flatten(),
+        nn.Linear(3072, 10)
+    )
+    return mdl
 
 ####
 
