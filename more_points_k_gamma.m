@@ -3,17 +3,11 @@ clear;clc;
 dot = '/Users/brandomiranda/home_simulation_research/overparametrized_experiments/';
 path_all_expts = fullfile(dot,'pytorch_experiments/test_runs_flatness5_ProperOriginalExpt');
 %% experiment files names
-list_names = [];
-name = "Large_Inits_HIST_0.001loss_vs_gen_errors_norm_l2_division_constant1_data_set_mnist.mat";list_names=[list_names, name];
-name = "Large_Inits_HIST_0.0025loss_vs_gen_errors_norm_l2_division_constant1_data_set_mnist.mat";list_names=[list_names, name];
-name = "Large_Inits_HIST_0.01loss_vs_gen_errors_norm_l2_division_constant1_data_set_mnist.mat";list_names=[list_names, name];
-name = "Large_Inits_HIST_0.075loss_vs_gen_errors_norm_l2_division_constant1_data_set_mnist.mat";list_names=[list_names, name];
-name = "Large_Inits_HIST_0.1loss_vs_gen_errors_norm_l2_division_constant1_data_set_mnist.mat";list_names=[list_names, name];
-name = "Large_Inits_HIST_0.125loss_vs_gen_errors_norm_l2_division_constant1_data_set_mnist.mat";list_names=[list_names, name];
-%name = "";list_names=[list_names, name];
+name = "Large_Inits_HIST_realloss_vs_gen_errors_norm_l2_division_constant1_data_set_mnist";
+%name = "Large_Inits_HIST_real_dbloss_vs_gen_errors_norm_l2_division_constant1_data_set_mnist";
 %% get K_alphas
 gamma = 0.01;
-[K_gammas,list_train_all_losses_normalized,stds] = extract_all_margin_based_values(path_all_expts,list_names,gamma);
+[K_gammas,list_train_all_losses_normalized,stds] = extract_all_margin_based_values(path_all_expts,name,gamma);
 %% plot scatter of K_gamma vs normalized train loss
 fig1 = figure;
 str_K_gamma = ['K_{' num2str(gamma) '}'];
@@ -27,21 +21,24 @@ name = ['K' strrep(num2str(gamma),'.','p')]
 saveas(fig1,name);
 saveas(fig1,name,'pdf');
 %%
-function [K_gammas,list_train_all_losses_normalized,stds] = extract_all_margin_based_values(path_all_expts,list_names,gamma)
+function [K_gammas,list_train_all_losses_normalized,stds] = extract_all_margin_based_values(path_all_expts,name,gamma)
 stds = [];
 K_gammas = [];
 list_train_all_losses_normalized = [];
-for name = list_names
-    path_to_folder_expts = fullfile(path_all_expts,name);
-    load(path_to_folder_expts);
-    %% extra all data from experiments
-    train_losses = hist_all_train_norm;
-    std = std_inits_all;
+%% load data
+path_to_folder_expts = fullfile(path_all_expts,name);
+load(path_to_folder_expts);
+[N,~,~] = size(hist_all_train_norm);
+N
+for i = 1:N
+    std = std_inits_all(i);
+    train_losses = squeeze(hist_all_train_norm(i,:,:));
     [K_gamma,max_values,second_max_values] = get_margin_based_stats(train_losses,gamma);
     %%
     stds = [stds std];
     K_gammas = [K_gammas K_gamma];
-    list_train_all_losses_normalized = [list_train_all_losses_normalized train_all_losses_normalized];
+    current_train_all_losses_normalized = train_all_losses_normalized(i);
+    list_train_all_losses_normalized = [list_train_all_losses_normalized current_train_all_losses_normalized];
 end
 end
 function [K_gamma,max_values,second_max_values] = get_margin_based_stats(train_losses,gamma)

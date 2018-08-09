@@ -483,10 +483,10 @@ class Normalizer:
         if 'hist_train_norm' in results:
             print('SAVED HISTOGRAMS')
             ## TODO fix, add for loop over all mdls
-            self.hist_all_train_norm = results.hist_train_norm
-            self.hist_all_test_norm = results.hist_test_norm
-            self.hist_all_train_un = results.hist_train_un
-            self.hist_all_test_un = results.hist_test_un
+            self.hist_all_train_norm.extend(results.hist_train_norm)
+            self.hist_all_test_norm.extend(results.hist_test_norm)
+            self.hist_all_train_un.extend(results.hist_train_un)
+            self.hist_all_test_un.extend(results.hist_test_un)
 
     def get_corruption_prob(self,name):
         '''
@@ -528,7 +528,8 @@ class Normalizer:
             print(f'path_to_folder_expts={path_to_folder_expts}')
             results = self.extract_hist(path_to_folder_expts)
             ''' extend results ''' #
-            self.collect_all(results) # adds all errors to internal lists
+            if results != -1:
+                self.collect_all(results) # adds all errors to internal lists
         return self.return_results()
 
     def extract_hist(self, path_to_folder_expts):
@@ -540,9 +541,13 @@ class Normalizer:
         ## normalized
         train_losses_norm, train_errors_norm = [], []
         test_losses_norm, test_errors_norm = [], []
+        hist_train_norm = []
+        hist_test_norm = []
         ## unnormalized
         train_losses_unnorm, train_errors_unnorm = [], []
         test_losses_unnorm, test_errors_unnorm = [], []
+        hist_train_un = []
+        hist_test_un = []
         ## other stats
         epoch_numbers = []
         corruption_probs = []
@@ -552,7 +557,7 @@ class Normalizer:
         net_filenames = [filename for filename in os.listdir(path_to_folder_expts) if 'net_' in filename]
         matlab_filenames = [filename for filename in os.listdir(path_to_folder_expts) if '.mat' in filename]
         nb_zero_train_error = 0
-        for j,net_filename in enumerate(net_filenames):  # looping through all the nets that were trained
+        for j,net_filename in enumerate(net_filenames): # looping through all the nets that were trained
             print('------- part of the loop -------')
             print(f'>jth NET = {j}')
             print(f'>path_to_folder_expts = {path_to_folder_expts}')
@@ -582,8 +587,8 @@ class Normalizer:
                 print(f'>normalized_results = {normalized_results}')
                 print(f'>unnormalized_results = {unnormalized_results}')
                 ## extract histograms
-                hist_train_norm, hist_test_norm = hist_norm
-                hist_train_un, hist_test_un = hist_un
+                current_hist_train_norm, current_hist_test_norm = hist_norm
+                current_hist_train_un, current_hist_test_un = hist_un
                 ''' catch error if trian performance dont match'''
                 if train_error_norm != 0 or train_error_un != 0:
                     print()
@@ -595,27 +600,34 @@ class Normalizer:
                 ## normalized
                 train_losses_norm.append(train_loss_norm), train_errors_norm.append(train_error_norm)
                 test_losses_norm.append(test_loss_norm), test_errors_norm.append(test_error_norm)
+                hist_train_norm.append(current_hist_train_norm)
+                hist_test_norm.append(current_hist_test_norm)
                 ## unnormalized
                 train_losses_unnorm.append(train_loss_un), train_errors_unnorm.append(train_error_un)
                 test_losses_unnorm.append(test_loss_un), test_errors_unnorm.append(test_error_un)
-                ''' append stats'''
+                hist_train_un.append(current_hist_train_un)
+                hist_test_un.append(current_hist_test_un)
+                ''' append stats '''
                 epoch_numbers.append(epoch)
                 corruption_probs.append(corruption_prob)
                 stds_inits.append(std)
-                ## TODO fix
-                print(f'-------------> # of nets trained = {len(net_filenames)}')
-                print(f'-------------> nb_zero_train_error = {nb_zero_train_error}')
-                print(f'-------------> frac zero train error = {nb_zero_train_error}/{len(net_filenames)} = {nb_zero_train_error/len(net_filenames)}')
-                ''' organize/collect results'''
-                ## IMPORTANT: adding things to this list is not enough to return it to matlab, also edit collect_all
-                results = NamedDict(train_losses_norm=train_losses_norm, train_errors_norm=train_errors_norm,
-                                    test_losses_norm=test_losses_norm, test_errors_norm=test_errors_norm,
-                                    train_losses_unnorm=train_losses_unnorm, train_errors_unnorm=train_errors_unnorm,
-                                    test_losses_unnorm=test_losses_unnorm, test_errors_unnorm=test_errors_unnorm,
-                                    epoch_numbers=epoch_numbers, corruption_probs=corruption_probs,stds_inits=stds_inits,
-                                    hist_train_norm=hist_train_norm, hist_test_norm=hist_test_norm,
-                                    hist_train_un=hist_train_un, hist_test_un=hist_test_un)
-                return results
+        ''' '''
+        print(f'-------------> # of nets trained = {len(net_filenames)}')
+        print(f'-------------> nb_zero_train_error = {nb_zero_train_error}')
+        print(f'-------------> frac zero train error = {nb_zero_train_error}/{len(net_filenames)} = {nb_zero_train_error/len(net_filenames)}')
+        if nb_zero_train_error != 0:
+            ''' organize/collect results'''
+            ## IMPORTANT: adding things to this list is not enough to return it to matlab, also edit collect_all
+            results = NamedDict(train_losses_norm=train_losses_norm, train_errors_norm=train_errors_norm,
+                                test_losses_norm=test_losses_norm, test_errors_norm=test_errors_norm,
+                                train_losses_unnorm=train_losses_unnorm, train_errors_unnorm=train_errors_unnorm,
+                                test_losses_unnorm=test_losses_unnorm, test_errors_unnorm=test_errors_unnorm,
+                                epoch_numbers=epoch_numbers, corruption_probs=corruption_probs,stds_inits=stds_inits,
+                                hist_train_norm=hist_train_norm, hist_test_norm=hist_test_norm,
+                                hist_train_un=hist_train_un, hist_test_un=hist_test_un)
+            return results
+        else:
+            return -1
 
     def get_hist_last_layer_activations(self,net_filename,path_to_folder_expts,corruption_prob):
         ''' '''
@@ -751,9 +763,9 @@ def main():
     #list_names, RL_str, data_set_type = lists.experiment_BigInits_MNIST_34u_2c_1fc_hyperparams2()
     #list_names, RL_str, data_set_type = lists.experiment_BigInits_MNIST_different_HP()
     #list_names, RL_str, data_set_type = lists.experiment_cifar100_big_inits()
-    #list_names, RL_str, data_set_type = lists.experiment_BigInits_MNIST_different_HP_HISTOGRAM()
+    list_names, RL_str, data_set_type = lists.experiment_BigInits_MNIST_different_HP_HISTOGRAM()
     #list_names, RL_str, data_set_type = lists.experiment_Lambdas()
-    list_names, RL_str, data_set_type = lists.experiment_BigInits_MNIST_different_HP_product_norm_div()
+    #list_names, RL_str, data_set_type = lists.experiment_BigInits_MNIST_different_HP_product_norm_div()
     print(f'RL_str = {RL_str}')
     ''' normalization scheme '''
     p = 2
@@ -761,9 +773,9 @@ def main():
     norm = f'l{p}_division_constant{division_constant}'
     weight_normalizer = lambda W: lp_normalizer(W,p,division_constant=division_constant)
     weight_normalizer.p = p
-    #normalization_scheme = lambda net: divide_params(net,weight_normalizer)
-    product_norm = lambda net: get_product_norm(net,weight_normalizer)
-    normalization_scheme = product_norm
+    normalization_scheme = lambda net: divide_params(net,weight_normalizer)
+    #product_norm = lambda net: get_product_norm(net,weight_normalizer)
+    #normalization_scheme = product_norm
     #norm = 'spectral'
     #normalization_scheme = lambda net: divide_params(net, spectral_normalization)
     print(f'norm = {norm}')
@@ -772,8 +784,8 @@ def main():
     data_path = './data'
     target_loss = 0.0044
     normalizer = Normalizer(list_names, data_path,normalization_scheme, p,division_constant, data_set_type, type_standardize=type_standardize)
-    results = normalizer.extract_all_results_vs_test_errors(path_all_expts, target_loss)
-    #results = normalizer.get_hist_from_single_net(path_all_expts)
+    #results = normalizer.extract_all_results_vs_test_errors(path_all_expts, target_loss)
+    results = normalizer.get_hist_from_single_net(path_all_expts)
     ''' '''
     path = os.path.join(path_all_expts, f'{RL_str}loss_vs_gen_errors_norm_{norm}_data_set_{data_set_type}')
     #path = os.path.join(path_all_expts, f'RL_corruption_1.0_loss_vs_gen_errors_norm_{norm}')
@@ -790,3 +802,4 @@ if __name__ == '__main__':
     main()
     seconds_setup, minutes_setup, hours_setup = utils.report_times(time_taken)
     print('end')
+    print('\a')

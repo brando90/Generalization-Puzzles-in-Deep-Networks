@@ -3,7 +3,7 @@
 #SBATCH --time=2-22:30
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
-#SBATCH --array=1-8
+#SBATCH --array=1-1
 #SBATCH --gres=gpu:1
 
 """
@@ -572,8 +572,8 @@ def main(plot=True):
     other_stats = dict({'nb_epochs':nb_epochs,'batch_size':batch_size,'mdl':mdl,'lr':lr,'momentum':momentum, 'seed':seed,'githash':githash},**other_stats)
     expt_path = f'{expt_path}_args.train_alg_{args.train_alg}_batch_train_{batch_size_train}_lr_{lr}_moment_{momentum}_epochs_{nb_epochs}'
     ''' scheduler '''
-    milestones = [20, 30, 40]
-    #milestones = [200, 250, 300]
+    #milestones = [20, 30, 40]
+    milestones = [200, 250, 300]
     #milestones = [700, 800, 900]
     #milestones = [1700, 1800, 1900]
     scheduler_gamma = args.decay_rate
