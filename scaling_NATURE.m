@@ -19,7 +19,6 @@ train_all_losses_unnormalized(RLs) = train_all_losses_unnormalized_rand(RLs);
 test_all_losses_unnormalized(RLs) = test_all_losses_unnormalized_rand(RLs);
 %% test error vs train error 
 fig0 = figure;
-%lscatter(train_all_errors_unnormalized,gen_all_errors_unnormalized,markers)
 lscatter(train_all_errors_unnormalized,gen_all_errors_unnormalized,markers)
 xlim([-0.05,1])
 xlabel('Train Error (Network Normalized)')
@@ -37,57 +36,26 @@ lscatter(train_all_losses_normalized,gen_all_errors_normalized,markers)
 xlabel('Train Loss (Network Normalized)')
 ylabel('Test Error (Network Normalized)')
 %% IMPORTANT: test loss vs train loss (all normalized) - shows the linear correlation of the train loss and test loss
-% fig2 = figure;
-% lscatter(train_all_losses_normalized,test_all_losses_normalized,markers)
-% %title('The weights of all models are normalized')
-% xlabel('Train Loss (Network Normalized)')
-% ylabel('Test Loss (Network Normalized)')
-% hl = lsline;
-% B = [ones(size(hl.XData(:))), hl.XData(:)]\hl.YData(:);
-% Slope = B(2)
-% Intercept = B(1)
-% X = train_all_losses_normalized;y = test_all_losses_normalized;
-% mdl = fitlm(X,y);
-% RMSE = mdl.RMSE
-% Rsquared_Ordinary = mdl.Rsquared.Ordinary
-% Rsquared_adjusted = mdl.Rsquared
-%
 fig2 = figure;
-
-% X_nl = train_all_losses_normalized(1:7);
-% Y_nl = test_all_losses_normalized(1:7);
-% X_rl = train_all_losses_normalized(RLs);
-% Y_rl = test_all_losses_normalized(RLs);
-% X = [X_nl X_rl];
-% Y = [Y_nl Y_rl];
-% markers_XY = [markers(1:7) markers(RLs)];
-% lscatter(X,Y,markers_XY)
-%c = repelem([0 0.4470 0.7410],length(X),1);
-c = [0 0.4470 0.7410];
-%scatter(X,Y,c)
-%scatter(X,Y,[0 0.4470 0.7410])
-%scatter(X,Y)
-%scatter(X,Y,'MarkerEdgeColor',c)
-%hold;
-%scatter(train_all_losses_normalized,test_all_losses_normalized)
-lscatter(train_all_losses_normalized,test_all_losses_normalized,markers)
-
+scatter(train_all_losses_normalized,test_all_losses_normalized)
 hold;
-hl = lsline;
-
-%title('The weights of all models are normalized')
-B = [ones(size(hl.XData(:))), hl.XData(:)]\hl.YData(:);
-Slope = B(2)
-Intercept = B(1)
-X = train_all_losses_normalized;y = test_all_losses_normalized;
-mdl = fitlm(X,y);
-RMSE = mdl.RMSE
-Rsquared_Ordinary = mdl.Rsquared.Ordinary
-Rsquared_adjusted = mdl.Rsquared
-
+%
+X = train_all_losses_normalized;
+y = test_all_losses_normalized;
+% X = [train_all_losses_normalized(1:7) train_all_losses_normalized(RLs)];
+% y = [test_all_losses_normalized(1:7) test_all_losses_normalized(RLs)];
+n = length(X);
+Intercept = (1/n)*sum(y-X) % (1/n)*sum(y-x)
+%
+yCalc1 = X+Intercept;
+Rsq1 = 1 - sum((y - yCalc1).^2)/sum((y - mean(y)).^2)
+RMSE = sqrt(mean((y - yCalc1).^2))  % Root Mean Squared Error
+%
+plot(X,yCalc1);
+%
 xlabel('Train Loss (Network Normalized)')
 ylabel('Test Loss (Network Normalized)')
-%% IMPORTANT: test error (unormalized) vs train loss (normalized), this checks if we can predict test error from train loss
+%% IMPORTANT: test error (unnormalized) vs train loss (normalized), this checks if we can predict test error from train loss
 fig3 = figure;
 lscatter(train_all_losses_normalized,gen_all_errors_unnormalized,markers)
 %lsline
@@ -103,7 +71,7 @@ xlabel('Train Loss (Network Normalized)')
 ylabel('Test Loss (Network Unnormalized)')
 %% CONTROL1: test loss (unormalized) vs train loss (unnormalized)
 fig5 = figure;
-lscatter(train_all_losses_unnormalized,test_all_losses_unnormalized,markers)
+scatter(train_all_losses_unnormalized,test_all_losses_unnormalized)
 % h = scatter(train_all_losses_unnormalized,test_all_losses_unnormalized)
 % c = get(h,'Color')
 % c{1}

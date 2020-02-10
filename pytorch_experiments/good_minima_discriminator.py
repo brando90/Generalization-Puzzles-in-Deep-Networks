@@ -438,5 +438,3 @@ def l2_norm_all_params(net):
 #         return w_norms
 #
 #     def compare(self):
-
-

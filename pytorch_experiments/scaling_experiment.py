@@ -365,8 +365,8 @@ class Normalizer:
                 corruption_prob = self.get_corruption_prob(path_to_folder_expts)
                 epoch = len(train_errors)
                 ''' get results from normalized net'''
-                #results = self.get_results_of_net(net_filename,path_to_folder_expts,corruption_prob)
-                results = self.get_results_of_net_divided_by_product_norm(net_filename, path_to_folder_expts, corruption_prob)
+                results = self.get_results_of_net(net_filename,path_to_folder_expts,corruption_prob)
+                #results = self.get_results_of_net_divided_by_product_norm(net_filename, path_to_folder_expts, corruption_prob)
                 ## extract results
                 normalized_results, unnormalized_results = results
                 train_loss_norm, train_error_norm, test_loss_norm, test_error_norm = normalized_results
@@ -763,9 +763,13 @@ def main():
     #list_names, RL_str, data_set_type = lists.experiment_BigInits_MNIST_34u_2c_1fc_hyperparams2()
     #list_names, RL_str, data_set_type = lists.experiment_BigInits_MNIST_different_HP()
     #list_names, RL_str, data_set_type = lists.experiment_cifar100_big_inits()
-    list_names, RL_str, data_set_type = lists.experiment_BigInits_MNIST_different_HP_HISTOGRAM()
+    #list_names, RL_str, data_set_type = lists.experiment_BigInits_MNIST_different_HP_HISTOGRAM()
     #list_names, RL_str, data_set_type = lists.experiment_Lambdas()
     #list_names, RL_str, data_set_type = lists.experiment_BigInits_MNIST_different_HP_product_norm_div()
+    list_names, RL_str, data_set_type = lists.experiment_BigInits_MNIST_different_HP_product_norm_div()
+    ###
+    #list_names, RL_str, data_set_type = lists.experiment_BigInits_MNIST_34u_2c_1fc()
+    list_names, RL_str, data_set_type = lists.expt_big_inits_cifar10()
     print(f'RL_str = {RL_str}')
     ''' normalization scheme '''
     p = 2
@@ -784,10 +788,12 @@ def main():
     data_path = './data'
     target_loss = 0.0044
     normalizer = Normalizer(list_names, data_path,normalization_scheme, p,division_constant, data_set_type, type_standardize=type_standardize)
-    #results = normalizer.extract_all_results_vs_test_errors(path_all_expts, target_loss)
-    results = normalizer.get_hist_from_single_net(path_all_expts)
-    ''' '''
+    results = normalizer.extract_all_results_vs_test_errors(path_all_expts, target_loss)
+    #results = normalizer.get_hist_from_single_net(path_all_expts)
+    ''' Saving '''
+    print()
     path = os.path.join(path_all_expts, f'{RL_str}loss_vs_gen_errors_norm_{norm}_data_set_{data_set_type}')
+    print(f'path = {path}')
     #path = os.path.join(path_all_expts, f'RL_corruption_1.0_loss_vs_gen_errors_norm_{norm}')
     #path = os.path.join(path_all_expts,f'loss_vs_gen_errors_norm_{norm}_final')
     scipy.io.savemat(path, results)

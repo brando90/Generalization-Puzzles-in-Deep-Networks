@@ -3,7 +3,7 @@
 #SBATCH --time=2-22:30
 #SBATCH --mail-type=END
 #SBATCH --mail-user=brando90@mit.edu
-#SBATCH --array=1-1
+#SBATCH --array=1-6
 #SBATCH --gres=gpu:1
 
 """
@@ -339,10 +339,10 @@ def main(plot=True):
         #batch_size_train = 16384 # 2**14
         #batch_size_test = 16384
         #batch_size_train = 2**10
-        # batch_size_train = 2**10
-        # batch_size_test = 2**10
-        batch_size_train = 32
-        batch_size_test = 124
+        batch_size_train = 2**10
+        batch_size_test = 2**10
+        # batch_size_train = 32
+        # batch_size_test = 124
         ##
         batch_size = batch_size_train
         suffle_test = False
