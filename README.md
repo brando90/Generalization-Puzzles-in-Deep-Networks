@@ -25,3 +25,12 @@ Note that the file:
 https://github.com/brando90/Generalization-Puzzles-in-Deep-Networks/blob/master/pytorch_experiments/flatness_expts.py
 
 is a slurm submission script and one can use the array command to send multiple runs of similar experiments.
+
+## nohup (fake sbatch!)
+
+Cool trick for emulating sbatch:
+```
+nohup python flatness_expts.py -mdl GBoixNet -label_corrupt_prob 0.5 -train_alg SGD -epochs 300 -exptlabel MoreRLInits
+```
+
+see my code example: https://github.com/brando90/Generalization-Puzzles-in-Deep-Networks/blob/286e5aa9a7fcf28ef0a7fecd135189b0494674d7/pytorch_experiments/my_sbatch.sh
